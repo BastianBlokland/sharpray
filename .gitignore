@@ -5,5 +5,9 @@
 # Development environment.
 /.direnv/
 
+# Intermediate output.
+/bin/
+/obj/
+
 # Output
 /result
