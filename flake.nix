@@ -11,6 +11,16 @@
     pkgs = import nixpkgs { inherit system; };
   in
   {
+    packages.${system}.default = pkgs.buildDotnetModule {
+      pname = "sharpray";
+      version = "0.1.0";
+      src = ./.;
+      projectFile = "sharpray.csproj";
+      nugetDeps = [ ];
+      dotnet-sdk = pkgs.dotnet-sdk;
+      dotnet-runtime = pkgs.dotnet-runtime;
+    };
+
     devShells.${system}.default = pkgs.mkShell {
       packages = with pkgs; [
         dotnet-sdk
