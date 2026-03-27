@@ -72,6 +72,38 @@ struct Vec3
         a.Z + (b.Z - a.Z) * t);
 }
 
+struct Vec4
+{
+    public float X, Y, Z, W;
+
+    public Vec4(float x, float y, float z, float w)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+        W = w;
+    }
+
+    public Vec4(Vec3 xyz, float w)
+    {
+        X = xyz.X;
+        Y = xyz.Y;
+        Z = xyz.Z;
+        W = w;
+    }
+
+    public float this[int i] => i switch { 0 => X, 1 => Y, 2 => Z, 3 => W, _ => throw new IndexOutOfRangeException() };
+
+    public static Vec4 operator -(Vec4 v) => new Vec4(-v.X, -v.Y, -v.Z, -v.W);
+    public static Vec4 operator +(Vec4 a, Vec4 b) => new Vec4(a.X + b.X, a.Y + b.Y, a.Z + b.Z, a.W + b.W);
+    public static Vec4 operator -(Vec4 a, Vec4 b) => new Vec4(a.X - b.X, a.Y - b.Y, a.Z - b.Z, a.W - b.W);
+    public static Vec4 operator *(Vec4 a, float b) => new Vec4(a.X * b, a.Y * b, a.Z * b, a.W * b);
+    public static Vec4 operator *(float a, Vec4 b) => new Vec4(a * b.X, a * b.Y, a * b.Z, a * b.W);
+    public static Vec4 operator /(Vec4 a, float b) => new Vec4(a.X / b, a.Y / b, a.Z / b, a.W / b);
+
+    public static float Dot(Vec4 a, Vec4 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
+}
+
 struct Quat
 {
     public float X, Y, Z, W;
