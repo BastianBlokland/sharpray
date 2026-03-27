@@ -72,9 +72,62 @@ struct Vec3
         a.Z + (b.Z - a.Z) * t);
 }
 
+struct Quat
+{
+    public float X, Y, Z, W;
+
+    private Quat(float x, float y, float z, float w)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+        W = w;
+    }
+
+    public float this[int i] => i switch { 0 => X, 1 => Y, 2 => Z, 3 => W, _ => throw new IndexOutOfRangeException() };
+
+    public static Quat operator *(Quat a, Quat b) => new Quat(
+        a.W * b.X + a.X * b.W + a.Y * b.Z - a.Z * b.Y,
+        a.W * b.Y + a.Y * b.W + a.Z * b.X - a.X * b.Z,
+        a.W * b.Z + a.Z * b.W + a.X * b.Y - a.Y * b.X,
+        a.W * b.W - a.X * b.X - a.Y * b.Y - a.Z * b.Z);
+
+    public static Vec3 operator *(Quat q, Vec3 v)
+    {
+        Vec3 axis = new Vec3(q.X, q.Y, q.Z);
+        float sqrMag = axis.MagnitudeSqr();
+        Vec3 a = axis * (Vec3.Dot(axis, v) * 2);
+        Vec3 b = v * (q.W * q.W - sqrMag);
+        Vec3 c = Vec3.Cross(axis, v) * (q.W * 2);
+        return a + b + c;
+    }
+
+    public static Quat Identity() => new Quat(0, 0, 0, 1);
+
+    public static Quat AngleAxis(float angle, Vec3 axis)
+    {
+        Vec3 vec = axis * MathF.Sin(angle * 0.5f);
+        return new Quat(vec.X, vec.Y, vec.Z, MathF.Cos(angle * 0.5f));
+    }
+
+    public static Quat FromTo(Quat from, Quat to) => to * from.Inverse();
+
+    public static float Dot(Quat a, Quat b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
+
+    public Quat Inverse() => new Quat(-X, -Y, -Z, W);
+
+    public Quat Normalize()
+    {
+        float mag = MathF.Sqrt(X * X + Y * Y + Z * Z + W * W);
+        if (mag < 1e-6f) throw new InvalidOperationException("Cannot normalize a zero quaternion.");
+        float magInv = 1.0f / mag;
+        return new Quat(X * magInv, Y * magInv, Z * magInv, W * magInv);
+    }
+}
+
 struct Ray3
 {
-    Vec3 Origin, Dir;
+    public Vec3 Origin, Dir;
 
     public Ray3(Vec3 origin, Vec3 dir)
     {
