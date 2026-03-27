@@ -3,7 +3,7 @@ using System.IO;
 
 Image img = new Image(128, 128);
 Array.Fill(img.Pixels, new Pixel(255, 0, 0));
-img.Save("image.bmp");
+img.Save("output.bmp");
 
 Console.WriteLine("Pew pew!");
 
