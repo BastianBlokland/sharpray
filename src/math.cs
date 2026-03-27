@@ -118,6 +118,16 @@ struct Quat
 
     public float this[int i] => i switch { 0 => X, 1 => Y, 2 => Z, 3 => W, _ => throw new IndexOutOfRangeException() };
 
+    public Quat Inverse() => new Quat(-X, -Y, -Z, W);
+
+    public Quat Normalize()
+    {
+        float mag = MathF.Sqrt(X * X + Y * Y + Z * Z + W * W);
+        if (mag < 1e-6f) throw new InvalidOperationException("Cannot normalize a zero quaternion.");
+        float magInv = 1.0f / mag;
+        return new Quat(X * magInv, Y * magInv, Z * magInv, W * magInv);
+    }
+
     public static Quat operator *(Quat a, Quat b) => new Quat(
         a.W * b.X + a.X * b.W + a.Y * b.Z - a.Z * b.Y,
         a.W * b.Y + a.Y * b.W + a.Z * b.X - a.X * b.Z,
@@ -173,25 +183,29 @@ struct Quat
     }
 
     public static Quat Look(Vec3 forward, Vec3 upRef) => FromMat4(Mat4.RotateLook(forward, upRef));
-
-    public Quat Inverse() => new Quat(-X, -Y, -Z, W);
-
-    public Quat Normalize()
-    {
-        float mag = MathF.Sqrt(X * X + Y * Y + Z * Z + W * W);
-        if (mag < 1e-6f) throw new InvalidOperationException("Cannot normalize a zero quaternion.");
-        float magInv = 1.0f / mag;
-        return new Quat(X * magInv, Y * magInv, Z * magInv, W * magInv);
-    }
 }
 
 struct Mat4
 {
     public Vec4 C0, C1, C2, C3; // Column-major.
 
-    Mat4(Vec4 c0, Vec4 c1, Vec4 c2, Vec4 c3)
+    private Mat4(Vec4 c0, Vec4 c1, Vec4 c2, Vec4 c3)
     {
         C0 = c0; C1 = c1; C2 = c2; C3 = c3;
+    }
+
+    public Vec4 Row(int i) => new Vec4(C0[i], C1[i], C2[i], C3[i]);
+
+    public Vec3 TransformDir(Vec3 v)
+    {
+        Vec4 v4 = new Vec4(v, 0);
+        return new Vec3(Vec4.Dot(Row(0), v4), Vec4.Dot(Row(1), v4), Vec4.Dot(Row(2), v4));
+    }
+
+    public Vec3 TransformPoint(Vec3 v)
+    {
+        Vec4 v4 = new Vec4(v, 1);
+        return new Vec3(Vec4.Dot(Row(0), v4), Vec4.Dot(Row(1), v4), Vec4.Dot(Row(2), v4));
     }
 
     public static Mat4 Identity() => new Mat4(
@@ -205,20 +219,6 @@ struct Mat4
         new Vec4(Vec4.Dot(a.Row(0), b.C1), Vec4.Dot(a.Row(1), b.C1), Vec4.Dot(a.Row(2), b.C1), Vec4.Dot(a.Row(3), b.C1)),
         new Vec4(Vec4.Dot(a.Row(0), b.C2), Vec4.Dot(a.Row(1), b.C2), Vec4.Dot(a.Row(2), b.C2), Vec4.Dot(a.Row(3), b.C2)),
         new Vec4(Vec4.Dot(a.Row(0), b.C3), Vec4.Dot(a.Row(1), b.C3), Vec4.Dot(a.Row(2), b.C3), Vec4.Dot(a.Row(3), b.C3)));
-
-    Vec4 Row(int i) => new Vec4(C0[i], C1[i], C2[i], C3[i]);
-
-    public Vec3 TransformDir(Vec3 v)
-    {
-        Vec4 v4 = new Vec4(v, 0);
-        return new Vec3(Vec4.Dot(Row(0), v4), Vec4.Dot(Row(1), v4), Vec4.Dot(Row(2), v4));
-    }
-
-    public Vec3 TransformPoint(Vec3 v)
-    {
-        Vec4 v4 = new Vec4(v, 1);
-        return new Vec3(Vec4.Dot(Row(0), v4), Vec4.Dot(Row(1), v4), Vec4.Dot(Row(2), v4));
-    }
 
     public static Mat4 Translate(Vec3 t) => new Mat4(
         new Vec4(1, 0, 0, 0),

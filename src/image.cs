@@ -33,15 +33,6 @@ class Image
         Bmp,
     }
 
-    static public Format? FormatFromPath(string path)
-    {
-        string ext = Path.GetExtension(path);
-        if (ext == ".tga") return Format.Tga;
-        if (ext == ".ppm") return Format.Ppm;
-        if (ext == ".bmp") return Format.Bmp;
-        return null;
-    }
-
     public bool Write(BinaryWriter writer, Format format) => format switch
     {
         Format.Tga => WriteTga(writer),
@@ -165,5 +156,14 @@ class Image
         {
             return false;
         }
+    }
+
+    public static Format? FormatFromPath(string path)
+    {
+        string ext = Path.GetExtension(path);
+        if (ext == ".tga") return Format.Tga;
+        if (ext == ".ppm") return Format.Ppm;
+        if (ext == ".bmp") return Format.Bmp;
+        return null;
     }
 }
