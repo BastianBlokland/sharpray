@@ -1,0 +1,13 @@
+[
+  {
+    "label": "Sharpray",
+    "adapter": "netcoredbg",
+    "request": "launch",
+    "program": "${ZED_WORKTREE_ROOT}/bin/Debug/net8.0/sharpray.dll",
+    "cwd": "${ZED_WORKTREE_ROOT}",
+    "build": {
+      "command": "dotnet",
+      "args": ["build", "${ZED_WORKTREE_ROOT}/sharpray.csproj", "-p:Configuration=Debug"]
+    }
+  }
+]
