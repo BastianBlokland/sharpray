@@ -3,12 +3,14 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-25.11";
+    nixpkgs-unstable.url = "nixpkgs/nixos-unstable";
   };
 
-  outputs = { nixpkgs, ... }:
+  outputs = { nixpkgs, nixpkgs-unstable, ... }:
   let
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
+    pkgsUnstable = import nixpkgs-unstable { inherit system; };
   in
   {
     packages.${system}.default = pkgs.buildDotnetModule {
@@ -24,7 +26,7 @@
     devShells.${system}.default = pkgs.mkShell {
       packages = with pkgs; [
         dotnet-sdk
-        netcoredbg # .NET debug adapter.
+        pkgsUnstable.netcoredbg # .NET debug adapter.
         omnisharp-roslyn
       ];
     };
