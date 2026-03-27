@@ -146,6 +146,34 @@ struct Quat
 
     public static float Dot(Quat a, Quat b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 
+    public static Quat FromMat4(Mat4 m)
+    {
+        // https://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+        float trace = m.C0.X + m.C1.Y + m.C2.Z;
+        if (trace > 1e-6f)
+        {
+            float s = MathF.Sqrt(trace + 1) * 2; // s = 4w
+            return new Quat((m.C1.Z - m.C2.Y) / s, (m.C2.X - m.C0.Z) / s, (m.C0.Y - m.C1.X) / s, s * 0.25f);
+        }
+        if (m.C0.X > m.C1.Y && m.C0.X > m.C2.Z)
+        {
+            float s = MathF.Sqrt(1 + m.C0.X - m.C1.Y - m.C2.Z) * 2; // s = 4x
+            return new Quat(s * 0.25f, (m.C1.X + m.C0.Y) / s, (m.C2.X + m.C0.Z) / s, (m.C1.Z - m.C2.Y) / s);
+        }
+        if (m.C1.Y > m.C2.Z)
+        {
+            float s = MathF.Sqrt(1 + m.C1.Y - m.C0.X - m.C2.Z) * 2; // s = 4y
+            return new Quat((m.C1.X + m.C0.Y) / s, s * 0.25f, (m.C2.Y + m.C1.Z) / s, (m.C2.X - m.C0.Z) / s);
+        }
+        else
+        {
+            float s = MathF.Sqrt(1 + m.C2.Z - m.C0.X - m.C1.Y) * 2; // s = 4z
+            return new Quat((m.C2.X + m.C0.Z) / s, (m.C2.Y + m.C1.Z) / s, s * 0.25f, (m.C0.Y - m.C1.X) / s);
+        }
+    }
+
+    public static Quat Look(Vec3 forward, Vec3 upRef) => FromMat4(Mat4.RotateLook(forward, upRef));
+
     public Quat Inverse() => new Quat(-X, -Y, -Z, W);
 
     public Quat Normalize()
@@ -204,16 +232,6 @@ struct Mat4
         new Vec4(0, 0, s.Z, 0),
         new Vec4(0, 0, 0, 1));
 
-    public static Mat4 Trs(Vec3 t, Quat r, Vec3 s)
-    {
-        Mat4 m = FromQuat(r);
-        m.C0 = m.C0 * s.X;
-        m.C1 = m.C1 * s.Y;
-        m.C2 = m.C2 * s.Z;
-        m.C3 = new Vec4(t.X, t.Y, t.Z, 1);
-        return m;
-    }
-
     public static Mat4 RotateX(float angle)
     {
         float c = MathF.Cos(angle), s = MathF.Sin(angle);
@@ -244,7 +262,24 @@ struct Mat4
             new Vec4(0, 0, 0, 1));
     }
 
-    public static Mat4 FromQuat(Quat q)
+    public static Mat4 RotateLook(Vec3 forward, Vec3 upRef)
+    {
+        if (forward.MagnitudeSqr() <= 1e-6f) return Identity();
+        if (upRef.MagnitudeSqr() <= 1e-6f) return Identity();
+
+        Vec3 fwd = forward.Normalize();
+        Vec3 right = Vec3.Cross(upRef, fwd);
+        right = right.MagnitudeSqr() > 1e-6f ? right.Normalize() : new Vec3(1, 0, 0);
+        Vec3 up = Vec3.Cross(fwd, right);
+
+        return new Mat4(
+            new Vec4(right.X, right.Y, right.Z, 0),
+            new Vec4(up.X, up.Y, up.Z, 0),
+            new Vec4(fwd.X, fwd.Y, fwd.Z, 0),
+            new Vec4(0, 0, 0, 1));
+    }
+
+    public static Mat4 RotateQuat(Quat q)
     {
         float x = q.X, y = q.Y, z = q.Z, w = q.W;
         return new Mat4(
@@ -252,6 +287,16 @@ struct Mat4
             new Vec4(2 * x * y - 2 * w * z, 1 - 2 * x * x - 2 * z * z, 2 * y * z + 2 * w * x, 0),
             new Vec4(2 * x * z + 2 * w * y, 2 * y * z - 2 * w * x, 1 - 2 * x * x - 2 * y * y, 0),
             new Vec4(0, 0, 0, 1));
+    }
+
+    public static Mat4 Trs(Vec3 t, Quat r, Vec3 s)
+    {
+        Mat4 m = RotateQuat(r);
+        m.C0 = m.C0 * s.X;
+        m.C1 = m.C1 * s.Y;
+        m.C2 = m.C2 * s.Z;
+        m.C3 = new Vec4(t.X, t.Y, t.Z, 1);
+        return m;
     }
 }
 
