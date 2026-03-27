@@ -7,9 +7,9 @@ struct Pixel
 
     public Pixel(byte r, byte g, byte b)
     {
-        this.R = r;
-        this.G = g;
-        this.B = b;
+        R = r;
+        G = g;
+        B = b;
     }
 }
 
@@ -21,9 +21,9 @@ class Image
 
     public Image(uint width, uint height)
     {
-        this.Width = width;
-        this.Height = height;
-        this.Pixels = new Pixel[width * height];
+        Width = width;
+        Height = height;
+        Pixels = new Pixel[width * height];
     }
 
     public enum Format
@@ -59,13 +59,13 @@ class Image
             writer.Write((byte)0); // colorMapType.
             writer.Write((byte)2); // imageType: TrueColor.
             writer.Write(new byte[9]); // colorMapSpec and origin.
-            writer.Write((ushort)this.Width); // image width (little-endian).
-            writer.Write((ushort)this.Height); // image height (little-endian).
+            writer.Write((ushort)Width); // image width (little-endian).
+            writer.Write((ushort)Height); // image height (little-endian).
             writer.Write((byte)24); // bitsPerPixel.
             writer.Write((byte)0x20); // imageSpecDescriptor: top-left origin.
 
             // Pixels.
-            foreach (Pixel pixel in this.Pixels)
+            foreach (Pixel pixel in Pixels)
             {
                 writer.Write(pixel.B);
                 writer.Write(pixel.G);
@@ -84,11 +84,11 @@ class Image
         try
         {
             // Header.
-            string header = $"P6\n{this.Width} {this.Height}\n255\n";
+            string header = $"P6\n{Width} {Height}\n255\n";
             writer.Write(System.Text.Encoding.ASCII.GetBytes(header));
 
             // Pixels.
-            foreach (Pixel pixel in this.Pixels)
+            foreach (Pixel pixel in Pixels)
             {
                 writer.Write(pixel.R);
                 writer.Write(pixel.G);
@@ -106,8 +106,8 @@ class Image
     {
         try
         {
-            uint rowStride = (this.Width * 3 + 3) & ~3u; // Rows padded to 4-byte boundary.
-            uint pixelDataSize = rowStride * this.Height;
+            uint rowStride = (Width * 3 + 3) & ~3u; // Rows padded to 4-byte boundary.
+            uint pixelDataSize = rowStride * Height;
             uint fileSize = 14 + 40 + pixelDataSize; // File header + DIB header + pixels.
 
             // File header.
@@ -119,8 +119,8 @@ class Image
 
             // DIB header.
             writer.Write((uint)40); // header size.
-            writer.Write((int)this.Width); // image width.
-            writer.Write(-(int)this.Height); // negative height: top-down row order.
+            writer.Write((int)Width); // image width.
+            writer.Write(-(int)Height); // negative height: top-down row order.
             writer.Write((ushort)1); // color planes.
             writer.Write((ushort)24); // bits per pixel.
             writer.Write((uint)0); // compression: none.
@@ -128,12 +128,12 @@ class Image
             writer.Write(new byte[16]); // x/y pixels per meter, colors in table, important colors.
 
             // Pixels.
-            uint padding = rowStride - this.Width * 3;
-            for (uint y = 0; y != this.Height; ++y)
+            uint padding = rowStride - Width * 3;
+            for (uint y = 0; y != Height; ++y)
             {
-                for (uint x = 0; x != this.Width; ++x)
+                for (uint x = 0; x != Width; ++x)
                 {
-                    Pixel pixel = this.Pixels[y * this.Width + x];
+                    Pixel pixel = Pixels[y * Width + x];
                     writer.Write(pixel.B);
                     writer.Write(pixel.G);
                     writer.Write(pixel.R);
