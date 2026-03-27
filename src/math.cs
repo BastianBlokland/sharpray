@@ -157,6 +157,104 @@ struct Quat
     }
 }
 
+struct Mat4
+{
+    public Vec4 C0, C1, C2, C3; // Column-major.
+
+    Mat4(Vec4 c0, Vec4 c1, Vec4 c2, Vec4 c3)
+    {
+        C0 = c0; C1 = c1; C2 = c2; C3 = c3;
+    }
+
+    public static Mat4 Identity() => new Mat4(
+        new Vec4(1, 0, 0, 0),
+        new Vec4(0, 1, 0, 0),
+        new Vec4(0, 0, 1, 0),
+        new Vec4(0, 0, 0, 1));
+
+    public static Mat4 operator *(Mat4 a, Mat4 b) => new Mat4(
+        new Vec4(Vec4.Dot(a.Row(0), b.C0), Vec4.Dot(a.Row(1), b.C0), Vec4.Dot(a.Row(2), b.C0), Vec4.Dot(a.Row(3), b.C0)),
+        new Vec4(Vec4.Dot(a.Row(0), b.C1), Vec4.Dot(a.Row(1), b.C1), Vec4.Dot(a.Row(2), b.C1), Vec4.Dot(a.Row(3), b.C1)),
+        new Vec4(Vec4.Dot(a.Row(0), b.C2), Vec4.Dot(a.Row(1), b.C2), Vec4.Dot(a.Row(2), b.C2), Vec4.Dot(a.Row(3), b.C2)),
+        new Vec4(Vec4.Dot(a.Row(0), b.C3), Vec4.Dot(a.Row(1), b.C3), Vec4.Dot(a.Row(2), b.C3), Vec4.Dot(a.Row(3), b.C3)));
+
+    Vec4 Row(int i) => new Vec4(C0[i], C1[i], C2[i], C3[i]);
+
+    public Vec3 TransformDir(Vec3 v)
+    {
+        Vec4 v4 = new Vec4(v, 0);
+        return new Vec3(Vec4.Dot(Row(0), v4), Vec4.Dot(Row(1), v4), Vec4.Dot(Row(2), v4));
+    }
+
+    public Vec3 TransformPoint(Vec3 v)
+    {
+        Vec4 v4 = new Vec4(v, 1);
+        return new Vec3(Vec4.Dot(Row(0), v4), Vec4.Dot(Row(1), v4), Vec4.Dot(Row(2), v4));
+    }
+
+    public static Mat4 Translate(Vec3 t) => new Mat4(
+        new Vec4(1, 0, 0, 0),
+        new Vec4(0, 1, 0, 0),
+        new Vec4(0, 0, 1, 0),
+        new Vec4(t.X, t.Y, t.Z, 1));
+
+    public static Mat4 Scale(Vec3 s) => new Mat4(
+        new Vec4(s.X, 0, 0, 0),
+        new Vec4(0, s.Y, 0, 0),
+        new Vec4(0, 0, s.Z, 0),
+        new Vec4(0, 0, 0, 1));
+
+    public static Mat4 Trs(Vec3 t, Quat r, Vec3 s)
+    {
+        Mat4 m = FromQuat(r);
+        m.C0 = m.C0 * s.X;
+        m.C1 = m.C1 * s.Y;
+        m.C2 = m.C2 * s.Z;
+        m.C3 = new Vec4(t.X, t.Y, t.Z, 1);
+        return m;
+    }
+
+    public static Mat4 RotateX(float angle)
+    {
+        float c = MathF.Cos(angle), s = MathF.Sin(angle);
+        return new Mat4(
+            new Vec4(1, 0, 0, 0),
+            new Vec4(0, c, s, 0),
+            new Vec4(0, -s, c, 0),
+            new Vec4(0, 0, 0, 1));
+    }
+
+    public static Mat4 RotateY(float angle)
+    {
+        float c = MathF.Cos(angle), s = MathF.Sin(angle);
+        return new Mat4(
+            new Vec4(c, 0, -s, 0),
+            new Vec4(0, 1, 0, 0),
+            new Vec4(s, 0, c, 0),
+            new Vec4(0, 0, 0, 1));
+    }
+
+    public static Mat4 RotateZ(float angle)
+    {
+        float c = MathF.Cos(angle), s = MathF.Sin(angle);
+        return new Mat4(
+            new Vec4(c, s, 0, 0),
+            new Vec4(-s, c, 0, 0),
+            new Vec4(0, 0, 1, 0),
+            new Vec4(0, 0, 0, 1));
+    }
+
+    public static Mat4 FromQuat(Quat q)
+    {
+        float x = q.X, y = q.Y, z = q.Z, w = q.W;
+        return new Mat4(
+            new Vec4(1 - 2 * y * y - 2 * z * z, 2 * x * y + 2 * w * z, 2 * x * z - 2 * w * y, 0),
+            new Vec4(2 * x * y - 2 * w * z, 1 - 2 * x * x - 2 * z * z, 2 * y * z + 2 * w * x, 0),
+            new Vec4(2 * x * z + 2 * w * y, 2 * y * z - 2 * w * x, 1 - 2 * x * x - 2 * y * y, 0),
+            new Vec4(0, 0, 0, 1));
+    }
+}
+
 struct Ray3
 {
     public Vec3 Origin, Dir;
