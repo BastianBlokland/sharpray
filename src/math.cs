@@ -64,7 +64,7 @@ struct Vec3
         return n * (Dot(v, n) / nSqrMag);
     }
 
-    public static Vec3 Reflect(Vec3 v, Vec3 n) => v - 2 * Dot(v, n) * n;
+    public static Vec3 Reflect(Vec3 v, Vec3 n) => v - 2 * (Dot(v, n) / Dot(n, n)) * n;
 
     public static Vec3 Lerp(Vec3 a, Vec3 b, float t) => new Vec3(
         a.X + (b.X - a.X) * t,
