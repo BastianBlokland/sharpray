@@ -23,6 +23,11 @@ scene.AddObject(new Object(
     new Material(new Color(0.2f, 0.2f, 1f), new Color(0.2f, 0.2f, 1f)),
     new Sphere(Vec3.Zero, 1f)));
 
+scene.AddObject(new Object(
+    Transform.Identity(),
+    new Material(new Color(0.2f, 0.2f, 0.2f), new Color(0.2f, 0.2f, 0.2f)),
+    new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
+
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
 
 Renderer renderer = new Renderer(scene, view, width, height, blockSize);
