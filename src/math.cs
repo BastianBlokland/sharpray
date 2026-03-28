@@ -1145,3 +1145,19 @@ struct Rng
         return result ^ (result >> 31);
     }
 }
+
+struct Timestamp
+{
+    private long _ticks;
+
+    private Timestamp(long ticks) { _ticks = ticks; }
+
+    public double Nanos => (double)_ticks * 1_000_000_000.0 / Stopwatch.Frequency;
+    public double Micros => (double)_ticks * 1_000_000.0 / Stopwatch.Frequency;
+    public double Millis => (double)_ticks * 1_000.0 / Stopwatch.Frequency;
+    public double Seconds => (double)_ticks / Stopwatch.Frequency;
+
+    public static Timestamp operator -(Timestamp a, Timestamp b) => new Timestamp(a._ticks - b._ticks);
+
+    public static Timestamp Now() => new Timestamp(Stopwatch.GetTimestamp());
+}
