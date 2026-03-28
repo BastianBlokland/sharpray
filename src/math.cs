@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 struct Color
 {
@@ -11,7 +12,14 @@ struct Color
         B = b;
     }
 
-    public float this[int i] => i switch { 0 => R, 1 => G, 2 => B, _ => throw new IndexOutOfRangeException() };
+    public float this[int i]
+    {
+        get
+        {
+            Debug.Assert(i >= 0 && i < 3);
+            return i switch { 0 => R, 1 => G, _ => B };
+        }
+    }
 
     public Color Clamp01() => new Color(Math.Clamp(R, 0f, 1f), Math.Clamp(G, 0f, 1f), Math.Clamp(B, 0f, 1f));
 
@@ -64,7 +72,14 @@ struct Vec2
         Y = y;
     }
 
-    public float this[int i] => i switch { 0 => X, 1 => Y, _ => throw new IndexOutOfRangeException() };
+    public float this[int i]
+    {
+        get
+        {
+            Debug.Assert(i >= 0 && i < 2);
+            return i switch { 0 => X, _ => Y };
+        }
+    }
 }
 
 struct Vec3
@@ -85,7 +100,14 @@ struct Vec3
         Z = z;
     }
 
-    public float this[int i] => i switch { 0 => X, 1 => Y, 2 => Z, _ => throw new IndexOutOfRangeException() };
+    public float this[int i]
+    {
+        get
+        {
+            Debug.Assert(i >= 0 && i < 3);
+            return i switch { 0 => X, 1 => Y, _ => Z };
+        }
+    }
 
     public float MagnitudeSqr() => Dot(this, this);
     public float Magnitude() => MathF.Sqrt(MagnitudeSqr());
@@ -93,7 +115,7 @@ struct Vec3
     public Vec3 Normalize()
     {
         float m = Magnitude();
-        if (m < 1e-6f) throw new InvalidOperationException("Cannot normalize a zero vector.");
+        Debug.Assert(m >= 1e-6f, "Cannot normalize a zero vector.");
         return this / m;
     }
 
@@ -114,7 +136,7 @@ struct Vec3
     public static Vec3 Project(Vec3 v, Vec3 n)
     {
         float nSqrMag = n.MagnitudeSqr();
-        if (nSqrMag < 1e-6f) throw new InvalidOperationException("Cannot project onto a zero vector.");
+        Debug.Assert(nSqrMag >= 1e-6f, "Cannot project onto a zero vector.");
         return n * (Dot(v, n) / nSqrMag);
     }
 
@@ -146,7 +168,14 @@ struct Vec4
         W = w;
     }
 
-    public float this[int i] => i switch { 0 => X, 1 => Y, 2 => Z, 3 => W, _ => throw new IndexOutOfRangeException() };
+    public float this[int i]
+    {
+        get
+        {
+            Debug.Assert(i >= 0 && i < 4);
+            return i switch { 0 => X, 1 => Y, 2 => Z, _ => W };
+        }
+    }
 
     public static Vec4 operator -(Vec4 v) => new Vec4(-v.X, -v.Y, -v.Z, -v.W);
     public static Vec4 operator +(Vec4 a, Vec4 b) => new Vec4(a.X + b.X, a.Y + b.Y, a.Z + b.Z, a.W + b.W);
@@ -170,14 +199,21 @@ struct Quat
         W = w;
     }
 
-    public float this[int i] => i switch { 0 => X, 1 => Y, 2 => Z, 3 => W, _ => throw new IndexOutOfRangeException() };
+    public float this[int i]
+    {
+        get
+        {
+            Debug.Assert(i >= 0 && i < 4);
+            return i switch { 0 => X, 1 => Y, 2 => Z, _ => W };
+        }
+    }
 
     public Quat Inverse() => new Quat(-X, -Y, -Z, W);
 
     public Quat Normalize()
     {
         float mag = MathF.Sqrt(X * X + Y * Y + Z * Z + W * W);
-        if (mag < 1e-6f) throw new InvalidOperationException("Cannot normalize a zero quaternion.");
+        Debug.Assert(mag >= 1e-6f, "Cannot normalize a zero quaternion.");
         float magInv = 1.0f / mag;
         return new Quat(X * magInv, Y * magInv, Z * magInv, W * magInv);
     }
@@ -377,6 +413,7 @@ struct Transform
 
     public Transform(Vec3 pos, Quat rot, Vec3 scale)
     {
+        Debug.Assert(scale.X != 0f && scale.Y != 0f && scale.Z != 0f, "Transform scale cannot be zero.");
         Pos = pos;
         Rot = rot;
         Scale = scale;
@@ -428,4 +465,55 @@ struct Transform
         a.TransformPoint(b.Pos),
         a.Rot * b.Rot,
         new Vec3(a.Scale.X * b.Scale.X, a.Scale.Y * b.Scale.Y, a.Scale.Z * b.Scale.Z));
+}
+
+struct View
+{
+    public Transform Trans;
+    public float Fov; // Field of view in radians. Horizontal aspect >= 1, vertical when aspect < 1.
+    public float Near;
+
+    public View()
+    {
+        Trans = Transform.Identity();
+        Fov = float.DegreesToRadians(60f);
+        Near = 0.1f;
+    }
+
+    public View(Transform trans)
+    {
+        Trans = trans;
+        Fov = float.DegreesToRadians(60f);
+        Near = 0.1f;
+    }
+
+    public View(Transform trans, float fov, float near)
+    {
+        Trans = trans;
+        Fov = fov;
+        Near = near;
+    }
+
+    public Ray3 Ray(Vec2 screenPos, float aspect)
+    {
+        float ndcX = screenPos.X * 2f - 1f;
+        float ndcY = -screenPos.Y * 2f + 1f;
+
+        float tanHalfHor, tanHalfVer;
+        if (aspect >= 1f)
+        {
+            tanHalfHor = MathF.Tan(Fov * 0.5f);
+            tanHalfVer = tanHalfHor / aspect;
+        }
+        else
+        {
+            tanHalfVer = MathF.Tan(Fov * 0.5f);
+            tanHalfHor = tanHalfVer * aspect;
+        }
+
+        Vec3 localDir = new Vec3(ndcX * tanHalfHor, ndcY * tanHalfVer, 1f);
+        Vec3 origin = Trans.Pos + Trans.TransformDir(new Vec3(0f, 0f, Near));
+        Vec3 dir = Trans.TransformDir(localDir.Normalize());
+        return new Ray3(origin, dir);
+    }
 }
