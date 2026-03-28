@@ -616,6 +616,51 @@ struct Box
         new Box(AABox.FromCenter(center, size), rot);
 }
 
+struct Sphere
+{
+    public Vec3 Center;
+    public float Radius;
+
+    public Sphere(Vec3 center, float radius)
+    {
+        Debug.Assert(radius > 0f, "Radius must be positive");
+        Center = center;
+        Radius = radius;
+    }
+
+    public bool Overlaps(Sphere other)
+    {
+        float distSqr = (other.Center - Center).MagnitudeSqr();
+        float radSum = Radius + other.Radius;
+        return distSqr <= radSum * radSum;
+    }
+
+    public bool Overlaps(AABox box)
+    {
+        Vec3 closest = box.ClosestPoint(Center);
+        return (closest - Center).MagnitudeSqr() <= Radius * Radius;
+    }
+
+    public RayHit? Intersect(Ray ray)
+    {
+        // https://gdbooks.gitbooks.io/3dcollisions/content/Chapter3/raycast_sphere.html
+        Vec3  toCenter        = Center - ray.Origin;
+        float toCenterDistSqr = toCenter.MagnitudeSqr();
+        float a               = Vec3.Dot(toCenter, ray.Dir);
+        float discriminant    = Radius * Radius - toCenterDistSqr + a * a;
+
+        if (discriminant < 0f) return null;
+
+        float f = MathF.Sqrt(discriminant);
+        float t = toCenterDistSqr < Radius * Radius ? a + f : a - f;
+
+        if (t < 0f) return null;
+
+        Vec3 norm = (ray[t] - Center).Normalize();
+        return new RayHit(t, norm);
+    }
+}
+
 struct View
 {
     public Transform Trans;
