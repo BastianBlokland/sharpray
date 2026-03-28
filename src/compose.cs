@@ -25,7 +25,7 @@ class Compositor
         _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
     }
 
-    public Image Preview(Color[] radiance, uint width, uint height)
+    public Image Preview(Color[] radiance, uint width, uint height, View view, Overlay? overlay)
     {
         Debug.Assert(radiance.Length == width * height);
 
@@ -34,10 +34,12 @@ class Compositor
         {
             result.Pixels[i] = Tonemap(radiance[i]);
         }
+
+        overlay?.Draw(result, view);
         return result;
     }
 
-    public Image Compose(Color[] radiance, Vec3[] normals, uint width, uint height)
+    public Image Compose(Color[] radiance, Vec3[] normals, uint width, uint height, View view, Overlay? overlay)
     {
         Debug.Assert(radiance.Length == normals.Length);
         Debug.Assert(radiance.Length == width * height);
@@ -51,6 +53,8 @@ class Compositor
                 result.Pixels[y * width + x] = Tonemap(filtered);
             }
         });
+
+        overlay?.Draw(result, view);
         return result;
     }
 

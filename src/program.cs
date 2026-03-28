@@ -41,7 +41,6 @@ scene.AddObject(new Object(
     new Material(new Color(1f, 0.2f, 0.2f), 1.0f),
     new Sphere(Vec3.Zero, 1f)));
 
-
 scene.AddObject(new Object(
     new Transform(new Vec3(2.5f, 0f, 6f)),
     new Material(new Color(0.2f, 0.2f, 1f), 0.0f, 1f),
@@ -68,26 +67,23 @@ scene.AddObject(new Object(
     new Sphere(Vec3.Zero, 0.35f)));
 
 scene.AddObject(new Object(
-    new Transform(new Vec3(0f, 0.2f, 7.5f)),
-    new Material(new Color(0.9f, 0.5f, 0.2f), 0.4f),
-    new Mesh(
-        // Front
-        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(1f, -1f, -1f), new Vec3(-1f, -1f, -1f)),
-        // Right
-        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(0f, -1f, 1f), new Vec3(1f, -1f, -1f)),
-        // Left
-        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(-1f, -1f, -1f), new Vec3(0f, -1f, 1f)),
-        // Bottom
-        new Triangle(new Vec3(-1f, -1f, -1f), new Vec3(1f, -1f, -1f), new Vec3(0f, -1f, 1f)))));
-
-scene.AddObject(new Object(
     Transform.Identity(),
     new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
     new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
 
+scene.AddObject(new Object(
+    new Transform(new Vec3(0f, 0.2f, 7.5f)),
+    new Material(new Color(0.9f, 0.5f, 0.2f), 0.4f),
+    new Mesh(
+        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(1f, -1f, -1f), new Vec3(-1f, -1f, -1f)),
+        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(0f, -1f, 1f), new Vec3(1f, -1f, -1f)),
+        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(-1f, -1f, -1f), new Vec3(0f, -1f, 1f)),
+        new Triangle(new Vec3(-1f, -1f, -1f), new Vec3(1f, -1f, -1f), new Vec3(0f, -1f, 1f)))));
+
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
 
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces);
+Overlay overlay = new Overlay();
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal);
 
 Console.WriteLine("Starting render");
@@ -99,7 +95,7 @@ do
 
     // Preview intermediate results.
     if (progress.Step % previewInterval == 0)
-        compositor.Preview(renderer.Radiance, width, height).Save(outputPath);
+        compositor.Preview(renderer.Radiance, width, height, view, overlay).Save(outputPath);
 
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
@@ -119,7 +115,7 @@ if (normalsPath != "")
 
 Console.WriteLine("Compositing");
 
-compositor.Compose(renderer.Radiance, renderer.Normals, width, height).Save(outputPath);
+compositor.Compose(renderer.Radiance, renderer.Normals, width, height, view, overlay).Save(outputPath);
 
 double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
 Console.WriteLine($"Finished (time: {timeElapsed:F1} s): {outputPath}");
