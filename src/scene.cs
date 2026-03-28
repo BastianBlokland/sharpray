@@ -100,6 +100,16 @@ class Scene
 
     public void AddObject(Object obj) => _objects.Add(obj);
 
+    private bool Occluded(Ray ray)
+    {
+        foreach (Object obj in _objects)
+        {
+            if (obj.Intersect(ray) is RayHit)
+                return true;
+        }
+        return false;
+    }
+
     public Fragment Trace(Ray ray)
     {
         RayHit? closestHit = null;
