@@ -81,6 +81,9 @@ struct Color
         return new Color(a.R / b.R, a.G / b.G, a.B / b.B);
     }
 
+    public static Color Black => new Color(0f);
+    public static Color White => new Color(1f);
+
     public static Color Min(Color a, Color b) => new Color(MathF.Min(a.R, b.R), MathF.Min(a.G, b.G), MathF.Min(a.B, b.B));
     public static Color Max(Color a, Color b) => new Color(MathF.Max(a.R, b.R), MathF.Max(a.G, b.G), MathF.Max(a.B, b.B));
 
