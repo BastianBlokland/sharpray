@@ -149,6 +149,8 @@ struct Vec3
         return new Vec3(a.X / b.X, a.Y / b.Y, a.Z / b.Z);
     }
 
+    public static Vec3 Zero => new Vec3(0, 0, 0);
+
     public static float Dot(Vec3 a, Vec3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
 
     public static Vec3 Cross(Vec3 a, Vec3 b) => new Vec3(
