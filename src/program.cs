@@ -11,6 +11,7 @@ const uint samples = 128;
 const uint bounces = 8;
 const uint saveInterval = 10;
 const String outputPath = "output.bmp";
+const String normalsPath = "normals.bmp";
 
 Sky sky = new Sky(
     new Color(0.35f, 0.45f, 0.75f),
@@ -61,6 +62,19 @@ do
 } while (progress.Step != progress.Total);
 
 renderer.Image.Save(outputPath);
+
+if (normalsPath != "")
+{
+    Image normalsImage = new Image(width, height);
+    for (uint i = 0; i < width * height; ++i)
+    {
+        normalsImage.Pixels[i] = new Pixel(
+            (byte)((renderer.Normals[i].X * 0.5f + 0.5f) * 255f),
+            (byte)((renderer.Normals[i].Y * 0.5f + 0.5f) * 255f),
+            (byte)((renderer.Normals[i].Z * 0.5f + 0.5f) * 255f));
+    }
+    normalsImage.Save(normalsPath);
+}
 
 double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
 Console.WriteLine($"Finished (time: {timeElapsed:F1} s): {outputPath}");
