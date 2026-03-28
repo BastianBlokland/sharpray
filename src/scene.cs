@@ -51,7 +51,8 @@ struct Sky
     public Color RadianceBottom;
     public Vec3 SunDir;
     public Color SunRadiance;
-    public float SunCosAngle;
+    public float SunAngle;
+    public float SunAngleCos;
 
     public Sky(
         Color radianceTop,
@@ -59,17 +60,18 @@ struct Sky
         Color radianceBottom,
         Vec3 sunDir,
         Color sunRadiance,
-        float sunCosAngle)
+        float sunAngle)
     {
         RadianceTop = radianceTop;
         RadianceMiddle = radianceMiddle;
         RadianceBottom = radianceBottom;
         SunDir = sunDir;
         SunRadiance = sunRadiance;
-        SunCosAngle = sunCosAngle;
+        SunAngle = sunAngle;
+        SunAngleCos = MathF.Cos(sunAngle);
     }
 
-    public Color RadianceAmbient(Ray ray)
+    public Color AmbientRadianceRay(Ray ray)
     {
         const float bias = 0.0001f;
         float topBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias - ray.Dir.Y), 4f);
@@ -78,14 +80,19 @@ struct Sky
         return RadianceTop * topBlend + RadianceMiddle * middleBlend + RadianceBottom * bottomBlend;
     }
 
-    public Color RadianceSun(Ray ray)
+    public Color SunRadianceRay(Ray ray)
     {
         float sunDot = Vec3.Dot(ray.Dir, SunDir);
-        float sunBlend = MathF.Max(0f, (sunDot - SunCosAngle) / (1f - SunCosAngle));
+        float sunBlend = MathF.Max(0f, (sunDot - SunAngleCos) / (1f - SunAngleCos));
         return SunRadiance * sunBlend;
     }
 
-    public Color Radiance(Ray ray) => RadianceAmbient(ray) + RadianceSun(ray);
+    public Vec3 SunSampleDir(ref Rng rng)
+    {
+        return Quat.Look(SunDir, new Vec3(0, 1, 0)) * Vec3.RandInCone(ref rng, SunAngle);
+    }
+
+    public Color RadianceRay(Ray ray) => AmbientRadianceRay(ray) + SunRadianceRay(ray);
 }
 
 class Scene
@@ -126,7 +133,7 @@ class Scene
         if (closestHit is RayHit h)
             return new Fragment(h, closestMaterial, closestMaterial!.Value.Radiance);
 
-        return new Fragment(null, null, _sky.Radiance(ray));
+        return new Fragment(null, null, _sky.AmbientRadianceRay(ray));
     }
 
     public Color Sample(Ray ray, ref Rng rng, uint bounces)
@@ -134,6 +141,7 @@ class Scene
         Color radiance = Color.Black, energy = Color.White;
         for (uint i = 0; i != (bounces + 1); ++i)
         {
+            bool isPrimary = i == 0;
             Fragment frag = Trace(ray);
 
             // Accumulate radiance.
@@ -145,26 +153,41 @@ class Scene
                 energy *= material.Color;
             }
 
-            // Scatter.
             if (frag.Hit is RayHit hit)
             {
+                Vec3 hitPos = ray[hit.Dist] + hit.Norm * 1e-4f;
+
+                // Direct sun contribution.
+                Vec3 sunDir = _sky.SunSampleDir(ref rng);
+                float sunCosTheta = Vec3.Dot(hit.Norm, sunDir);
+                if (sunCosTheta > 0f)
+                {
+                    Ray shadowRay = new Ray(hitPos, sunDir);
+                    if (!Occluded(shadowRay))
+                        radiance += _sky.SunRadiance * energy * sunCosTheta;
+                }
+
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
                 {
                     float survive = MathF.Max(energy.R, MathF.Max(energy.G, energy.B));
                     if (rng.NextFloat() >= survive)
                         break;
-                    energy = energy / survive;
+                    energy /= survive;
                 }
 
-                // Compute scatter ray.
-                Vec3 scatterOrigin = ray[hit.Dist] + hit.Norm * 1e-4f;
-                Vec3 scatterDir = (hit.Norm + Vec3.RandOnSphere(ref rng)).NormalizeOr(hit.Norm);  // Cosine-weighted distribution.
-                ray = new Ray(scatterOrigin, scatterDir);
+                // Compute scatter ray (Cosine-weighted distribution).
+                Vec3 scatterDir = (hit.Norm + Vec3.RandOnSphere(ref rng)).NormalizeOr(hit.Norm);
+                ray = new Ray(hitPos, scatterDir);
             }
             else
             {
-                break; // Bounced out of the scene.
+                // Add sun contibution for primary rays.
+                if (isPrimary)
+                {
+                    radiance += _sky.SunRadianceRay(ray) * energy;
+                }
+                break;
             }
         }
         return radiance;

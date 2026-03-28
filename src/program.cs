@@ -18,7 +18,7 @@ Sky sky = new Sky(
     new Color(0.45f, 0.38f, 0.26f),
     new Vec3(0.4f, 0.5f, 1f).Normalize(),
     new Color(4f, 3.5f, 2.5f),
-    MathF.Cos(float.DegreesToRadians(2.6f)));
+    float.DegreesToRadians(2.6f));
 
 Scene scene = new Scene(sky);
 
