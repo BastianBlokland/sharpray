@@ -55,12 +55,12 @@ do
 
     // Save intermediate results for previewing purposes.
     if (progress.Step % saveInterval == 0)
-        renderer.Result.Save(outputPath);
+        renderer.Image.Save(outputPath);
 
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
 
-renderer.Result.Save(outputPath);
+renderer.Image.Save(outputPath);
 
 double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
 Console.WriteLine($"Finished (time: {timeElapsed:F1} s): {outputPath}");

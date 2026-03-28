@@ -4,7 +4,8 @@ using System.Threading;
 
 class Renderer
 {
-    public Image Result { get; }
+    public Image Image { get; }
+    public Vec3[] Normals { get; }
 
     private Scene _scene;
     private View _view;
@@ -49,7 +50,8 @@ class Renderer
         _samples = samples;
         _bounches = bounces;
 
-        Result = new Image(width, height);
+        Image = new Image(width, height);
+        Normals = new Vec3[width * height];
 
         // Start the worker threads.
         for (int i = 0; i < Environment.ProcessorCount; ++i)
@@ -101,22 +103,33 @@ class Renderer
         {
             for (uint x = xMin; x != xMax; ++x)
             {
-                Result.Pixels[y * _width + x] = Render(x, y);
+                (Pixel pixel, Vec3 normal) = Render(x, y);
+
+                Image.Pixels[y * _width + x] = pixel;
+                Normals[y * _width + x] = normal;
             }
         }
     }
 
-    private Pixel Render(uint x, uint y)
+    private (Pixel Pixel, Vec3 Normal) Render(uint x, uint y)
     {
         Rng rng = new Rng(x, y);
         Color radiance = new Color(0f);
+        Vec3 normalSum = Vec3.Zero;
+
         for (uint i = 0; i != _samples; ++i)
         {
             Vec2 pos = new Vec2((x + rng.NextFloat()) / _width, (y + rng.NextFloat()) / _height);
             Ray ray = _view.Ray(pos, _aspect);
-            radiance += _scene.Sample(ray, ref rng, _bounches).Radiance;
+
+            var (sampleRadiance, sampleNormal) = _scene.Sample(ray, ref rng, _bounches);
+
+            radiance += sampleRadiance;
+            if (sampleNormal is Vec3 n)
+                normalSum += n;
         }
-        return Tonemap(radiance / _samples).ToPixel();
+
+        return (Tonemap(radiance / _samples).ToPixel(), normalSum.NormalizeOr(Vec3.Zero));
     }
 
     private static Color Tonemap(Color radiance)
