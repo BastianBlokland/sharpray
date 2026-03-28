@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 
 class Renderer
@@ -9,28 +10,56 @@ class Renderer
     private uint _width, _height;
     private float _aspect;
 
-    public Renderer(Scene scene, View view, uint width, uint height)
+    private uint _blockSize;
+    private uint _blockCountX, _blockCountY, _blockCountTotal;
+    private uint _blockCurrent;
+
+    public Renderer(Scene scene, View view, uint width, uint height, uint blockSize)
     {
         Debug.Assert(width > 0 && height > 0);
+        Debug.Assert(blockSize > 0);
         _scene = scene;
         _view = view;
         _width = width;
         _height = height;
         _aspect = (float)_width / (float)_height;
 
+        _blockSize = blockSize;
+        _blockCountX = (_width + _blockSize - 1) / _blockSize;
+        _blockCountY = (_height + _blockSize - 1) / _blockSize;
+        _blockCountTotal = _blockCountX * _blockCountY;
+
         Result = new Image(width, height);
     }
 
     public (uint Step, uint Total) Tick()
     {
-        for (uint y = 0; y != _height; ++y)
+        if (_blockCurrent >= _blockCountTotal)
+            return (_blockCountTotal, _blockCountTotal);
+
+        Execute(_blockCurrent++);
+
+        return (_blockCurrent, _blockCountTotal);
+    }
+
+    private void Execute(uint block)
+    {
+        Debug.Assert(block < _blockCountTotal);
+
+        uint blockX = block % _blockCountX;
+        uint blockY = block / _blockCountX;
+        uint xMin = blockX * _blockSize;
+        uint yMin = blockY * _blockSize;
+        uint xMax = Math.Min(xMin + _blockSize, _width);
+        uint yMax = Math.Min(yMin + _blockSize, _height);
+
+        for (uint y = yMin; y != yMax; ++y)
         {
-            for (uint x = 0; x != _width; ++x)
+            for (uint x = xMin; x != xMax; ++x)
             {
                 Result.Pixels[y * _width + x] = Render(x, y);
             }
         }
-        return (0, 0);
     }
 
     private Pixel Render(uint x, uint y)

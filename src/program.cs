@@ -4,11 +4,12 @@ Console.WriteLine("Performing setup");
 
 const uint width = 128;
 const uint height = 128;
+const uint blockSize = 16;
 const String outputPath = "output.bmp";
 
 Scene scene = new Scene();
 View view = new View();
-Renderer renderer = new Renderer(scene, view, width, height);
+Renderer renderer = new Renderer(scene, view, width, height, blockSize);
 
 Console.WriteLine("Starting render");
 (uint Step, uint Total) progress;
