@@ -119,7 +119,7 @@ struct Vec3
     public Vec3 Normalize()
     {
         float m = Magnitude();
-        Debug.Assert(m >= 1e-6f, "Cannot normalize a zero vector.");
+        Debug.Assert(m >= 1e-6f, "Cannot normalize a zero vector");
         return this / m;
     }
 
@@ -144,13 +144,13 @@ struct Vec3
     public static Vec3 Project(Vec3 v, Vec3 n)
     {
         float nSqrMag = n.MagnitudeSqr();
-        Debug.Assert(nSqrMag >= 1e-6f, "Cannot project onto a zero vector.");
+        Debug.Assert(nSqrMag >= 1e-6f, "Cannot project onto a zero vector");
         return n * (Dot(v, n) / nSqrMag);
     }
 
     public static Vec3 Reflect(Vec3 v, Vec3 n)
     {
-        Debug.Assert(n.MagnitudeSqr() >= 1e-6f, "Cannot reflect around a zero vector.");
+        Debug.Assert(n.MagnitudeSqr() >= 1e-6f, "Cannot reflect around a zero vector");
         return v - 2 * (Dot(v, n) / Dot(n, n)) * n;
     }
 
@@ -229,7 +229,7 @@ struct Quat
     public Quat Normalize()
     {
         float mag = MathF.Sqrt(X * X + Y * Y + Z * Z + W * W);
-        Debug.Assert(mag >= 1e-6f, "Cannot normalize a zero quaternion.");
+        Debug.Assert(mag >= 1e-6f, "Cannot normalize a zero quaternion");
         float magInv = 1.0f / mag;
         return new Quat(X * magInv, Y * magInv, Z * magInv, W * magInv);
     }
@@ -254,7 +254,7 @@ struct Quat
 
     public static Quat AngleAxis(float angle, Vec3 axis)
     {
-        Debug.Assert(axis.MagnitudeSqr() >= 1e-6f, "Axis cannot be zero.");
+        Debug.Assert(axis.MagnitudeSqr() >= 1e-6f, "Axis cannot be zero");
         Vec3 vec = axis * MathF.Sin(angle * 0.5f);
         return new Quat(vec.X, vec.Y, vec.Z, MathF.Cos(angle * 0.5f));
     }
@@ -407,21 +407,6 @@ struct Mat4
     }
 }
 
-struct Ray
-{
-    public Vec3 Origin, Dir;
-
-    public Ray(Vec3 origin, Vec3 dir)
-    {
-        Debug.Assert(dir.MagnitudeSqr() >= 1e-6f, "Direction cannot be zero.");
-        Origin = origin;
-        Dir = dir;
-    }
-
-    public Vec3 this[float t] => Origin + Dir * t;
-
-    public float Distance(Vec3 p) => Vec3.Dot(p - Origin, Dir);
-}
 
 struct Transform
 {
@@ -431,7 +416,7 @@ struct Transform
 
     public Transform(Vec3 pos, Quat rot, Vec3 scale)
     {
-        Debug.Assert(scale.X != 0f && scale.Y != 0f && scale.Z != 0f, "Scale cannot be zero.");
+        Debug.Assert(scale.X != 0f && scale.Y != 0f && scale.Z != 0f, "Scale cannot be zero");
         Pos = pos;
         Rot = rot;
         Scale = scale;
@@ -483,6 +468,116 @@ struct Transform
         a.TransformPoint(b.Pos),
         a.Rot * b.Rot,
         new Vec3(a.Scale.X * b.Scale.X, a.Scale.Y * b.Scale.Y, a.Scale.Z * b.Scale.Z));
+}
+
+struct Ray
+{
+    public Vec3 Origin, Dir;
+
+    public Ray(Vec3 origin, Vec3 dir)
+    {
+        Debug.Assert(dir.MagnitudeSqr() >= 1e-6f, "Direction cannot be zero");
+        Origin = origin;
+        Dir = dir;
+    }
+
+    public Vec3 this[float t] => Origin + Dir * t;
+
+    public float Distance(Vec3 p) => Vec3.Dot(p - Origin, Dir);
+}
+
+struct RayHit
+{
+    public float Dist;
+    public Vec3 Norm;
+
+    public RayHit(float dist, Vec3 norm)
+    {
+        Debug.Assert(norm.MagnitudeSqr() >= 1e-6f, "Direction cannot be zero");
+        Dist = dist;
+        Norm = norm;
+    }
+}
+
+struct AABox
+{
+    public Vec3 Min, Max;
+
+    public AABox(Vec3 min, Vec3 max)
+    {
+        Min = min;
+        Max = max;
+    }
+
+    public Vec3 Center => (Min + Max) * 0.5f;
+    public Vec3 Size => Max - Min;
+    public bool IsInverted => Min.X > Max.X || Min.Y > Max.Y || Min.Z > Max.Z;
+
+    public bool Contains(Vec3 p) =>
+        p.X > Min.X && p.X < Max.X &&
+        p.Y > Min.Y && p.Y < Max.Y &&
+        p.Z > Min.Z && p.Z < Max.Z;
+
+    public Vec3 ClosestPoint(Vec3 p) => new Vec3(
+        Math.Clamp(p.X, Min.X, Max.X),
+        Math.Clamp(p.Y, Min.Y, Max.Y),
+        Math.Clamp(p.Z, Min.Z, Max.Z));
+
+    public AABox Encapsulate(Vec3 p) => new AABox(
+        new Vec3(MathF.Min(Min.X, p.X), MathF.Min(Min.Y, p.Y), MathF.Min(Min.Z, p.Z)),
+        new Vec3(MathF.Max(Max.X, p.X), MathF.Max(Max.Y, p.Y), MathF.Max(Max.Z, p.Z)));
+
+    public AABox Encapsulate(AABox other) => new AABox(
+        new Vec3(MathF.Min(Min.X, other.Min.X), MathF.Min(Min.Y, other.Min.Y), MathF.Min(Min.Z, other.Min.Z)),
+        new Vec3(MathF.Max(Max.X, other.Max.X), MathF.Max(Max.Y, other.Max.Y), MathF.Max(Max.Z, other.Max.Z)));
+
+    public bool Overlaps(AABox other) =>
+        Min.X < other.Max.X && Max.X > other.Min.X &&
+        Min.Y < other.Max.Y && Max.Y > other.Min.Y &&
+        Min.Z < other.Max.Z && Max.Z > other.Min.Z;
+
+    public RayHit? Intersect(Ray ray)
+    {
+        // Cyrus-Beck slab clipping.
+        // https://izzofinal.wordpress.com/2012/11/09/ray-vs-box-round-1/
+        float dirXInv = 1f / ray.Dir.X;
+        float dirYInv = 1f / ray.Dir.Y;
+        float dirZInv = 1f / ray.Dir.Z;
+
+        float t1 = (Min.X - ray.Origin.X) * dirXInv;
+        float t2 = (Max.X - ray.Origin.X) * dirXInv;
+        float t3 = (Min.Y - ray.Origin.Y) * dirYInv;
+        float t4 = (Max.Y - ray.Origin.Y) * dirYInv;
+        float t5 = (Min.Z - ray.Origin.Z) * dirZInv;
+        float t6 = (Max.Z - ray.Origin.Z) * dirZInv;
+
+        float minA = MathF.Min(t1, t2), minB = MathF.Min(t3, t4), minC = MathF.Min(t5, t6);
+        float maxA = MathF.Max(t1, t2), maxB = MathF.Max(t3, t4), maxC = MathF.Max(t5, t6);
+
+        float tMin = MathF.Max(MathF.Max(minA, minB), minC);
+        float tMax = MathF.Min(MathF.Min(maxA, maxB), maxC);
+
+        if (tMax < 0f || tMin > tMax) return null;
+
+        bool inside = tMin < 0f;
+        float t = inside ? tMax : tMin;
+
+        Vec3 norm;
+        if (minA >= minB && minA >= minC)
+            norm = t1 <= t2 ? new Vec3(-1, 0, 0) : new Vec3(1, 0, 0);
+        else if (minB >= minA && minB >= minC)
+            norm = t3 <= t4 ? new Vec3(0, -1, 0) : new Vec3(0, 1, 0);
+        else
+            norm = t5 <= t6 ? new Vec3(0, 0, -1) : new Vec3(0, 0, 1);
+
+        return new RayHit(t, inside ? -norm : norm);
+    }
+
+    public static AABox FromCenter(Vec3 center, Vec3 size) => new AABox(center - size * 0.5f, center + size * 0.5f);
+
+    public static AABox Inverted() => new AABox(
+        new Vec3(float.MaxValue, float.MaxValue, float.MaxValue),
+        new Vec3(float.MinValue, float.MinValue, float.MinValue));
 }
 
 struct View
