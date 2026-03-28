@@ -9,12 +9,12 @@ const uint height = 512;
 const uint blockSize = 16;
 const uint samples = 128;
 const uint bounces = 8;
-const uint saveInterval = 10;
 const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.15f;
 const float denoiseSigmaNormal = 0.5f;
 const String outputPath = "output.bmp";
 const String normalsPath = "normals.bmp";
+const uint previewInterval = 10;
 
 Sky sky = new Sky(
     new Color(0.35f, 0.45f, 0.75f),
@@ -88,8 +88,8 @@ do
 {
     progress = renderer.Tick();
 
-    // Save intermediate results for previewing purposes.
-    if (progress.Step % saveInterval == 0)
+    // Previewing intermediate results.
+    if (progress.Step % previewInterval == 0)
         compositor.Preview(renderer.Radiance, width, height).Save(outputPath);
 
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
