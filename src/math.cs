@@ -1,6 +1,11 @@
 using System;
 using System.Diagnostics;
 
+interface IShape
+{
+    RayHit? Intersect(Ray ray);
+}
+
 struct Color
 {
     public float R, G, B;
@@ -560,7 +565,7 @@ struct Line
     public float DistanceSqr(Vec3 point) => (point - ClosestPoint(point)).MagnitudeSqr();
 }
 
-struct AABox
+struct AABox : IShape
 {
     public Vec3 Min, Max;
 
@@ -641,7 +646,7 @@ struct AABox
         new Vec3(float.MinValue, float.MinValue, float.MinValue));
 }
 
-struct Box
+struct Box : IShape
 {
     public AABox Local;
     public Quat Rot;
@@ -672,7 +677,7 @@ struct Box
         new Box(AABox.FromCenter(center, size), rot);
 }
 
-struct Sphere
+struct Sphere : IShape
 {
     public Vec3 Center;
     public float Radius;
@@ -717,7 +722,7 @@ struct Sphere
     }
 }
 
-struct Capsule
+struct Capsule : IShape
 {
     public Line Spine;
     public float Radius;
@@ -744,7 +749,7 @@ struct Capsule
     }
 }
 
-struct Plane
+struct Plane : IShape
 {
     public Vec3 Normal;
     public float Distance;
@@ -779,7 +784,7 @@ struct Plane
     }
 }
 
-struct Triangle
+struct Triangle : IShape
 {
     public Vec3 A, B, C;
 
