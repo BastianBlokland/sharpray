@@ -102,7 +102,7 @@ do
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
 
-if (normalsPath != "")
+if (!string.IsNullOrEmpty(normalsPath))
 {
     Image normalsImage = new Image(width, height);
     for (uint i = 0; i < width * height; ++i)
