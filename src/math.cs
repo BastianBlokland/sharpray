@@ -115,6 +115,7 @@ struct Vec3
 
     public float MagnitudeSqr() => Dot(this, this);
     public float Magnitude() => MathF.Sqrt(MagnitudeSqr());
+    public bool IsUnit => MathF.Abs(MagnitudeSqr() - 1f) < 1e-4f;
 
     public Vec3 Normalize()
     {
@@ -150,7 +151,7 @@ struct Vec3
 
     public static Vec3 Reflect(Vec3 v, Vec3 n)
     {
-        Debug.Assert(n.MagnitudeSqr() >= 1e-6f, "Cannot reflect around a zero vector");
+        Debug.Assert(n.IsUnit, "Reflect normal must be normalized");
         return v - 2 * (Dot(v, n) / Dot(n, n)) * n;
     }
 
@@ -224,7 +225,7 @@ struct Quat
         }
     }
 
-    public bool IsNormalized => MathF.Abs(MagnitudeSqr() - 1f) < 1e-4f;
+    public bool IsUnit => MathF.Abs(MagnitudeSqr() - 1f) < 1e-4f;
 
     public float MagnitudeSqr() => X * X + Y * Y + Z * Z + W * W;
     public Quat Inverse() => new Quat(-X, -Y, -Z, W);
@@ -257,7 +258,7 @@ struct Quat
 
     public static Quat AngleAxis(float angle, Vec3 axis)
     {
-        Debug.Assert(axis.MagnitudeSqr() >= 1e-6f, "Axis cannot be zero");
+        Debug.Assert(axis.IsUnit, "AngleAxis axis must be normalized");
         Vec3 vec = axis * MathF.Sin(angle * 0.5f);
         return new Quat(vec.X, vec.Y, vec.Z, MathF.Cos(angle * 0.5f));
     }
@@ -419,7 +420,7 @@ struct Transform
 
     public Transform(Vec3 pos, Quat rot, Vec3 scale)
     {
-        Debug.Assert(rot.IsNormalized, "Transform rotation must be normalized");
+        Debug.Assert(rot.IsUnit, "Transform rotation must be normalized");
         Debug.Assert(scale.X != 0f && scale.Y != 0f && scale.Z != 0f, "Scale cannot be zero");
         Pos = pos;
         Rot = rot;
@@ -428,7 +429,7 @@ struct Transform
 
     public Transform(Vec3 pos, Quat rot)
     {
-        Debug.Assert(rot.IsNormalized, "Transform rotation must be normalized");
+        Debug.Assert(rot.IsUnit, "Transform rotation must be normalized");
         Pos = pos;
         Rot = rot;
         Scale = new Vec3(1, 1, 1);
@@ -481,7 +482,7 @@ struct Ray
 
     public Ray(Vec3 origin, Vec3 dir)
     {
-        Debug.Assert(dir.MagnitudeSqr() >= 1e-6f, "Direction cannot be zero");
+        Debug.Assert(dir.IsUnit, "Ray direction must be normalized");
         Origin = origin;
         Dir = dir;
     }
@@ -498,7 +499,7 @@ struct RayHit
 
     public RayHit(float dist, Vec3 norm)
     {
-        Debug.Assert(norm.MagnitudeSqr() >= 1e-6f, "Direction cannot be zero");
+        Debug.Assert(norm.IsUnit, "RayHit normal must be normalized");
         Dist = dist;
         Norm = norm;
     }
@@ -592,7 +593,7 @@ struct Box
 
     public Box(AABox local, Quat rot)
     {
-        Debug.Assert(rot.IsNormalized, "Box rotation must be normalized");
+        Debug.Assert(rot.IsUnit, "Box rotation must be normalized");
         Local = local;
         Rot = rot;
     }
@@ -644,10 +645,10 @@ struct Sphere
     public RayHit? Intersect(Ray ray)
     {
         // https://gdbooks.gitbooks.io/3dcollisions/content/Chapter3/raycast_sphere.html
-        Vec3  toCenter        = Center - ray.Origin;
+        Vec3 toCenter = Center - ray.Origin;
         float toCenterDistSqr = toCenter.MagnitudeSqr();
-        float a               = Vec3.Dot(toCenter, ray.Dir);
-        float discriminant    = Radius * Radius - toCenterDistSqr + a * a;
+        float a = Vec3.Dot(toCenter, ray.Dir);
+        float discriminant = Radius * Radius - toCenterDistSqr + a * a;
 
         if (discriminant < 0f) return null;
 
@@ -658,6 +659,41 @@ struct Sphere
 
         Vec3 norm = (ray[t] - Center).Normalize();
         return new RayHit(t, norm);
+    }
+}
+
+struct Plane
+{
+    public Vec3 Normal;
+    public float Distance;
+
+    public Plane(Vec3 normal, float distance)
+    {
+        Debug.Assert(normal.IsUnit, "Plane normal must be normalized");
+        Normal = normal;
+        Distance = distance;
+    }
+
+    public Vec3 Position => Normal * Distance;
+
+    public Vec3 ClosestPoint(Vec3 point) => point - Normal * (Vec3.Dot(Normal, point) - Distance);
+
+    public RayHit? Intersect(Ray ray)
+    {
+        float dirDot = Vec3.Dot(ray.Dir, Normal);
+        if (dirDot >= 0f) return null; // Parallel or back-facing.
+        float t = (Distance - Vec3.Dot(ray.Origin, Normal)) / dirDot;
+        if (t < 0f) return null; // Plane behind ray origin.
+        return new RayHit(t, Normal);
+    }
+
+    public static Plane AtPosition(Vec3 normal, Vec3 position) =>
+        new Plane(normal, Vec3.Dot(normal, position));
+
+    public static Plane AtTriangle(Vec3 a, Vec3 b, Vec3 c)
+    {
+        Vec3 normal = Vec3.Cross(b - a, c - a).Normalize();
+        return new Plane(normal, Vec3.Dot(normal, a));
     }
 }
 
