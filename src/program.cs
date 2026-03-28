@@ -13,9 +13,9 @@ const uint saveInterval = 10;
 const String outputPath = "output.bmp";
 
 Sky sky = new Sky(
-    new Color(0.25f, 0.35f, 0.6f),
-    new Color(0.7f, 0.65f, 0.65f),
-    new Color(0.35f, 0.3f, 0.2f),
+    new Color(0.35f, 0.45f, 0.75f),
+    new Color(0.85f, 0.8f, 0.8f),
+    new Color(0.45f, 0.38f, 0.26f),
     new Vec3(0.4f, 0.5f, 1f).Normalize(),
     new Color(4f, 3.5f, 2.5f),
     MathF.Cos(float.DegreesToRadians(2.6f)));
@@ -39,7 +39,7 @@ scene.AddObject(new Object(
 
 scene.AddObject(new Object(
     Transform.Identity(),
-    new Material(new Color(0.2f, 0.2f, 0.2f)),
+    new Material(new Color(0.1f, 0.1f, 0.1f)),
     new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));

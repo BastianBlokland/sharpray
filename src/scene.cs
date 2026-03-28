@@ -69,18 +69,23 @@ struct Sky
         SunCosAngle = sunCosAngle;
     }
 
-    public Color Radiance(Ray ray)
+    public Color RadianceAmbient(Ray ray)
     {
         const float bias = 0.0001f;
         float topBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias - ray.Dir.Y), 4f);
         float bottomBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias + ray.Dir.Y), 40f);
         float middleBlend = 1f - topBlend - bottomBlend;
-        Color sky = RadianceTop * topBlend + RadianceMiddle * middleBlend + RadianceBottom * bottomBlend;
+        return RadianceTop * topBlend + RadianceMiddle * middleBlend + RadianceBottom * bottomBlend;
+    }
 
+    public Color RadianceSun(Ray ray)
+    {
         float sunDot = Vec3.Dot(ray.Dir, SunDir);
         float sunBlend = MathF.Max(0f, (sunDot - SunCosAngle) / (1f - SunCosAngle));
-        return sky + SunRadiance * sunBlend;
+        return SunRadiance * sunBlend;
     }
+
+    public Color Radiance(Ray ray) => RadianceAmbient(ray) + RadianceSun(ray);
 }
 
 class Scene
