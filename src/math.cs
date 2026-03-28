@@ -717,6 +717,33 @@ struct Sphere
     }
 }
 
+struct Capsule
+{
+    public Line Spine;
+    public float Radius;
+
+    public Capsule(Line spine, float radius)
+    {
+        Debug.Assert(radius > 0f, "Radius must be positive");
+        Spine = spine;
+        Radius = radius;
+    }
+
+    public bool Overlaps(Sphere sphere)
+    {
+        float distSqr = Spine.DistanceSqr(sphere.Center);
+        float radiusSum = Radius + sphere.Radius;
+        return distSqr <= radiusSum * radiusSum;
+    }
+
+    public RayHit? Intersect(Ray ray)
+    {
+        Vec3 spinePoint = Spine.ClosestPoint(ray);
+        Sphere sphere = new Sphere(spinePoint, Radius);
+        return sphere.Intersect(ray);
+    }
+}
+
 struct Plane
 {
     public Vec3 Normal;
