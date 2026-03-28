@@ -41,10 +41,6 @@ scene.AddObject(new Object(
     new Material(new Color(1f, 0.2f, 0.2f), 1.0f),
     new Sphere(Vec3.Zero, 1f)));
 
-scene.AddObject(new Object(
-    new Transform(new Vec3(0f, 0f, 6f)),
-    new Material(new Color(0.2f, 1f, 0.2f), 0.5f),
-    new Sphere(Vec3.Zero, 1f)));
 
 scene.AddObject(new Object(
     new Transform(new Vec3(2.5f, 0f, 6f)),
@@ -70,6 +66,19 @@ scene.AddObject(new Object(
     new Transform(new Vec3(0.5f, -0.65f, 1.5f)),
     new Material(new Color(1f, 0.4f, 0.6f), 0.05f),
     new Sphere(Vec3.Zero, 0.35f)));
+
+scene.AddObject(new Object(
+    new Transform(new Vec3(0f, 0.2f, 7.5f)),
+    new Material(new Color(0.9f, 0.5f, 0.2f), 0.4f),
+    new Mesh(
+        // Front
+        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(1f, -1f, -1f), new Vec3(-1f, -1f, -1f)),
+        // Right
+        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(0f, -1f, 1f), new Vec3(1f, -1f, -1f)),
+        // Left
+        new Triangle(new Vec3(0f, 1f, 0f), new Vec3(-1f, -1f, -1f), new Vec3(0f, -1f, 1f)),
+        // Bottom
+        new Triangle(new Vec3(-1f, -1f, -1f), new Vec3(1f, -1f, -1f), new Vec3(0f, -1f, 1f)))));
 
 scene.AddObject(new Object(
     Transform.Identity(),
