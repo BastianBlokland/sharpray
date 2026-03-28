@@ -9,6 +9,20 @@ interface IShape
     RayHit? Intersect(Ray ray);
 }
 
+static class ShapeExtensions
+{
+    public static RayHit? Intersect(this IShape shape, Ray ray, Transform trans)
+    {
+        var (localRay, localRayScale) = trans.TransformRayInv(ray);
+        if (shape.Intersect(localRay) is RayHit hit)
+        {
+            Vec3 worldNorm = (trans.Rot * (hit.Norm / trans.Scale)).Normalize();
+            return new RayHit(hit.Dist / localRayScale, worldNorm);
+        }
+        return null;
+    }
+}
+
 struct Color
 {
     public float R, G, B;
