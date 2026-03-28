@@ -27,6 +27,13 @@ struct Color
 {
     public float R, G, B;
 
+    public Color(float v)
+    {
+        R = v;
+        G = v;
+        B = v;
+    }
+
     public Color(float r, float g, float b)
     {
         R = r;
