@@ -33,7 +33,6 @@ class Renderer
         Debug.Assert(width > 0 && height > 0);
         Debug.Assert(blockSize > 0);
         Debug.Assert(samples > 0);
-        Debug.Assert(bounces > 0);
 
         _scene = scene;
         _view = view;

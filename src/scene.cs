@@ -117,7 +117,7 @@ class Scene
     public Color Sample(Ray ray, ref Rng rng, uint bounces)
     {
         Color radiance = Color.Black, color = Color.White;
-        for (uint i = 0; i != bounces; ++i)
+        for (uint i = 0; i != (bounces + 1); ++i)
         {
             Fragment frag = Trace(ray);
             radiance += frag.Radiance * color;

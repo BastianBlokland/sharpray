@@ -4,18 +4,18 @@ Timestamp timeStart = Timestamp.Now();
 
 Console.WriteLine("Performing setup");
 
-const uint width = 512;
-const uint height = 512;
+const uint width = 256;
+const uint height = 256;
 const uint blockSize = 16;
 const uint samples = 512;
-const uint bounces = 4;
+const uint bounces = 3;
 const uint saveInterval = 10;
 const String outputPath = "output.bmp";
 
 Sky sky = new Sky(
-    new Color(0.4f, 0.5f, 0.8f),
-    new Color(1.0f, 0.9f, 0.9f),
-    new Color(0.5f, 0.425f, 0.275f),
+    new Color(0.25f, 0.35f, 0.6f),
+    new Color(0.7f, 0.65f, 0.65f),
+    new Color(0.35f, 0.3f, 0.2f),
     new Vec3(0.4f, 0.5f, 1f).Normalize(),
     new Color(4f, 3.5f, 2.5f),
     MathF.Cos(float.DegreesToRadians(2.6f)));
