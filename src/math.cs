@@ -508,7 +508,13 @@ struct Transform
     public Vec3 TransformPointInv(Vec3 p) => Rot.Inverse() * (p - Pos) / Scale;
 
     public Ray TransformRay(Ray ray) => new Ray(TransformPoint(ray.Origin), TransformDir(ray.Dir));
-    public Ray TransformRayInv(Ray ray) => new Ray(TransformPointInv(ray.Origin), TransformDirInv(ray.Dir));
+    public (Ray Ray, float DirScale) TransformRayInv(Ray ray)
+    {
+        Vec3 localOrigin = TransformPointInv(ray.Origin);
+        Vec3 localDirRaw = TransformVectorInv(ray.Dir);
+        float dirScale = localDirRaw.Magnitude();
+        return (new Ray(localOrigin, localDirRaw / dirScale), dirScale);
+    }
 
     public Transform Inverse()
     {
