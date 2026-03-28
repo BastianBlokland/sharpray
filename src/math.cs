@@ -83,6 +83,13 @@ struct Color
 
     public static Color Black => new Color(0f);
     public static Color White => new Color(1f);
+    public static Color Gray => new Color(0.5f);
+    public static Color Red => new Color(1f, 0f, 0f);
+    public static Color Green => new Color(0f, 1f, 0f);
+    public static Color Blue => new Color(0f, 0f, 1f);
+    public static Color Yellow => new Color(1f, 1f, 0f);
+    public static Color Cyan => new Color(0f, 1f, 1f);
+    public static Color Magenta => new Color(1f, 0f, 1f);
 
     public static Color Min(Color a, Color b) => new Color(MathF.Min(a.R, b.R), MathF.Min(a.G, b.G), MathF.Min(a.B, b.B));
     public static Color Max(Color a, Color b) => new Color(MathF.Max(a.R, b.R), MathF.Max(a.G, b.G), MathF.Max(a.B, b.B));
