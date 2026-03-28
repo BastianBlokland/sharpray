@@ -123,6 +123,22 @@ struct Vec2
             return i switch { 0 => X, _ => Y };
         }
     }
+
+    public Vec2i ToInt() => new Vec2i((int)X, (int)Y);
+
+    public static Vec2 operator -(Vec2 v) => new Vec2(-v.X, -v.Y);
+    public static Vec2 operator +(Vec2 a, Vec2 b) => new Vec2(a.X + b.X, a.Y + b.Y);
+    public static Vec2 operator -(Vec2 a, Vec2 b) => new Vec2(a.X - b.X, a.Y - b.Y);
+    public static Vec2 operator *(Vec2 a, Vec2 b) => new Vec2(a.X * b.X, a.Y * b.Y);
+    public static Vec2 operator *(Vec2 v, float s) => new Vec2(v.X * s, v.Y * s);
+    public static Vec2 operator *(float s, Vec2 v) => new Vec2(s * v.X, s * v.Y);
+    public static Vec2 operator /(Vec2 v, float s)
+    {
+        Debug.Assert(s != 0f);
+        return new Vec2(v.X / s, v.Y / s);
+    }
+
+    public static Vec2 Zero => new Vec2(0f, 0f);
 }
 
 struct Vec2i
@@ -143,6 +159,8 @@ struct Vec2i
             return i switch { 0 => X, _ => Y };
         }
     }
+
+    public Vec2 ToFloat() => new Vec2(X, Y);
 
     public static Vec2i operator -(Vec2i v) => new Vec2i(-v.X, -v.Y);
     public static Vec2i operator +(Vec2i a, Vec2i b) => new Vec2i(a.X + b.X, a.Y + b.Y);
