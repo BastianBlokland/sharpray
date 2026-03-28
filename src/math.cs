@@ -240,6 +240,12 @@ struct Vec3
     }
 
     public static Vec3 Zero => new Vec3(0, 0, 0);
+    public static Vec3 Up => new Vec3(0, 1, 0);
+    public static Vec3 Down => new Vec3(0, -1, 0);
+    public static Vec3 Right => new Vec3(1, 0, 0);
+    public static Vec3 Left => new Vec3(-1, 0, 0);
+    public static Vec3 Forward => new Vec3(0, 0, 1);
+    public static Vec3 Back => new Vec3(0, 0, -1);
 
     public static float Dot(Vec3 a, Vec3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
 
