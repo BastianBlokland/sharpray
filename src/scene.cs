@@ -133,11 +133,9 @@ class Scene
             // Scatter.
             if (frag.Hit is RayHit hit)
             {
-                ray.Origin = ray[hit.Dist] + hit.Norm * 1e-4f;
-
-                // Cosine-weighted distribution.
-                Vec3 scattered = hit.Norm + Vec3.RandOnSphere(ref rng);
-                ray.Dir = scattered.MagnitudeSqr() > 1e-6f ? scattered.Normalize() : hit.Norm;
+                Vec3 scatterOrigin = ray[hit.Dist] + hit.Norm * 1e-4f;
+                Vec3 scatterDir = (hit.Norm + Vec3.RandOnSphere(ref rng)).NormalizeOr(hit.Norm);  // Cosine-weighted distribution.
+                ray = new Ray(scatterOrigin, scatterDir);
             }
             else
             {
