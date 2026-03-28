@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 
 struct Pixel
@@ -21,6 +22,7 @@ class Image
 
     public Image(uint width, uint height)
     {
+        Debug.Assert(width > 0 && height > 0);
         Width = width;
         Height = height;
         Pixels = new Pixel[width * height];

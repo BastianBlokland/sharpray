@@ -1,4 +1,3 @@
-using System;
 
 struct TraceResult
 {
@@ -18,7 +17,7 @@ class Scene
     {
     }
 
-    public TraceResult Trace(Ray ray)
+    public TraceResult Trace(Ray ray, ref Rng rng)
     {
         Color skyRadiance = SkyRadiance();
         return new TraceResult(null, skyRadiance);

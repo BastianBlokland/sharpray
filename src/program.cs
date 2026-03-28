@@ -1,10 +1,22 @@
 using System;
-using System.IO;
 
-Console.WriteLine("Rendering..");
+Console.WriteLine("Performing setup");
 
-Image img = new Image(128, 128);
-Array.Fill(img.Pixels, new Pixel(255, 0, 0));
-img.Save("output.bmp");
+const uint width = 128;
+const uint height = 128;
+const String outputPath = "output.bmp";
 
-Console.WriteLine("Finished: output.bmp");
+Scene scene = new Scene();
+View view = new View();
+Renderer renderer = new Renderer(scene, view, width, height);
+
+Console.WriteLine("Starting render");
+(uint Step, uint Total) progress;
+do
+{
+    progress = renderer.Tick();
+    Console.WriteLine($"Rendering [{progress.Step} / {progress.Total}]");
+} while (progress.Step != progress.Total);
+
+renderer.Result.Save(outputPath);
+Console.WriteLine($"Finished: {outputPath}");
