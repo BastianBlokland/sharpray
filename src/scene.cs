@@ -133,6 +133,16 @@ class Scene
             // Scatter.
             if (frag.Hit is RayHit hit)
             {
+                // Russian roulette: terminate low-energy paths, compensate survivors.
+                if (i >= 3)
+                {
+                    float survive = MathF.Max(energy.R, MathF.Max(energy.G, energy.B));
+                    if (rng.NextFloat() >= survive)
+                        break;
+                    energy = energy / survive;
+                }
+
+                // Compute scatter ray.
                 Vec3 scatterOrigin = ray[hit.Dist] + hit.Norm * 1e-4f;
                 Vec3 scatterDir = (hit.Norm + Vec3.RandOnSphere(ref rng)).NormalizeOr(hit.Norm);  // Cosine-weighted distribution.
                 ray = new Ray(scatterOrigin, scatterDir);

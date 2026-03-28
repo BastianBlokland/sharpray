@@ -8,7 +8,7 @@ const uint width = 256;
 const uint height = 256;
 const uint blockSize = 16;
 const uint samples = 128;
-const uint bounces = 3;
+const uint bounces = 8;
 const uint saveInterval = 10;
 const String outputPath = "output.bmp";
 
