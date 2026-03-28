@@ -502,6 +502,9 @@ struct Transform
         return new Vec3(r.X / Scale.X, r.Y / Scale.Y, r.Z / Scale.Z);
     }
 
+    public Ray TransformRay(Ray ray) => new Ray(TransformPoint(ray.Origin), TransformDir(ray.Dir));
+    public Ray TransformRayInv(Ray ray) => new Ray(TransformPointInv(ray.Origin), TransformDirInv(ray.Dir));
+
     public Transform Inverse()
     {
         Vec3 invScale = new Vec3(1f / Scale.X, 1f / Scale.Y, 1f / Scale.Z);
