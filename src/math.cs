@@ -39,7 +39,11 @@ struct Color
     public static Color operator *(Color a, Color b) => new Color(a.R * b.R, a.G * b.G, a.B * b.B);
     public static Color operator *(Color c, float s) => new Color(c.R * s, c.G * s, c.B * s);
     public static Color operator *(float s, Color c) => new Color(c.R * s, c.G * s, c.B * s);
-    public static Color operator /(Color c, float s) => new Color(c.R / s, c.G / s, c.B / s);
+    public static Color operator /(Color c, float s)
+    {
+        Debug.Assert(s != 0f);
+        return new Color(c.R / s, c.G / s, c.B / s);
+    }
 
     public static Color Min(Color a, Color b) => new Color(MathF.Min(a.R, b.R), MathF.Min(a.G, b.G), MathF.Min(a.B, b.B));
     public static Color Max(Color a, Color b) => new Color(MathF.Max(a.R, b.R), MathF.Max(a.G, b.G), MathF.Max(a.B, b.B));
@@ -124,7 +128,11 @@ struct Vec3
     public static Vec3 operator -(Vec3 a, Vec3 b) => new Vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
     public static Vec3 operator *(Vec3 a, float b) => new Vec3(a.X * b, a.Y * b, a.Z * b);
     public static Vec3 operator *(float a, Vec3 b) => new Vec3(a * b.X, a * b.Y, a * b.Z);
-    public static Vec3 operator /(Vec3 a, float b) => new Vec3(a.X / b, a.Y / b, a.Z / b);
+    public static Vec3 operator /(Vec3 a, float b)
+    {
+        Debug.Assert(b != 0f);
+        return new Vec3(a.X / b, a.Y / b, a.Z / b);
+    }
 
     public static float Dot(Vec3 a, Vec3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
 
@@ -140,7 +148,11 @@ struct Vec3
         return n * (Dot(v, n) / nSqrMag);
     }
 
-    public static Vec3 Reflect(Vec3 v, Vec3 n) => v - 2 * (Dot(v, n) / Dot(n, n)) * n;
+    public static Vec3 Reflect(Vec3 v, Vec3 n)
+    {
+        Debug.Assert(n.MagnitudeSqr() >= 1e-6f, "Cannot reflect around a zero vector.");
+        return v - 2 * (Dot(v, n) / Dot(n, n)) * n;
+    }
 
     public static Vec3 Lerp(Vec3 a, Vec3 b, float t) => new Vec3(
         a.X + (b.X - a.X) * t,
@@ -182,7 +194,11 @@ struct Vec4
     public static Vec4 operator -(Vec4 a, Vec4 b) => new Vec4(a.X - b.X, a.Y - b.Y, a.Z - b.Z, a.W - b.W);
     public static Vec4 operator *(Vec4 a, float b) => new Vec4(a.X * b, a.Y * b, a.Z * b, a.W * b);
     public static Vec4 operator *(float a, Vec4 b) => new Vec4(a * b.X, a * b.Y, a * b.Z, a * b.W);
-    public static Vec4 operator /(Vec4 a, float b) => new Vec4(a.X / b, a.Y / b, a.Z / b, a.W / b);
+    public static Vec4 operator /(Vec4 a, float b)
+    {
+        Debug.Assert(b != 0f);
+        return new Vec4(a.X / b, a.Y / b, a.Z / b, a.W / b);
+    }
 
     public static float Dot(Vec4 a, Vec4 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 }
@@ -238,6 +254,7 @@ struct Quat
 
     public static Quat AngleAxis(float angle, Vec3 axis)
     {
+        Debug.Assert(axis.MagnitudeSqr() >= 1e-6f, "Axis cannot be zero.");
         Vec3 vec = axis * MathF.Sin(angle * 0.5f);
         return new Quat(vec.X, vec.Y, vec.Z, MathF.Cos(angle * 0.5f));
     }
@@ -396,6 +413,7 @@ struct Ray3
 
     public Ray3(Vec3 origin, Vec3 dir)
     {
+        Debug.Assert(dir.MagnitudeSqr() >= 1e-6f, "Direction cannot be zero.");
         Origin = origin;
         Dir = dir;
     }
@@ -413,7 +431,7 @@ struct Transform
 
     public Transform(Vec3 pos, Quat rot, Vec3 scale)
     {
-        Debug.Assert(scale.X != 0f && scale.Y != 0f && scale.Z != 0f, "Transform scale cannot be zero.");
+        Debug.Assert(scale.X != 0f && scale.Y != 0f && scale.Z != 0f, "Scale cannot be zero.");
         Pos = pos;
         Rot = rot;
         Scale = scale;
@@ -489,6 +507,8 @@ struct View
 
     public View(Transform trans, float fov, float near)
     {
+        Debug.Assert(fov > 0f && fov < MathF.PI, "Invalid fov");
+        Debug.Assert(near > 0f, "Invalid near plane");
         Trans = trans;
         Fov = fov;
         Near = near;
@@ -496,6 +516,8 @@ struct View
 
     public Ray3 Ray(Vec2 screenPos, float aspect)
     {
+        Debug.Assert(aspect > 0f, "Invalid aspect");
+
         float ndcX = screenPos.X * 2f - 1f;
         float ndcY = -screenPos.Y * 2f + 1f;
 
