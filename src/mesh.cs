@@ -20,22 +20,30 @@ class Mesh : IShape
 
     public bool Overlaps(AABox box)
     {
+        if (!_bounds.Overlaps(box))
+            return false;
+
         foreach (Triangle tri in _triangles)
         {
             if (tri.Overlaps(box))
                 return true;
         }
+
         return false;
     }
 
     public RayHit? Intersect(Ray ray)
     {
+        if (_bounds.Intersect(ray) is null)
+            return null;
+
         RayHit? closest = null;
         foreach (Triangle tri in _triangles)
         {
             if (tri.Intersect(ray) is RayHit hit && (closest is null || hit.Dist < closest.Value.Dist))
                 closest = hit;
         }
+
         return closest;
     }
 
