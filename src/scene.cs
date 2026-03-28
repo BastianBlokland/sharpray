@@ -27,13 +27,13 @@ struct Material
 class Object
 {
     public Transform Trans;
-    public Material Mat;
+    public Material Material;
     public IShape Shape;
 
-    public Object(Transform trans, Material mat, IShape shape)
+    public Object(Transform trans, Material material, IShape shape)
     {
         Trans = trans;
-        Mat = mat;
+        Material = material;
         Shape = shape;
     }
 
@@ -52,6 +52,20 @@ class Scene
 
     public TraceResult Trace(Ray ray, ref Rng rng)
     {
+        float closestDist = float.MaxValue;
+        Material? closestMaterial = null;
+        foreach (Object obj in _objects)
+        {
+            if (obj.Intersect(ray) is RayHit hit && hit.Dist < closestDist)
+            {
+                closestDist = hit.Dist;
+                closestMaterial = obj.Material;
+            }
+        }
+        if (closestMaterial is Material m)
+        {
+            return new TraceResult(null, m.Color);
+        }
         return new TraceResult(null, SkyRadiance(ray));
     }
 
