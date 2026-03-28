@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 
 struct TraceResult
 {
@@ -51,13 +52,13 @@ class Object
 
 class Scene
 {
-    public Scene()
-    {
-    }
+    private List<Object> _objects = new List<Object>();
 
     static readonly Color _skyRadianceTop = new Color(0.4f, 0.5f, 0.8f);
     static readonly Color _skyRadianceMiddle = new Color(1.0f, 0.9f, 0.9f);
     static readonly Color _skyRadianceBottom = new Color(0.5f, 0.425f, 0.275f);
+
+    public void AddObject(Object obj) => _objects.Add(obj);
 
     public TraceResult Trace(Ray ray, ref Rng rng)
     {
