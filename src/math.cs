@@ -137,10 +137,16 @@ struct Vec3
     public static Vec3 operator -(Vec3 a, Vec3 b) => new Vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
     public static Vec3 operator *(Vec3 a, float b) => new Vec3(a.X * b, a.Y * b, a.Z * b);
     public static Vec3 operator *(float a, Vec3 b) => new Vec3(a * b.X, a * b.Y, a * b.Z);
+    public static Vec3 operator *(Vec3 a, Vec3 b) => new Vec3(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
     public static Vec3 operator /(Vec3 a, float b)
     {
         Debug.Assert(b != 0f);
         return new Vec3(a.X / b, a.Y / b, a.Z / b);
+    }
+    public static Vec3 operator /(Vec3 a, Vec3 b)
+    {
+        Debug.Assert(b.X != 0f && b.Y != 0f && b.Z != 0f);
+        return new Vec3(a.X / b.X, a.Y / b.Y, a.Z / b.Z);
     }
 
     public static float Dot(Vec3 a, Vec3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
@@ -509,7 +515,7 @@ struct Transform
     {
         Vec3 invScale = new Vec3(1f / Scale.X, 1f / Scale.Y, 1f / Scale.Z);
         Quat invRot = Rot.Inverse();
-        Vec3 invPos = invRot * new Vec3(-Pos.X * invScale.X, -Pos.Y * invScale.Y, -Pos.Z * invScale.Z);
+        Vec3 invPos = invRot * (-Pos * invScale);
         return new Transform(invPos, invRot, invScale);
     }
 
@@ -520,7 +526,7 @@ struct Transform
     public static Transform operator *(Transform a, Transform b) => new Transform(
         a.TransformPoint(b.Pos),
         a.Rot * b.Rot,
-        new Vec3(a.Scale.X * b.Scale.X, a.Scale.Y * b.Scale.Y, a.Scale.Z * b.Scale.Z));
+        a.Scale * b.Scale);
 }
 
 struct Ray
