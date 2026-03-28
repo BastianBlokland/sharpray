@@ -1,5 +1,59 @@
 using System;
 
+struct Color
+{
+    public float R, G, B;
+
+    public Color(float r, float g, float b)
+    {
+        R = r;
+        G = g;
+        B = b;
+    }
+
+    public float this[int i] => i switch { 0 => R, 1 => G, 2 => B, _ => throw new IndexOutOfRangeException() };
+
+    public Color Clamp01() => new Color(Math.Clamp(R, 0f, 1f), Math.Clamp(G, 0f, 1f), Math.Clamp(B, 0f, 1f));
+
+    public Pixel ToPixel()
+    {
+        // SRGB encode.
+        // http://chilliant.blogspot.com/2012/08/srgb-approximations-for-hlsl.html
+        Color c = Clamp01();
+        float r = MathF.Max(1.055f * MathF.Pow(c.R, 0.416666667f) - 0.055f, 0f);
+        float g = MathF.Max(1.055f * MathF.Pow(c.G, 0.416666667f) - 0.055f, 0f);
+        float b = MathF.Max(1.055f * MathF.Pow(c.B, 0.416666667f) - 0.055f, 0f);
+        return new Pixel((byte)(r * 255f + 0.5f), (byte)(g * 255f + 0.5f), (byte)(b * 255f + 0.5f));
+    }
+
+    public static Color operator +(Color a, Color b) => new Color(a.R + b.R, a.G + b.G, a.B + b.B);
+    public static Color operator -(Color a, Color b) => new Color(a.R - b.R, a.G - b.G, a.B - b.B);
+    public static Color operator *(Color a, Color b) => new Color(a.R * b.R, a.G * b.G, a.B * b.B);
+    public static Color operator *(Color c, float s) => new Color(c.R * s, c.G * s, c.B * s);
+    public static Color operator *(float s, Color c) => new Color(c.R * s, c.G * s, c.B * s);
+    public static Color operator /(Color c, float s) => new Color(c.R / s, c.G / s, c.B / s);
+
+    public static Color Min(Color a, Color b) => new Color(MathF.Min(a.R, b.R), MathF.Min(a.G, b.G), MathF.Min(a.B, b.B));
+    public static Color Max(Color a, Color b) => new Color(MathF.Max(a.R, b.R), MathF.Max(a.G, b.G), MathF.Max(a.B, b.B));
+
+    public static Color Lerp(Color a, Color b, float t) => new Color(
+        a.R + (b.R - a.R) * t,
+        a.G + (b.G - a.G) * t,
+        a.B + (b.B - a.B) * t);
+
+    public static Color Bilerp(Color c1, Color c2, Color c3, Color c4, float tX, float tY) =>
+        Lerp(Lerp(c1, c2, tX), Lerp(c3, c4, tX), tY);
+
+    public static Color FromPixel(Pixel pixel)
+    {
+        // SRGB decode.
+        float r = MathF.Pow(pixel.R / 255f, 2.233333333f);
+        float g = MathF.Pow(pixel.G / 255f, 2.233333333f);
+        float b = MathF.Pow(pixel.B / 255f, 2.233333333f);
+        return new Color(r, g, b);
+    }
+}
+
 struct Vec2
 {
     public float X, Y;
