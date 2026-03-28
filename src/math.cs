@@ -505,6 +505,61 @@ struct RayHit
     }
 }
 
+struct Line
+{
+    public Vec3 A, B;
+
+    public Line(Vec3 a, Vec3 b)
+    {
+        A = a;
+        B = b;
+    }
+
+    public float LengthSqr => (B - A).MagnitudeSqr();
+    public float Length => MathF.Sqrt(LengthSqr);
+
+    public Vec3 Direction
+    {
+        get
+        {
+            Vec3 delta = B - A;
+            float length = delta.Magnitude();
+            return length <= 1e-6f ? new Vec3(0, 0, 1) : delta / length;
+        }
+    }
+
+    public float ClosestTime(Vec3 point)
+    {
+        Vec3 toB = B - A;
+        float lengthSqr = toB.MagnitudeSqr();
+        if (lengthSqr < 1e-6f) return 0f;
+        return Math.Clamp(Vec3.Dot(point - A, toB) / lengthSqr, 0f, 1f);
+    }
+
+    public float ClosestTime(Ray ray)
+    {
+        float lineLength = Length;
+        if (lineLength < 1e-6f) return 0f;
+
+        Vec3 lineDir = Direction;
+        float dot = Vec3.Dot(lineDir, ray.Dir);
+        float d = 1f - dot * dot;
+        if (d < 1e-6f) return 0f; // Parallel.
+
+        Vec3 toA = A - ray.Origin;
+        float c = Vec3.Dot(lineDir, toA);
+        float f = Vec3.Dot(ray.Dir, toA);
+        float dist = (dot * f - c) / d;
+        if (dist <= 0f) return 0f;
+
+        return dist >= lineLength ? 1f : dist / lineLength;
+    }
+
+    public Vec3 ClosestPoint(Vec3 point) => Vec3.Lerp(A, B, ClosestTime(point));
+    public Vec3 ClosestPoint(Ray ray) => Vec3.Lerp(A, B, ClosestTime(ray));
+    public float DistanceSqr(Vec3 point) => (point - ClosestPoint(point)).MagnitudeSqr();
+}
+
 struct AABox
 {
     public Vec3 Min, Max;
