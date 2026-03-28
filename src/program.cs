@@ -7,8 +7,8 @@ Console.WriteLine("Performing setup");
 const uint width = 256;
 const uint height = 256;
 const uint blockSize = 16;
-const uint samples = 32;
-const uint bounces = 128;
+const uint samples = 512;
+const uint bounces = 4;
 const uint saveInterval = 10;
 const String outputPath = "output.bmp";
 
