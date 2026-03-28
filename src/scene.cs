@@ -169,7 +169,7 @@ class Scene
                 // Direct sun contribution.
                 Vec3 sunDir = _sky.SunSampleDir(ref rng);
                 float sunCosTheta = Vec3.Dot(hit.Norm, sunDir);
-                if (sunCosTheta > 0f)
+                if (sunCosTheta > 0f && roughness > 0.05f)
                 {
                     Ray shadowRay = new Ray(hitPos, sunDir);
                     if (!Occluded(shadowRay))
