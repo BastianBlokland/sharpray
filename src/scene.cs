@@ -136,9 +136,11 @@ class Scene
         return new Fragment(null, null, _sky.AmbientRadianceRay(ray));
     }
 
-    public Color Sample(Ray ray, ref Rng rng, uint bounces)
+    public (Color Radiance, Vec3? Normal) Sample(Ray ray, ref Rng rng, uint bounces)
     {
         Color radiance = Color.Black, energy = Color.White;
+        Vec3? normal = null;
+
         for (uint i = 0; i != (bounces + 1); ++i)
         {
             bool isPrimary = i == 0;
@@ -155,6 +157,9 @@ class Scene
 
             if (frag.Hit is RayHit hit)
             {
+                if (isPrimary)
+                    normal = hit.Norm;
+
                 Vec3 hitPos = ray[hit.Dist] + hit.Norm * 1e-4f;
 
                 // Direct sun contribution.
@@ -190,6 +195,6 @@ class Scene
                 break;
             }
         }
-        return radiance;
+        return (radiance, normal);
     }
 }
