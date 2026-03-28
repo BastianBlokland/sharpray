@@ -28,7 +28,7 @@ struct Material
     }
 }
 
-class Object
+struct Object
 {
     public Transform Trans;
     public Material Material;
