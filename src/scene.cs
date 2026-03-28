@@ -37,17 +37,7 @@ class Object
         Shape = shape;
     }
 
-    public RayHit? Intersect(Ray ray)
-    {
-        var (localRay, localRayScale) = Trans.TransformRayInv(ray);
-        RayHit? hit = Shape.Intersect(localRay);
-        if (hit is RayHit h)
-        {
-            Vec3 worldNorm = (Trans.Rot * (h.Norm / Trans.Scale)).Normalize();
-            return new RayHit(h.Dist / localRayScale, worldNorm);
-        }
-        return null;
-    }
+    public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
 }
 
 class Scene
