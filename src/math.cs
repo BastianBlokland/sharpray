@@ -697,6 +697,48 @@ struct Plane
     }
 }
 
+struct Triangle
+{
+    public Vec3 A, B, C;
+
+    public Triangle(Vec3 a, Vec3 b, Vec3 c)
+    {
+        A = a;
+        B = b;
+        C = c;
+    }
+
+    public Vec3 Normal => Vec3.Cross(B - A, C - A).Normalize();
+    public Vec3 Center => (A + B + C) / 3f;
+    public Plane Plane => Plane.AtTriangle(A, B, C);
+
+    public RayHit? Intersect(Ray ray)
+    {
+        // Möller–Trumbore intersection.
+        // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+        Vec3 ab = B - A;
+        Vec3 ac = C - A;
+        Vec3 h = Vec3.Cross(ray.Dir, ac);
+        float det = Vec3.Dot(ab, h);
+
+        if (det >= -1e-6f) return null; // Back-facing or parallel.
+
+        float invDet = 1f / det;
+        Vec3 ao = ray.Origin - A;
+        float u = Vec3.Dot(ao, h) * invDet;
+        if (u < 0f || u > 1f) return null;
+
+        Vec3 q = Vec3.Cross(ao, ab);
+        float v = Vec3.Dot(ray.Dir, q) * invDet;
+        if (v < 0f || u + v > 1f) return null;
+
+        float t = Vec3.Dot(ac, q) * invDet;
+        if (t < 0f) return null;
+
+        return new RayHit(t, Normal);
+    }
+}
+
 struct View
 {
     public Transform Trans;
