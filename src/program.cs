@@ -1,5 +1,7 @@
 using System;
 
+Timestamp timeStart = Timestamp.Now();
+
 Console.WriteLine("Performing setup");
 
 const uint width = 256;
@@ -34,12 +36,15 @@ View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadi
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples);
 
 Console.WriteLine("Starting render");
+
 (uint Step, uint Total) progress;
 do
 {
     progress = renderer.Tick();
-    Console.WriteLine($"Rendering [{progress.Step} / {progress.Total}]");
+    Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
 
 renderer.Result.Save(outputPath);
-Console.WriteLine($"Finished: {outputPath}");
+
+double timeElapsed = (Timestamp.Now() - timeStart).Millis;
+Console.WriteLine($"Finished (time: {timeElapsed:F1} ms): {outputPath}");
