@@ -81,14 +81,6 @@ struct Sky
         float sunBlend = MathF.Max(0f, (sunDot - SunCosAngle) / (1f - SunCosAngle));
         return sky + SunRadiance * sunBlend;
     }
-
-    public static Sky Default() => new Sky(
-        new Color(0.4f, 0.5f, 0.8f),
-        new Color(1.0f, 0.9f, 0.9f),
-        new Color(0.5f, 0.425f, 0.275f),
-        new Vec3(0.4f, 0.5f, 1f).Normalize(),
-        new Color(4f, 3.5f, 2.5f),
-        MathF.Cos(float.DegreesToRadians(2.6f)));
 }
 
 class Scene
