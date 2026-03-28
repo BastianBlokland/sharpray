@@ -120,17 +120,24 @@ class Scene
         for (uint i = 0; i != (bounces + 1); ++i)
         {
             Fragment frag = Trace(ray);
+
+            // Accumulate radiance.
             radiance += frag.Radiance * color;
 
+            // Absorb some of the light frequencies.
+            if (frag.Material is Material material)
+            {
+                color *= material.Color;
+            }
+
+            // Scatter.
             if (frag.Hit is RayHit hit)
             {
                 ray.Origin = ray[hit.Dist] + hit.Norm * 1e-4f;
-                ray.Dir = (hit.Norm + Vec3.RandOnSphere(ref rng)).Normalize(); // Cosine distruction.
 
-                if (frag.Material is Material material)
-                {
-                    color *= material.Color;
-                }
+                // Cosine-weighted distribution.
+                Vec3 scattered = hit.Norm + Vec3.RandOnSphere(ref rng);
+                ray.Dir = scattered.MagnitudeSqr() > 1e-6f ? scattered.Normalize() : hit.Norm;
             }
             else
             {
