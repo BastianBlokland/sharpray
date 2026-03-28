@@ -501,12 +501,11 @@ struct Transform
     public Vec3 TransformDir(Vec3 d) => Rot * d;
     public Vec3 TransformDirInv(Vec3 d) => Rot.Inverse() * d;
 
-    public Vec3 TransformPoint(Vec3 p) => Pos + Rot * new Vec3(p.X * Scale.X, p.Y * Scale.Y, p.Z * Scale.Z);
-    public Vec3 TransformPointInv(Vec3 p)
-    {
-        Vec3 r = Rot.Inverse() * (p - Pos);
-        return new Vec3(r.X / Scale.X, r.Y / Scale.Y, r.Z / Scale.Z);
-    }
+    public Vec3 TransformVector(Vec3 v) => Rot * (v * Scale);
+    public Vec3 TransformVectorInv(Vec3 v) => Rot.Inverse() * v / Scale;
+
+    public Vec3 TransformPoint(Vec3 p) => Pos + Rot * (p * Scale);
+    public Vec3 TransformPointInv(Vec3 p) => Rot.Inverse() * (p - Pos) / Scale;
 
     public Ray TransformRay(Ray ray) => new Ray(TransformPoint(ray.Origin), TransformDir(ray.Dir));
     public Ray TransformRayInv(Ray ray) => new Ray(TransformPointInv(ray.Origin), TransformDirInv(ray.Dir));
