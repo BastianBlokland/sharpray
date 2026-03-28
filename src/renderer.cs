@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 
 class Renderer
 {
@@ -12,7 +13,10 @@ class Renderer
 
     private uint _blockSize;
     private uint _blockCountX, _blockCountY, _blockCountTotal;
-    private uint _blockCurrent;
+
+    private int _blockNext;
+    private volatile int _blockCompleted;
+    private SemaphoreSlim _blockSignal;
 
     private uint _samples;
     private uint _bounches;
@@ -41,21 +45,46 @@ class Renderer
         _blockCountX = (_width + _blockSize - 1) / _blockSize;
         _blockCountY = (_height + _blockSize - 1) / _blockSize;
         _blockCountTotal = _blockCountX * _blockCountY;
+        _blockSignal = new SemaphoreSlim(0);
 
         _samples = samples;
         _bounches = bounces;
 
         Result = new Image(width, height);
+
+        // Start the worker threads.
+        for (int i = 0; i < Environment.ProcessorCount; ++i)
+        {
+            Thread thread = new Thread(Worker)
+            {
+                IsBackground = true
+            };
+            thread.Start();
+        }
     }
 
     public (uint Step, uint Total) Tick()
     {
-        if (_blockCurrent >= _blockCountTotal)
+        if (_blockCompleted >= _blockCountTotal)
             return (_blockCountTotal, _blockCountTotal);
 
-        Execute(_blockCurrent++);
+        _blockSignal.Wait();
+        return ((uint)_blockCompleted, _blockCountTotal);
+    }
 
-        return (_blockCurrent, _blockCountTotal);
+    private void Worker()
+    {
+        while (true)
+        {
+            int block = Interlocked.Increment(ref _blockNext) - 1;
+            if ((uint)block >= _blockCountTotal)
+                break;
+
+            Execute((uint)block);
+
+            Interlocked.Increment(ref _blockCompleted);
+            _blockSignal.Release();
+        }
     }
 
     private void Execute(uint block)
