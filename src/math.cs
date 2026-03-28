@@ -166,6 +166,42 @@ struct Vec3
         a.X + (b.X - a.X) * t,
         a.Y + (b.Y - a.Y) * t,
         a.Z + (b.Z - a.Z) * t);
+
+    public static Vec3 RandOnSphere(ref Rng rng)
+    {
+        while (true)
+        {
+            var (x, y) = rng.NextGauss();
+            var (z, _) = rng.NextGauss();
+            float magSqr = x * x + y * y + z * z;
+            if (magSqr > 1e-6f)
+                return new Vec3(x, y, z) / MathF.Sqrt(magSqr);
+        }
+    }
+
+    public static Vec3 RandOnHemiSphere(ref Rng rng, Vec3 normal)
+    {
+        Debug.Assert(normal.IsUnit, "Hemisphere normal must be normalized");
+        Vec3 v = RandOnSphere(ref rng);
+        return Vec3.Dot(v, normal) < 0f ? -v : v;
+    }
+
+    public static Vec3 RandInSphere(ref Rng rng)
+    {
+        // Cube-root scales uniformly since volume grows cubically with radius.
+        return RandOnSphere(ref rng) * MathF.Cbrt(rng.NextFloat());
+    }
+
+    public static Vec3 RandInCone(ref Rng rng, float coneAngleRad)
+    {
+        Debug.Assert(coneAngleRad >= 0f && coneAngleRad <= MathF.PI);
+        // http://www.realtimerendering.com/resources/RTNews/html/rtnv20n1.html#art11
+        float cosAngle = MathF.Cos(coneAngleRad);
+        float phi = MathF.PI * 2f * rng.NextFloat();
+        float z = cosAngle + (1f - cosAngle) * rng.NextFloat();
+        float sinT = MathF.Sqrt(1f - z * z);
+        return new Vec3(MathF.Cos(phi) * sinT, MathF.Sin(phi) * sinT, z);
+    }
 }
 
 struct Vec4
@@ -1034,6 +1070,17 @@ struct Rng
     {
         const float toFloat = 1.0f / ((float)uint.MaxValue + 512f);
         return NextUInt() * toFloat;
+    }
+
+    public (float A, float B) NextGauss()
+    {
+        // Box-Muller transform: https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
+        float a;
+        do { a = NextFloat(); } while (a <= 1e-8f);
+
+        float b = MathF.PI * 2f * NextFloat();
+        float mag = MathF.Sqrt(-2f * MathF.Log(a));
+        return (mag * MathF.Cos(b), mag * MathF.Sin(b));
     }
 
     private static ulong SplitMix64(ref ulong state)
