@@ -4,12 +4,15 @@ Timestamp timeStart = Timestamp.Now();
 
 Console.WriteLine("Performing setup");
 
-const uint width = 256;
-const uint height = 256;
+const uint width = 512;
+const uint height = 512;
 const uint blockSize = 16;
 const uint samples = 128;
 const uint bounces = 8;
 const uint saveInterval = 10;
+const float denoiseSigmaSpace = 3.0f;
+const float denoiseSigmaColor = 0.1f;
+const float denoiseSigmaNormal = 0.5f;
 const String outputPath = "output.bmp";
 const String normalsPath = "normals.bmp";
 
@@ -61,8 +64,6 @@ do
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
 
-renderer.Image.Save(outputPath);
-
 if (normalsPath != "")
 {
     Image normalsImage = new Image(width, height);
@@ -75,6 +76,11 @@ if (normalsPath != "")
     }
     normalsImage.Save(normalsPath);
 }
+
+Console.WriteLine("Denoising");
+
+Denoiser denoiser = new Denoiser(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal);
+denoiser.Denoise(renderer.Image, renderer.Normals).Save(outputPath);
 
 double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
 Console.WriteLine($"Finished (time: {timeElapsed:F1} s): {outputPath}");
