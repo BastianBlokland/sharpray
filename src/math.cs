@@ -163,6 +163,12 @@ struct Vec3
         return this / m;
     }
 
+    public Vec3 NormalizeOr(Vec3 fallback)
+    {
+        float mSqr = MagnitudeSqr();
+        return mSqr >= 1e-12f ? this / MathF.Sqrt(mSqr) : fallback;
+    }
+
     public static Vec3 operator -(Vec3 v) => new Vec3(-v.X, -v.Y, -v.Z);
     public static Vec3 operator +(Vec3 a, Vec3 b) => new Vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
     public static Vec3 operator -(Vec3 a, Vec3 b) => new Vec3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
