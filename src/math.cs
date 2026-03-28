@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Numerics;
 
 interface IShape
 {
@@ -1064,6 +1065,13 @@ struct Rng
         _s4 += 362437u;
 
         return t + _s4;
+    }
+
+    public T NextRange<T>(T min, T max) where T : INumber<T>
+    {
+        Debug.Assert(max > min);
+        float range = float.CreateSaturating(max - min);
+        return min + T.CreateTruncating(NextFloat() * range);
     }
 
     public float NextFloat() // 0.0 (inclusive) to 1.0 (exclusive).
