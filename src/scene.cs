@@ -1,4 +1,6 @@
 
+using System;
+
 struct TraceResult
 {
     public RayHit? Hit;
@@ -17,14 +19,21 @@ class Scene
     {
     }
 
+    static readonly Color _skyRadianceTop = new Color(0.4f, 0.5f, 0.8f);
+    static readonly Color _skyRadianceMiddle = new Color(1.0f, 0.9f, 0.9f);
+    static readonly Color _skyRadianceBottom = new Color(0.5f, 0.425f, 0.275f);
+
     public TraceResult Trace(Ray ray, ref Rng rng)
     {
-        Color skyRadiance = SkyRadiance();
-        return new TraceResult(null, skyRadiance);
+        return new TraceResult(null, SkyRadiance(ray));
     }
 
-    private Color SkyRadiance()
+    private static Color SkyRadiance(Ray ray)
     {
-        return new Color(0f, 1f, 0f);
+        const float bias = 0.0001f;
+        float topBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias - ray.Dir.Y), 4f);
+        float bottomBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias + ray.Dir.Y), 40f);
+        float middleBlend = 1f - topBlend - bottomBlend;
+        return _skyRadianceTop * topBlend + _skyRadianceMiddle * middleBlend + _skyRadianceBottom * bottomBlend;
     }
 }
