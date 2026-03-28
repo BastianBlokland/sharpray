@@ -4,7 +4,7 @@ using System.Threading;
 
 class Renderer
 {
-    public Image Image { get; }
+    public Color[] Radiance { get; }
     public Vec3[] Normals { get; }
 
     private Scene _scene;
@@ -50,7 +50,7 @@ class Renderer
         _samples = samples;
         _bounches = bounces;
 
-        Image = new Image(width, height);
+        Radiance = new Color[width * height];
         Normals = new Vec3[width * height];
 
         // Start the worker threads.
@@ -103,18 +103,18 @@ class Renderer
         {
             for (uint x = xMin; x != xMax; ++x)
             {
-                (Pixel pixel, Vec3 normal) = Render(x, y);
+                (Color radiance, Vec3 normal) = Render(x, y);
 
-                Image.Pixels[y * _width + x] = pixel;
+                Radiance[y * _width + x] = radiance;
                 Normals[y * _width + x] = normal;
             }
         }
     }
 
-    private (Pixel Pixel, Vec3 Normal) Render(uint x, uint y)
+    private (Color Radiance, Vec3 Normal) Render(uint x, uint y)
     {
         Rng rng = new Rng(x, y);
-        Color radiance = new Color(0f);
+        Color radianceSum = new Color(0f);
         Vec3 normalSum = Vec3.Zero;
 
         for (uint i = 0; i != _samples; ++i)
@@ -122,26 +122,13 @@ class Renderer
             Vec2 pos = new Vec2((x + rng.NextFloat()) / _width, (y + rng.NextFloat()) / _height);
             Ray ray = _view.Ray(pos, _aspect);
 
-            var (sampleRadiance, sampleNormal) = _scene.Sample(ray, ref rng, _bounches);
+            var (radiance, normal) = _scene.Sample(ray, ref rng, _bounches);
 
-            radiance += sampleRadiance;
-            if (sampleNormal is Vec3 n)
+            radianceSum += radiance;
+            if (normal is Vec3 n)
                 normalSum += n;
         }
 
-        return (Tonemap(radiance / _samples).ToPixel(), normalSum.NormalizeOr(Vec3.Zero));
-    }
-
-    private static Color Tonemap(Color radiance)
-    {
-        // Linear with shoulder region.
-        // By user SteveM in comment section on https://mynameismjp.wordpress.com.
-        // https://mynameismjp.wordpress.com/2010/04/30/a-closer-look-at-tone-mapping/#comment-118287
-
-        const float a = 1.8f; // mid.
-        const float b = 1.4f; // toe.
-        const float c = 0.5f; // shoulder.
-        const float d = 1.5f; // mid.
-        return (radiance * (a * radiance + new Color(b))) / (radiance * (a * radiance + new Color(c)) + new Color(d));
+        return (radianceSum / _samples, normalSum.NormalizeOr(Vec3.Zero));
     }
 }

@@ -49,6 +49,7 @@ scene.AddObject(new Object(
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
 
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces);
+Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal);
 
 Console.WriteLine("Starting render");
 
@@ -59,7 +60,7 @@ do
 
     // Save intermediate results for previewing purposes.
     if (progress.Step % saveInterval == 0)
-        renderer.Image.Save(outputPath);
+        compositor.Preview(renderer.Radiance, width, height).Save(outputPath);
 
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
@@ -77,10 +78,9 @@ if (normalsPath != "")
     normalsImage.Save(normalsPath);
 }
 
-Console.WriteLine("Denoising");
+Console.WriteLine("Compositing");
 
-Denoiser denoiser = new Denoiser(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal);
-denoiser.Denoise(renderer.Image, renderer.Normals).Save(outputPath);
+compositor.Compose(renderer.Radiance, renderer.Normals, width, height).Save(outputPath);
 
 double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
 Console.WriteLine($"Finished (time: {timeElapsed:F1} s): {outputPath}");
