@@ -991,3 +991,58 @@ struct View
         return new Ray(origin, dir);
     }
 }
+
+struct Rng
+{
+    uint _s0, _s1, _s2, _s3, _s4;
+
+    public Rng(uint seedA, uint seedB) : this((ulong)seedA << 32 | seedB) { }
+
+    public Rng(ulong seed)
+    {
+        ulong val1 = SplitMix64(ref seed);
+        ulong val2 = SplitMix64(ref seed);
+        _s0 = (uint)val1;
+        _s1 = (uint)(val1 >> 32);
+        _s2 = (uint)val2;
+        _s3 = (uint)(val2 >> 32);
+        _s4 = 0;
+    }
+
+    public uint NextUInt()
+    {
+        // https://en.wikipedia.org/wiki/Xorshift#xorwow
+        Debug.Assert(_s0 != 0 || _s1 != 0 || _s2 != 0 || _s3 != 0);
+
+        uint t = _s3;
+        uint s = _s0;
+        _s3 = _s2;
+        _s2 = _s1;
+        _s1 = s;
+
+        t ^= t >> 2;
+        t ^= t << 1;
+        t ^= s ^ (s << 4);
+
+        _s0 = t;
+        _s4 += 362437u;
+
+        return t + _s4;
+    }
+
+    public float NextFloat() // 0.0 (inclusive) to 1.0 (exclusive).
+    {
+        const float toFloat = 1.0f / ((float)uint.MaxValue + 512f);
+        return NextUInt() * toFloat;
+    }
+
+    private static ulong SplitMix64(ref ulong state)
+    {
+        // Implementation of the 'splitmix' algorithm.
+        // Source: https://en.wikipedia.org/wiki/Xorshift#xorwow
+        ulong result = state += 0x9e3779b97f4a7c15UL;
+        result = (result ^ (result >> 30)) * 0xbf58476d1ce4e5b9UL;
+        result = (result ^ (result >> 27)) * 0x94d049bb133111ebUL;
+        return result ^ (result >> 31);
+    }
+}
