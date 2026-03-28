@@ -116,18 +116,18 @@ class Scene
 
     public Color Sample(Ray ray, ref Rng rng, uint bounces)
     {
-        Color radiance = Color.Black, color = Color.White;
+        Color radiance = Color.Black, energy = Color.White;
         for (uint i = 0; i != (bounces + 1); ++i)
         {
             Fragment frag = Trace(ray);
 
             // Accumulate radiance.
-            radiance += frag.Radiance * color;
+            radiance += frag.Radiance * energy;
 
             // Absorb some of the light frequencies.
             if (frag.Material is Material material)
             {
-                color *= material.Color;
+                energy *= material.Color;
             }
 
             // Scatter.
