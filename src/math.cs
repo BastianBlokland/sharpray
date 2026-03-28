@@ -61,10 +61,17 @@ struct Color
     public static Color operator *(Color a, Color b) => new Color(a.R * b.R, a.G * b.G, a.B * b.B);
     public static Color operator *(Color c, float s) => new Color(c.R * s, c.G * s, c.B * s);
     public static Color operator *(float s, Color c) => new Color(c.R * s, c.G * s, c.B * s);
+
     public static Color operator /(Color c, float s)
     {
         Debug.Assert(s != 0f);
         return new Color(c.R / s, c.G / s, c.B / s);
+    }
+
+    public static Color operator /(Color a, Color b)
+    {
+        Debug.Assert(b.R != 0f && b.G != 0f && b.B != 0f);
+        return new Color(a.R / b.R, a.G / b.G, a.B / b.B);
     }
 
     public static Color Min(Color a, Color b) => new Color(MathF.Min(a.R, b.R), MathF.Min(a.G, b.G), MathF.Min(a.B, b.B));
