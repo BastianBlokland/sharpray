@@ -13,6 +13,42 @@ struct TraceResult
     }
 }
 
+struct Material
+{
+    public Color Color;
+
+    public Material(Color color)
+    {
+        Color = color;
+    }
+}
+
+class Object
+{
+    public Transform Trans;
+    public Material Mat;
+    public IShape Shape;
+
+    public Object(Transform trans, Material mat, IShape shape)
+    {
+        Trans = trans;
+        Mat = mat;
+        Shape = shape;
+    }
+
+    public RayHit? Intersect(Ray ray)
+    {
+        var (localRay, localRayScale) = Trans.TransformRayInv(ray);
+        RayHit? hit = Shape.Intersect(localRay);
+        if (hit is RayHit h)
+        {
+            Vec3 worldNorm = (Trans.Rot * (h.Norm / Trans.Scale)).Normalize();
+            return new RayHit(h.Dist / localRayScale, worldNorm);
+        }
+        return null;
+    }
+}
+
 class Scene
 {
     public Scene()
