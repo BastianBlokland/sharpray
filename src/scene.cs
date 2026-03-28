@@ -19,10 +19,12 @@ struct TraceResult
 struct Material
 {
     public Color Color;
+    public Color Radiance;
 
-    public Material(Color color)
+    public Material(Color color, Color radiance = default)
     {
         Color = color;
+        Radiance = radiance;
     }
 }
 
@@ -65,7 +67,7 @@ class Scene
             }
         }
         if (closestHit is RayHit h)
-            return new TraceResult(h, closestMaterial, new Color(0, 0, 0));
+            return new TraceResult(h, closestMaterial, closestMaterial!.Value.Radiance);
 
         return new TraceResult(null, null, SkyRadiance(ray));
     }
