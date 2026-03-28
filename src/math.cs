@@ -580,6 +580,36 @@ struct AABox
         new Vec3(float.MinValue, float.MinValue, float.MinValue));
 }
 
+struct Box
+{
+    public AABox Local;
+    public Quat Rot;
+
+    public Box(AABox local, Quat rot)
+    {
+        Local = local;
+        Rot = rot;
+    }
+
+    public Vec3 Center => Local.Center;
+
+    Vec3 LocalPoint(Vec3 p) => Center + Rot.Inverse() * (p - Center);
+    Ray LocalRay(Ray ray) => new Ray(LocalPoint(ray.Origin), Rot.Inverse() * ray.Dir);
+
+    public Vec3 ClosestPoint(Vec3 p) => Center + Rot * (Local.ClosestPoint(LocalPoint(p)) - Center);
+
+    public RayHit? Intersect(Ray ray)
+    {
+        RayHit? hit = Local.Intersect(LocalRay(ray));
+        if (hit is RayHit h)
+            return new RayHit(h.Dist, Rot * h.Norm);
+        return null;
+    }
+
+    public static Box FromCenter(Vec3 center, Vec3 size, Quat rot) =>
+        new Box(AABox.FromCenter(center, size), rot);
+}
+
 struct View
 {
     public Transform Trans;
