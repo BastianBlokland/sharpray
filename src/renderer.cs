@@ -68,6 +68,19 @@ class Renderer
         Vec2 pos = new Vec2((x + 0.5f) / _width, (y + 0.5f) / _height);
         Ray ray = _view.Ray(pos, _aspect);
         TraceResult result = _scene.Trace(ray, ref rng);
-        return result.Radiance.ToPixel();
+        return Tonemap(result.Radiance).ToPixel();
+    }
+
+    private static Color Tonemap(Color radiance)
+    {
+        // Linear with shoulder region.
+        // By user SteveM in comment section on https://mynameismjp.wordpress.com.
+        // https://mynameismjp.wordpress.com/2010/04/30/a-closer-look-at-tone-mapping/#comment-118287
+
+        const float a = 1.8f; // mid.
+        const float b = 1.4f; // toe.
+        const float c = 0.5f; // shoulder.
+        const float d = 1.5f; // mid.
+        return (radiance * (a * radiance + new Color(b))) / (radiance * (a * radiance + new Color(c)) + new Color(d));
     }
 }
