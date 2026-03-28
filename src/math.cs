@@ -125,6 +125,34 @@ struct Vec2
     }
 }
 
+struct Vec2i
+{
+    public int X, Y;
+
+    public Vec2i(int x, int y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    public int this[int i]
+    {
+        get
+        {
+            Debug.Assert(i >= 0 && i < 2);
+            return i switch { 0 => X, _ => Y };
+        }
+    }
+
+    public static Vec2i operator -(Vec2i v) => new Vec2i(-v.X, -v.Y);
+    public static Vec2i operator +(Vec2i a, Vec2i b) => new Vec2i(a.X + b.X, a.Y + b.Y);
+    public static Vec2i operator -(Vec2i a, Vec2i b) => new Vec2i(a.X - b.X, a.Y - b.Y);
+    public static Vec2i operator *(Vec2i v, int s) => new Vec2i(v.X * s, v.Y * s);
+    public static Vec2i operator *(int s, Vec2i v) => new Vec2i(s * v.X, s * v.Y);
+
+    public static Vec2i Zero => new Vec2i(0, 0);
+}
+
 struct Vec3
 {
     public float X, Y, Z;
