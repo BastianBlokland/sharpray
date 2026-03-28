@@ -224,6 +224,9 @@ struct Quat
         }
     }
 
+    public bool IsNormalized => MathF.Abs(MagnitudeSqr() - 1f) < 1e-4f;
+
+    public float MagnitudeSqr() => X * X + Y * Y + Z * Z + W * W;
     public Quat Inverse() => new Quat(-X, -Y, -Z, W);
 
     public Quat Normalize()
@@ -416,6 +419,7 @@ struct Transform
 
     public Transform(Vec3 pos, Quat rot, Vec3 scale)
     {
+        Debug.Assert(rot.IsNormalized, "Transform rotation must be normalized");
         Debug.Assert(scale.X != 0f && scale.Y != 0f && scale.Z != 0f, "Scale cannot be zero");
         Pos = pos;
         Rot = rot;
@@ -424,6 +428,7 @@ struct Transform
 
     public Transform(Vec3 pos, Quat rot)
     {
+        Debug.Assert(rot.IsNormalized, "Transform rotation must be normalized");
         Pos = pos;
         Rot = rot;
         Scale = new Vec3(1, 1, 1);
@@ -587,6 +592,7 @@ struct Box
 
     public Box(AABox local, Quat rot)
     {
+        Debug.Assert(rot.IsNormalized, "Box rotation must be normalized");
         Local = local;
         Rot = rot;
     }
