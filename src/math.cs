@@ -3,6 +3,7 @@ using System.Diagnostics;
 
 interface IShape
 {
+    bool Overlaps(AABox box);
     RayHit? Intersect(Ray ray);
 }
 
@@ -662,6 +663,50 @@ struct Box : IShape
 
     public Vec3 ClosestPoint(Vec3 p) => Center + Rot * (Local.ClosestPoint(LocalPoint(p)) - Center);
 
+    public bool Overlaps(AABox box)
+    {
+        // Separating Axis Theorem for OBB vs AABB.
+        Vec3 obbCenter = Local.Center;
+        Vec3 obbHalf = Local.Size * 0.5f;
+        Vec3 aabbCenter = box.Center;
+        Vec3 aabbHalf = box.Size * 0.5f;
+        Vec3 d = obbCenter - aabbCenter;
+
+        Vec3 ax = Rot * new Vec3(1, 0, 0);
+        Vec3 ay = Rot * new Vec3(0, 1, 0);
+        Vec3 az = Rot * new Vec3(0, 0, 1);
+
+        bool Separated(Vec3 axis)
+        {
+            if (axis.MagnitudeSqr() < 1e-6f) return false;
+            float dist = MathF.Abs(Vec3.Dot(d, axis));
+            float rA = aabbHalf.X * MathF.Abs(axis.X) + aabbHalf.Y * MathF.Abs(axis.Y) + aabbHalf.Z * MathF.Abs(axis.Z);
+            float rB = obbHalf.X * MathF.Abs(Vec3.Dot(ax, axis)) + obbHalf.Y * MathF.Abs(Vec3.Dot(ay, axis)) + obbHalf.Z * MathF.Abs(Vec3.Dot(az, axis));
+            return dist > rA + rB;
+        }
+
+        // 3 AABB axes.
+        if (Separated(new Vec3(1, 0, 0))) return false;
+        if (Separated(new Vec3(0, 1, 0))) return false;
+        if (Separated(new Vec3(0, 0, 1))) return false;
+        // 3 OBB axes.
+        if (Separated(ax)) return false;
+        if (Separated(ay)) return false;
+        if (Separated(az)) return false;
+        // 9 cross-product axes.
+        if (Separated(Vec3.Cross(new Vec3(1, 0, 0), ax))) return false;
+        if (Separated(Vec3.Cross(new Vec3(1, 0, 0), ay))) return false;
+        if (Separated(Vec3.Cross(new Vec3(1, 0, 0), az))) return false;
+        if (Separated(Vec3.Cross(new Vec3(0, 1, 0), ax))) return false;
+        if (Separated(Vec3.Cross(new Vec3(0, 1, 0), ay))) return false;
+        if (Separated(Vec3.Cross(new Vec3(0, 1, 0), az))) return false;
+        if (Separated(Vec3.Cross(new Vec3(0, 0, 1), ax))) return false;
+        if (Separated(Vec3.Cross(new Vec3(0, 0, 1), ay))) return false;
+        if (Separated(Vec3.Cross(new Vec3(0, 0, 1), az))) return false;
+
+        return true;
+    }
+
     public RayHit? Intersect(Ray ray)
     {
         RayHit? hit = Local.Intersect(LocalRay(ray));
@@ -741,6 +786,16 @@ struct Capsule : IShape
         return distSqr <= radiusSum * radiusSum;
     }
 
+    public bool Overlaps(AABox box)
+    {
+        // Ping-pong closest point iteration between spine and box.
+        Vec3 spinePoint = Spine.ClosestPoint(box.Center);
+        Vec3 boxPoint = box.ClosestPoint(spinePoint);
+        spinePoint = Spine.ClosestPoint(boxPoint);
+        boxPoint = box.ClosestPoint(spinePoint);
+        return (spinePoint - boxPoint).MagnitudeSqr() <= Radius * Radius;
+    }
+
     public RayHit? Intersect(Ray ray)
     {
         Vec3 spinePoint = Spine.ClosestPoint(ray);
@@ -764,6 +819,15 @@ struct Plane : IShape
     public Vec3 Position => Normal * Distance;
 
     public Vec3 ClosestPoint(Vec3 point) => point - Normal * (Vec3.Dot(Normal, point) - Distance);
+
+    public bool Overlaps(AABox box)
+    {
+        Vec3 center = box.Center;
+        Vec3 half = box.Size * 0.5f;
+        float c = Vec3.Dot(Normal, center);
+        float r = half.X * MathF.Abs(Normal.X) + half.Y * MathF.Abs(Normal.Y) + half.Z * MathF.Abs(Normal.Z);
+        return c - r <= Distance && Distance <= c + r;
+    }
 
     public RayHit? Intersect(Ray ray)
     {
@@ -798,6 +862,15 @@ struct Triangle : IShape
     public Vec3 Normal => Vec3.Cross(B - A, C - A).Normalize();
     public Vec3 Center => (A + B + C) / 3f;
     public Plane Plane => Plane.AtTriangle(A, B, C);
+
+    public bool Overlaps(AABox box)
+    {
+        // Conservative: check if the triangle's bounds overlaps the box.
+        AABox triBox = new AABox(
+            new Vec3(MathF.Min(A.X, MathF.Min(B.X, C.X)), MathF.Min(A.Y, MathF.Min(B.Y, C.Y)), MathF.Min(A.Z, MathF.Min(B.Z, C.Z))),
+            new Vec3(MathF.Max(A.X, MathF.Max(B.X, C.X)), MathF.Max(A.Y, MathF.Max(B.Y, C.Y)), MathF.Max(A.Z, MathF.Max(B.Z, C.Z))));
+        return triBox.Overlaps(box);
+    }
 
     public RayHit? Intersect(Ray ray)
     {
