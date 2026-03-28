@@ -407,11 +407,11 @@ struct Mat4
     }
 }
 
-struct Ray3
+struct Ray
 {
     public Vec3 Origin, Dir;
 
-    public Ray3(Vec3 origin, Vec3 dir)
+    public Ray(Vec3 origin, Vec3 dir)
     {
         Debug.Assert(dir.MagnitudeSqr() >= 1e-6f, "Direction cannot be zero.");
         Origin = origin;
@@ -514,7 +514,7 @@ struct View
         Near = near;
     }
 
-    public Ray3 Ray(Vec2 screenPos, float aspect)
+    public Ray Ray(Vec2 screenPos, float aspect)
     {
         Debug.Assert(aspect > 0f, "Invalid aspect");
 
@@ -536,6 +536,6 @@ struct View
         Vec3 localDir = new Vec3(ndcX * tanHalfHor, ndcY * tanHalfVer, 1f);
         Vec3 origin = Trans.Pos + Trans.TransformDir(new Vec3(0f, 0f, Near));
         Vec3 dir = Trans.TransformDir(localDir.Normalize());
-        return new Ray3(origin, dir);
+        return new Ray(origin, dir);
     }
 }
