@@ -3,6 +3,7 @@ using System.Diagnostics;
 
 interface IShape
 {
+    AABox Bounds();
     bool Overlaps(AABox box);
     RayHit? Intersect(Ray ray);
 }
@@ -590,13 +591,19 @@ struct AABox : IShape
         Math.Clamp(p.Y, Min.Y, Max.Y),
         Math.Clamp(p.Z, Min.Z, Max.Z));
 
-    public AABox Encapsulate(Vec3 p) => new AABox(
-        new Vec3(MathF.Min(Min.X, p.X), MathF.Min(Min.Y, p.Y), MathF.Min(Min.Z, p.Z)),
-        new Vec3(MathF.Max(Max.X, p.X), MathF.Max(Max.Y, p.Y), MathF.Max(Max.Z, p.Z)));
+    public void Encapsulate(Vec3 p)
+    {
+        Min = new Vec3(MathF.Min(Min.X, p.X), MathF.Min(Min.Y, p.Y), MathF.Min(Min.Z, p.Z));
+        Max = new Vec3(MathF.Max(Max.X, p.X), MathF.Max(Max.Y, p.Y), MathF.Max(Max.Z, p.Z));
+    }
 
-    public AABox Encapsulate(AABox other) => new AABox(
-        new Vec3(MathF.Min(Min.X, other.Min.X), MathF.Min(Min.Y, other.Min.Y), MathF.Min(Min.Z, other.Min.Z)),
-        new Vec3(MathF.Max(Max.X, other.Max.X), MathF.Max(Max.Y, other.Max.Y), MathF.Max(Max.Z, other.Max.Z)));
+    public void Encapsulate(AABox other)
+    {
+        Min = new Vec3(MathF.Min(Min.X, other.Min.X), MathF.Min(Min.Y, other.Min.Y), MathF.Min(Min.Z, other.Min.Z));
+        Max = new Vec3(MathF.Max(Max.X, other.Max.X), MathF.Max(Max.Y, other.Max.Y), MathF.Max(Max.Z, other.Max.Z));
+    }
+
+    public AABox Bounds() => this;
 
     public bool Overlaps(AABox other) =>
         Min.X < other.Max.X && Max.X > other.Min.X &&
@@ -645,6 +652,10 @@ struct AABox : IShape
     public static AABox Inverted() => new AABox(
         new Vec3(float.MaxValue, float.MaxValue, float.MaxValue),
         new Vec3(float.MinValue, float.MinValue, float.MinValue));
+
+    public static AABox Infinite() => new AABox(
+        new Vec3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity),
+        new Vec3(float.PositiveInfinity, float.PositiveInfinity, float.PositiveInfinity));
 }
 
 struct Box : IShape
@@ -662,6 +673,21 @@ struct Box : IShape
     public Vec3 Center => Local.Center;
 
     public Vec3 ClosestPoint(Vec3 p) => Center + Rot * (Local.ClosestPoint(LocalPoint(p)) - Center);
+
+    public AABox Bounds()
+    {
+        // Rotate each half-extent axis and sum absolute contributions per world axis.
+        Vec3 c = Local.Center;
+        Vec3 h = Local.Size * 0.5f;
+        Vec3 ax = Rot * new Vec3(h.X, 0, 0);
+        Vec3 ay = Rot * new Vec3(0, h.Y, 0);
+        Vec3 az = Rot * new Vec3(0, 0, h.Z);
+        Vec3 extent = new Vec3(
+            MathF.Abs(ax.X) + MathF.Abs(ay.X) + MathF.Abs(az.X),
+            MathF.Abs(ax.Y) + MathF.Abs(ay.Y) + MathF.Abs(az.Y),
+            MathF.Abs(ax.Z) + MathF.Abs(ay.Z) + MathF.Abs(az.Z));
+        return AABox.FromCenter(c, extent * 2f);
+    }
 
     public bool Overlaps(AABox box)
     {
@@ -741,6 +767,12 @@ struct Sphere : IShape
         return distSqr <= radSum * radSum;
     }
 
+    public AABox Bounds()
+    {
+        Vec3 r = new Vec3(Radius, Radius, Radius);
+        return new AABox(Center - r, Center + r);
+    }
+
     public bool Overlaps(AABox box)
     {
         Vec3 closest = box.ClosestPoint(Center);
@@ -786,6 +818,14 @@ struct Capsule : IShape
         return distSqr <= radiusSum * radiusSum;
     }
 
+    public AABox Bounds()
+    {
+        Vec3 r = new Vec3(Radius, Radius, Radius);
+        return new AABox(
+            new Vec3(MathF.Min(Spine.A.X, Spine.B.X), MathF.Min(Spine.A.Y, Spine.B.Y), MathF.Min(Spine.A.Z, Spine.B.Z)) - r,
+            new Vec3(MathF.Max(Spine.A.X, Spine.B.X), MathF.Max(Spine.A.Y, Spine.B.Y), MathF.Max(Spine.A.Z, Spine.B.Z)) + r);
+    }
+
     public bool Overlaps(AABox box)
     {
         // Ping-pong closest point iteration between spine and box.
@@ -819,6 +859,7 @@ struct Plane : IShape
     public Vec3 Position => Normal * Distance;
 
     public Vec3 ClosestPoint(Vec3 point) => point - Normal * (Vec3.Dot(Normal, point) - Distance);
+    public AABox Bounds() => AABox.Infinite();
 
     public bool Overlaps(AABox box)
     {
@@ -863,14 +904,11 @@ struct Triangle : IShape
     public Vec3 Center => (A + B + C) / 3f;
     public Plane Plane => Plane.AtTriangle(A, B, C);
 
-    public bool Overlaps(AABox box)
-    {
-        // Conservative: check if the triangle's bounds overlaps the box.
-        AABox triBox = new AABox(
-            new Vec3(MathF.Min(A.X, MathF.Min(B.X, C.X)), MathF.Min(A.Y, MathF.Min(B.Y, C.Y)), MathF.Min(A.Z, MathF.Min(B.Z, C.Z))),
-            new Vec3(MathF.Max(A.X, MathF.Max(B.X, C.X)), MathF.Max(A.Y, MathF.Max(B.Y, C.Y)), MathF.Max(A.Z, MathF.Max(B.Z, C.Z))));
-        return triBox.Overlaps(box);
-    }
+    public AABox Bounds() => new AABox(
+        new Vec3(MathF.Min(A.X, MathF.Min(B.X, C.X)), MathF.Min(A.Y, MathF.Min(B.Y, C.Y)), MathF.Min(A.Z, MathF.Min(B.Z, C.Z))),
+        new Vec3(MathF.Max(A.X, MathF.Max(B.X, C.X)), MathF.Max(A.Y, MathF.Max(B.Y, C.Y)), MathF.Max(A.Z, MathF.Max(B.Z, C.Z))));
+
+    public bool Overlaps(AABox box) => Bounds().Overlaps(box);
 
     public RayHit? Intersect(Ray ray)
     {
