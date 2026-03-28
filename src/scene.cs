@@ -5,11 +5,13 @@ using System.Collections.Generic;
 struct TraceResult
 {
     public RayHit? Hit;
+    public Material? Material;
     public Color Radiance;
 
-    public TraceResult(RayHit? hit, Color radiance)
+    public TraceResult(RayHit? hit, Material? material, Color radiance)
     {
         Hit = hit;
+        Material = material;
         Radiance = radiance;
     }
 }
@@ -52,21 +54,20 @@ class Scene
 
     public TraceResult Trace(Ray ray, ref Rng rng)
     {
-        float closestDist = float.MaxValue;
+        RayHit? closestHit = null;
         Material? closestMaterial = null;
         foreach (Object obj in _objects)
         {
-            if (obj.Intersect(ray) is RayHit hit && hit.Dist < closestDist)
+            if (obj.Intersect(ray) is RayHit hit && (closestHit is null || hit.Dist < closestHit.Value.Dist))
             {
-                closestDist = hit.Dist;
+                closestHit = hit;
                 closestMaterial = obj.Material;
             }
         }
-        if (closestMaterial is Material m)
-        {
-            return new TraceResult(null, m.Color);
-        }
-        return new TraceResult(null, SkyRadiance(ray));
+        if (closestHit is RayHit h)
+            return new TraceResult(h, closestMaterial, new Color(0, 0, 0));
+
+        return new TraceResult(null, null, SkyRadiance(ray));
     }
 
     private static Color SkyRadiance(Ray ray)
