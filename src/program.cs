@@ -2,9 +2,10 @@ using System;
 
 Console.WriteLine("Performing setup");
 
-const uint width = 128;
-const uint height = 128;
+const uint width = 256;
+const uint height = 256;
 const uint blockSize = 16;
+const uint samples = 4;
 const String outputPath = "output.bmp";
 
 Scene scene = new Scene(Sky.Default());
@@ -30,7 +31,7 @@ scene.AddObject(new Object(
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
 
-Renderer renderer = new Renderer(scene, view, width, height, blockSize);
+Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples);
 
 Console.WriteLine("Starting render");
 (uint Step, uint Total) progress;

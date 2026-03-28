@@ -14,10 +14,20 @@ class Renderer
     private uint _blockCountX, _blockCountY, _blockCountTotal;
     private uint _blockCurrent;
 
-    public Renderer(Scene scene, View view, uint width, uint height, uint blockSize)
+    private uint _samples;
+
+    public Renderer(
+        Scene scene,
+        View view,
+        uint width,
+        uint height,
+        uint blockSize,
+        uint samples)
     {
         Debug.Assert(width > 0 && height > 0);
         Debug.Assert(blockSize > 0);
+        Debug.Assert(samples > 0);
+
         _scene = scene;
         _view = view;
         _width = width;
@@ -28,6 +38,8 @@ class Renderer
         _blockCountX = (_width + _blockSize - 1) / _blockSize;
         _blockCountY = (_height + _blockSize - 1) / _blockSize;
         _blockCountTotal = _blockCountX * _blockCountY;
+
+        _samples = samples;
 
         Result = new Image(width, height);
     }
@@ -65,10 +77,14 @@ class Renderer
     private Pixel Render(uint x, uint y)
     {
         Rng rng = new Rng(x, y);
-        Vec2 pos = new Vec2((x + 0.5f) / _width, (y + 0.5f) / _height);
-        Ray ray = _view.Ray(pos, _aspect);
-        Fragment result = _scene.Trace(ray, ref rng);
-        return Tonemap(result.Radiance).ToPixel();
+        Color radiance = new Color(0f);
+        for (uint i = 0; i != _samples; ++i)
+        {
+            Vec2 pos = new Vec2((x + rng.NextFloat()) / _width, (y + rng.NextFloat()) / _height);
+            Ray ray = _view.Ray(pos, _aspect);
+            radiance = radiance + _scene.Trace(ray, ref rng).Radiance;
+        }
+        return Tonemap(radiance / _samples).ToPixel();
     }
 
     private static Color Tonemap(Color radiance)
