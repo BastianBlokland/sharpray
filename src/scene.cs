@@ -20,12 +20,14 @@ struct Material
 {
     public Color Color;
     public float Roughness;
+    public float Metallic;
     public Color Radiance;
 
-    public Material(Color color, float roughness, Color radiance = default)
+    public Material(Color color, float roughness, float metallic = 0f, Color radiance = default)
     {
         Color = color;
         Roughness = roughness;
+        Metallic = metallic;
         Radiance = radiance;
     }
 }
@@ -155,7 +157,8 @@ class Scene
             float roughness = 1.0f;
             if (frag.Material is Material material)
             {
-                energy *= material.Color;
+                Color specularColor = Color.Lerp(Color.White, material.Color, material.Metallic);
+                energy *= Color.Lerp(material.Color, specularColor, 1f - roughness);
                 roughness = material.Roughness;
             }
 
