@@ -16,6 +16,8 @@ const String outputPath = "output.bmp";
 const String normalsPath = "normals.bmp";
 const uint previewInterval = 10;
 
+Overlay overlay = new Overlay();
+
 Sky sky = new Sky(
     new Color(0.35f, 0.45f, 0.75f),
     new Color(0.85f, 0.8f, 0.8f),
@@ -71,19 +73,20 @@ scene.AddObject(new Object(
     new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
     new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
 
-scene.AddObject(new Object(
-    new Transform(new Vec3(0f, 0.2f, 7.5f)),
-    new Material(new Color(0.9f, 0.5f, 0.2f), 0.4f),
-    new Mesh(
+{
+    Transform trans = new Transform(new Vec3(0f, 0.2f, 7.5f));
+    Mesh mesh = new Mesh(
         new Triangle(new Vec3(0f, 1f, 0f), new Vec3(1f, -1f, -1f), new Vec3(-1f, -1f, -1f)),
         new Triangle(new Vec3(0f, 1f, 0f), new Vec3(0f, -1f, 1f), new Vec3(1f, -1f, -1f)),
         new Triangle(new Vec3(0f, 1f, 0f), new Vec3(-1f, -1f, -1f), new Vec3(0f, -1f, 1f)),
-        new Triangle(new Vec3(-1f, -1f, -1f), new Vec3(1f, -1f, -1f), new Vec3(0f, -1f, 1f)))));
+        new Triangle(new Vec3(-1f, -1f, -1f), new Vec3(1f, -1f, -1f), new Vec3(0f, -1f, 1f)));
+    scene.AddObject(new Object(trans, new Material(new Color(0.9f, 0.5f, 0.2f), 0.4f), mesh));
+
+    mesh.OverlayWireframe(overlay, trans, Color.Yellow);
+}
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
-
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces);
-Overlay overlay = new Overlay();
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal);
 
 Console.WriteLine("Starting render");

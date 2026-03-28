@@ -38,4 +38,18 @@ class Mesh : IShape
         }
         return closest;
     }
+
+    public void OverlayWireframe(Overlay overlay, Transform trans, Color color)
+    {
+        foreach (Triangle tri in _triangles)
+        {
+            Vec3 a = trans.TransformPoint(tri.A);
+            Vec3 b = trans.TransformPoint(tri.B);
+            Vec3 c = trans.TransformPoint(tri.C);
+
+            overlay.AddLine(new Line(a, b), color);
+            overlay.AddLine(new Line(b, c), color);
+            overlay.AddLine(new Line(c, a), color);
+        }
+    }
 }
