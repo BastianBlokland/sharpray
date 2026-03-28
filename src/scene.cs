@@ -103,7 +103,7 @@ class Scene
 
     public void AddObject(Object obj) => _objects.Add(obj);
 
-    public Fragment Trace(Ray ray, ref Rng rng)
+    public Fragment Trace(Ray ray)
     {
         RayHit? closestHit = null;
         Material? closestMaterial = null;
@@ -127,7 +127,7 @@ class Scene
         Color radiance = Color.Black, color = Color.White;
         for (uint i = 0; i != bounces; ++i)
         {
-            Fragment frag = Trace(ray, ref rng);
+            Fragment frag = Trace(ray);
             radiance += frag.Radiance * color;
 
             if (frag.Hit is RayHit hit)
