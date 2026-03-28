@@ -1068,7 +1068,7 @@ struct Triangle : IShape
         Vec3 h = Vec3.Cross(ray.Dir, ac);
         float det = Vec3.Dot(ab, h);
 
-        if (det >= -1e-6f) return null; // Back-facing or parallel.
+        if (det <= 1e-6f) return null; // Back-facing or parallel.
 
         float invDet = 1f / det;
         Vec3 ao = ray.Origin - A;
