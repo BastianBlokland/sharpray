@@ -125,7 +125,7 @@ class Scene
             if (frag.Hit is RayHit hit)
             {
                 ray.Origin = ray[hit.Dist] + hit.Norm * 1e-4f;
-                ray.Dir = Vec3.RandOnHemiSphere(ref rng, hit.Norm);
+                ray.Dir = (hit.Norm + Vec3.RandOnSphere(ref rng)).Normalize(); // Cosine distruction.
 
                 if (frag.Material is Material material)
                 {
