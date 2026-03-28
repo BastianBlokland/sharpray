@@ -368,3 +368,64 @@ struct Ray3
 
     public float Distance(Vec3 p) => Vec3.Dot(p - Origin, Dir);
 }
+
+struct Transform
+{
+    public Vec3 Pos;
+    public Quat Rot;
+    public Vec3 Scale;
+
+    public Transform(Vec3 pos, Quat rot, Vec3 scale)
+    {
+        Pos = pos;
+        Rot = rot;
+        Scale = scale;
+    }
+
+    public Transform(Vec3 pos, Quat rot)
+    {
+        Pos = pos;
+        Rot = rot;
+        Scale = new Vec3(1, 1, 1);
+    }
+
+    public Transform(Vec3 pos)
+    {
+        Pos = pos;
+        Rot = Quat.Identity();
+        Scale = new Vec3(1, 1, 1);
+    }
+
+    public void RotateAround(Vec3 pivot, Quat rot)
+    {
+        Pos = pivot + rot * (Pos - pivot);
+        Rot = (rot * Rot).Normalize();
+    }
+
+    public Vec3 TransformDir(Vec3 d) => Rot * d;
+    public Vec3 TransformDirInv(Vec3 d) => Rot.Inverse() * d;
+
+    public Vec3 TransformPoint(Vec3 p) => Pos + Rot * new Vec3(p.X * Scale.X, p.Y * Scale.Y, p.Z * Scale.Z);
+    public Vec3 TransformPointInv(Vec3 p)
+    {
+        Vec3 r = Rot.Inverse() * (p - Pos);
+        return new Vec3(r.X / Scale.X, r.Y / Scale.Y, r.Z / Scale.Z);
+    }
+
+    public Transform Inverse()
+    {
+        Vec3 invScale = new Vec3(1f / Scale.X, 1f / Scale.Y, 1f / Scale.Z);
+        Quat invRot = Rot.Inverse();
+        Vec3 invPos = invRot * new Vec3(-Pos.X * invScale.X, -Pos.Y * invScale.Y, -Pos.Z * invScale.Z);
+        return new Transform(invPos, invRot, invScale);
+    }
+
+    public Mat4 ToMat() => Mat4.Trs(Pos, Rot, Scale);
+
+    public static Transform Identity() => new Transform(new Vec3(0, 0, 0), Quat.Identity(), new Vec3(1, 1, 1));
+
+    public static Transform operator *(Transform a, Transform b) => new Transform(
+        a.TransformPoint(b.Pos),
+        a.Rot * b.Rot,
+        new Vec3(a.Scale.X * b.Scale.X, a.Scale.Y * b.Scale.Y, a.Scale.Z * b.Scale.Z));
+}
