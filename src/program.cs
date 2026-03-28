@@ -88,7 +88,7 @@ do
 {
     progress = renderer.Tick();
 
-    // Previewing intermediate results.
+    // Preview intermediate results.
     if (progress.Step % previewInterval == 0)
         compositor.Preview(renderer.Radiance, width, height).Save(outputPath);
 
