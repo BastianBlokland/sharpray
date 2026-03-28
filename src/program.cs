@@ -10,8 +10,8 @@ const uint blockSize = 16;
 const uint samples = 128;
 const uint bounces = 8;
 const uint saveInterval = 10;
-const float denoiseSigmaSpace = 3.0f;
-const float denoiseSigmaColor = 0.1f;
+const float denoiseSigmaSpace = 4.0f;
+const float denoiseSigmaColor = 0.15f;
 const float denoiseSigmaNormal = 0.5f;
 const String outputPath = "output.bmp";
 const String normalsPath = "normals.bmp";
@@ -27,23 +27,53 @@ Sky sky = new Sky(
 Scene scene = new Scene(sky);
 
 scene.AddObject(new Object(
-    new Transform(new Vec3(0f, 0f, 5f)),
-    new Material(new Color(1f, 0.2f, 0.2f)),
+    new Transform(new Vec3(-2f, 0.5f, 9f)),
+    new Material(new Color(0.1f, 0.8f, 0.7f), 0.8f),
+    new Sphere(Vec3.Zero, 1.5f)));
+
+scene.AddObject(new Object(
+    new Transform(new Vec3(2f, 0.5f, 9f)),
+    new Material(new Color(1f, 0.75f, 0.1f), 0.1f),
+    new Sphere(Vec3.Zero, 1.5f)));
+
+scene.AddObject(new Object(
+    new Transform(new Vec3(-2.5f, 0f, 6f)),
+    new Material(new Color(1f, 0.2f, 0.2f), 1.0f),
     new Sphere(Vec3.Zero, 1f)));
 
 scene.AddObject(new Object(
-    new Transform(new Vec3(2.5f, 0f, 5f)),
-    new Material(new Color(0.2f, 1f, 0.2f)),
+    new Transform(new Vec3(0f, 0f, 6f)),
+    new Material(new Color(0.2f, 1f, 0.2f), 0.5f),
     new Sphere(Vec3.Zero, 1f)));
 
 scene.AddObject(new Object(
-    new Transform(new Vec3(-2.5f, 0f, 5f)),
-    new Material(new Color(0.2f, 0.2f, 1f)),
+    new Transform(new Vec3(2.5f, 0f, 6f)),
+    new Material(new Color(0.2f, 0.2f, 1f), 0.0f),
     new Sphere(Vec3.Zero, 1f)));
+
+scene.AddObject(new Object(
+    new Transform(new Vec3(-1.25f, -0.4f, 3.5f)),
+    new Material(new Color(1f, 0.5f, 0.1f), 0.75f),
+    new Sphere(Vec3.Zero, 0.6f)));
+
+scene.AddObject(new Object(
+    new Transform(new Vec3(1.25f, -0.4f, 3.5f)),
+    new Material(new Color(0.6f, 0.2f, 1f), 0.25f),
+    new Sphere(Vec3.Zero, 0.6f)));
+
+scene.AddObject(new Object(
+    new Transform(new Vec3(-0.5f, -0.65f, 1.5f)),
+    new Material(new Color(0.9f, 0.9f, 0.9f), 0.9f),
+    new Sphere(Vec3.Zero, 0.35f)));
+
+scene.AddObject(new Object(
+    new Transform(new Vec3(0.5f, -0.65f, 1.5f)),
+    new Material(new Color(1f, 0.4f, 0.6f), 0.05f),
+    new Sphere(Vec3.Zero, 0.35f)));
 
 scene.AddObject(new Object(
     Transform.Identity(),
-    new Material(new Color(0.1f, 0.1f, 0.1f)),
+    new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
     new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));

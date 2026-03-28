@@ -19,11 +19,13 @@ struct Fragment
 struct Material
 {
     public Color Color;
+    public float Roughness;
     public Color Radiance;
 
-    public Material(Color color, Color radiance = default)
+    public Material(Color color, float roughness, Color radiance = default)
     {
         Color = color;
+        Roughness = roughness;
         Radiance = radiance;
     }
 }
@@ -150,9 +152,11 @@ class Scene
             radiance += frag.Radiance * energy;
 
             // Absorb some of the light frequencies.
+            float roughness = 1.0f;
             if (frag.Material is Material material)
             {
                 energy *= material.Color;
+                roughness = material.Roughness;
             }
 
             if (frag.Hit is RayHit hit)
@@ -181,8 +185,11 @@ class Scene
                     energy /= survive;
                 }
 
-                // Compute scatter ray (Cosine-weighted distribution).
-                Vec3 scatterDir = (hit.Norm + Vec3.RandOnSphere(ref rng)).NormalizeOr(hit.Norm);
+                // Compute scatter ray.
+                Vec3 scatterDirDiffuse = (hit.Norm + Vec3.RandOnSphere(ref rng)).NormalizeOr(hit.Norm); // Cosine-weighted distribution.
+                Vec3 scatterDirSpecular = Vec3.Reflect(ray.Dir, hit.Norm);
+                Vec3 scatterDir = Vec3.Lerp(scatterDirSpecular, scatterDirDiffuse, roughness).NormalizeOr(hit.Norm);
+
                 ray = new Ray(hitPos, scatterDir);
             }
             else
