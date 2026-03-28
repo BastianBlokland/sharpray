@@ -1080,6 +1080,29 @@ struct View
         Vec3 dir = Trans.TransformDir(localDir.Normalize());
         return new Ray(origin, dir);
     }
+
+    public Vec2? Project(Vec3 worldPos, float aspect)
+    {
+        Vec3 local = Trans.TransformPointInv(worldPos);
+        if (local.Z <= Near)
+            return null;
+
+        float tanHalfHor, tanHalfVer;
+        if (aspect >= 1f)
+        {
+            tanHalfHor = MathF.Tan(Fov * 0.5f);
+            tanHalfVer = tanHalfHor / aspect;
+        }
+        else
+        {
+            tanHalfVer = MathF.Tan(Fov * 0.5f);
+            tanHalfHor = tanHalfVer * aspect;
+        }
+
+        float ndcX = (local.X / local.Z) / tanHalfHor;
+        float ndcY = (local.Y / local.Z) / tanHalfVer;
+        return new Vec2((ndcX + 1f) * 0.5f, (1f - ndcY) * 0.5f);
+    }
 }
 
 struct Rng
