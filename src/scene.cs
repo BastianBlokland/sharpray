@@ -115,9 +115,36 @@ class Scene
                 closestMaterial = obj.Material;
             }
         }
+
         if (closestHit is RayHit h)
             return new Fragment(h, closestMaterial, closestMaterial!.Value.Radiance);
 
         return new Fragment(null, null, _sky.Radiance(ray));
+    }
+
+    public Color Sample(Ray ray, ref Rng rng, uint bounces)
+    {
+        Color radiance = Color.Black, color = Color.White;
+        for (uint i = 0; i != bounces; ++i)
+        {
+            Fragment frag = Trace(ray, ref rng);
+            radiance += frag.Radiance * color;
+
+            if (frag.Hit is RayHit hit)
+            {
+                ray.Origin = ray[hit.Dist];
+                ray.Dir = Vec3.RandOnHemiSphere(ref rng, hit.Norm);
+
+                if (frag.Material is Material material)
+                {
+                    color *= material.Color;
+                }
+            }
+            else
+            {
+                break; // Bounced out of the scene.
+            }
+        }
+        return radiance;
     }
 }

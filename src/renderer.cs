@@ -15,6 +15,7 @@ class Renderer
     private uint _blockCurrent;
 
     private uint _samples;
+    private uint _bounches;
 
     public Renderer(
         Scene scene,
@@ -22,11 +23,13 @@ class Renderer
         uint width,
         uint height,
         uint blockSize,
-        uint samples)
+        uint samples,
+        uint bounces)
     {
         Debug.Assert(width > 0 && height > 0);
         Debug.Assert(blockSize > 0);
         Debug.Assert(samples > 0);
+        Debug.Assert(bounces > 0);
 
         _scene = scene;
         _view = view;
@@ -40,6 +43,7 @@ class Renderer
         _blockCountTotal = _blockCountX * _blockCountY;
 
         _samples = samples;
+        _bounches = bounces;
 
         Result = new Image(width, height);
     }
@@ -82,7 +86,7 @@ class Renderer
         {
             Vec2 pos = new Vec2((x + rng.NextFloat()) / _width, (y + rng.NextFloat()) / _height);
             Ray ray = _view.Ray(pos, _aspect);
-            radiance = radiance + _scene.Trace(ray, ref rng).Radiance;
+            radiance += _scene.Sample(ray, ref rng, _bounches);
         }
         return Tonemap(radiance / _samples).ToPixel();
     }
