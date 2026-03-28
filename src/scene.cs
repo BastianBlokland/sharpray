@@ -132,7 +132,7 @@ class Scene
 
             if (frag.Hit is RayHit hit)
             {
-                ray.Origin = ray[hit.Dist];
+                ray.Origin = ray[hit.Dist] + hit.Norm * 1e-4f;
                 ray.Dir = Vec3.RandOnHemiSphere(ref rng, hit.Norm);
 
                 if (frag.Material is Material material)
