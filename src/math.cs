@@ -1024,7 +1024,7 @@ struct View
         Near = 0.1f;
     }
 
-    public View(Transform trans, float fov, float near)
+    public View(Transform trans, float fov, float near = 0.1f)
     {
         Debug.Assert(fov > 0f && fov < MathF.PI, "Invalid fov");
         Debug.Assert(near > 0f, "Invalid near plane");

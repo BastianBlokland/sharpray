@@ -23,7 +23,7 @@ scene.AddObject(new Object(
     new Material(new Color(0.2f, 0.2f, 1f)),
     new Sphere(Vec3.Zero, 1f)));
 
-View view = new View(new Transform(new Vec3(0f, 1f, -1f)));
+View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
 
 Renderer renderer = new Renderer(scene, view, width, height, blockSize);
 
