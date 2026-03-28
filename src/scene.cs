@@ -2,13 +2,13 @@
 using System;
 using System.Collections.Generic;
 
-struct TraceResult
+struct Fragment
 {
     public RayHit? Hit;
     public Material? Material;
     public Color Radiance;
 
-    public TraceResult(RayHit? hit, Material? material, Color radiance)
+    public Fragment(RayHit? hit, Material? material, Color radiance)
     {
         Hit = hit;
         Material = material;
@@ -44,21 +44,66 @@ class Object
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
 }
 
+struct Sky
+{
+    public Color RadianceTop;
+    public Color RadianceMiddle;
+    public Color RadianceBottom;
+    public Vec3 SunDir;
+    public Color SunRadiance;
+    public float SunCosAngle;
+
+    public Sky(
+        Color radianceTop,
+        Color radianceMiddle,
+        Color radianceBottom,
+        Vec3 sunDir,
+        Color sunRadiance,
+        float sunCosAngle)
+    {
+        RadianceTop = radianceTop;
+        RadianceMiddle = radianceMiddle;
+        RadianceBottom = radianceBottom;
+        SunDir = sunDir;
+        SunRadiance = sunRadiance;
+        SunCosAngle = sunCosAngle;
+    }
+
+    public Color Radiance(Ray ray)
+    {
+        const float bias = 0.0001f;
+        float topBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias - ray.Dir.Y), 4f);
+        float bottomBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias + ray.Dir.Y), 40f);
+        float middleBlend = 1f - topBlend - bottomBlend;
+        Color sky = RadianceTop * topBlend + RadianceMiddle * middleBlend + RadianceBottom * bottomBlend;
+
+        float sunDot = Vec3.Dot(ray.Dir, SunDir);
+        float sunBlend = MathF.Max(0f, (sunDot - SunCosAngle) / (1f - SunCosAngle));
+        return sky + SunRadiance * sunBlend;
+    }
+
+    public static Sky Default() => new Sky(
+        new Color(0.4f, 0.5f, 0.8f),
+        new Color(1.0f, 0.9f, 0.9f),
+        new Color(0.5f, 0.425f, 0.275f),
+        new Vec3(0.4f, 0.5f, 1f).Normalize(),
+        new Color(4f, 3.5f, 2.5f),
+        MathF.Cos(float.DegreesToRadians(2.6f)));
+}
+
 class Scene
 {
     private List<Object> _objects = new List<Object>();
+    private Sky _sky;
 
-    static readonly Color _skyRadianceTop = new Color(0.4f, 0.5f, 0.8f);
-    static readonly Color _skyRadianceMiddle = new Color(1.0f, 0.9f, 0.9f);
-    static readonly Color _skyRadianceBottom = new Color(0.5f, 0.425f, 0.275f);
-
-    static readonly Vec3 _sunDir = new Vec3(0.4f, 0.5f, 1f).Normalize();
-    static readonly Color _sunRadiance = new Color(4f, 3.5f, 2.5f);
-    const float _sunCosAngle = 0.999f; // ~2.6 degrees.
+    public Scene(Sky sky)
+    {
+        _sky = sky;
+    }
 
     public void AddObject(Object obj) => _objects.Add(obj);
 
-    public TraceResult Trace(Ray ray, ref Rng rng)
+    public Fragment Trace(Ray ray, ref Rng rng)
     {
         RayHit? closestHit = null;
         Material? closestMaterial = null;
@@ -71,22 +116,8 @@ class Scene
             }
         }
         if (closestHit is RayHit h)
-            return new TraceResult(h, closestMaterial, closestMaterial!.Value.Radiance);
+            return new Fragment(h, closestMaterial, closestMaterial!.Value.Radiance);
 
-        return new TraceResult(null, null, SkyRadiance(ray));
-    }
-
-    private static Color SkyRadiance(Ray ray)
-    {
-        const float bias = 0.0001f;
-        float topBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias - ray.Dir.Y), 4f);
-        float bottomBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias + ray.Dir.Y), 40f);
-        float middleBlend = 1f - topBlend - bottomBlend;
-        Color sky = _skyRadianceTop * topBlend + _skyRadianceMiddle * middleBlend + _skyRadianceBottom * bottomBlend;
-
-        float sunDot = Vec3.Dot(ray.Dir, _sunDir);
-        float sunBlend = MathF.Max(0f, (sunDot - _sunCosAngle) / (1f - _sunCosAngle));
-
-        return sky + _sunRadiance * sunBlend;
+        return new Fragment(null, null, _sky.Radiance(ray));
     }
 }

@@ -67,7 +67,7 @@ class Renderer
         Rng rng = new Rng(x, y);
         Vec2 pos = new Vec2((x + 0.5f) / _width, (y + 0.5f) / _height);
         Ray ray = _view.Ray(pos, _aspect);
-        TraceResult result = _scene.Trace(ray, ref rng);
+        Fragment result = _scene.Trace(ray, ref rng);
         return Tonemap(result.Radiance).ToPixel();
     }
 

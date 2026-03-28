@@ -7,7 +7,7 @@ const uint height = 128;
 const uint blockSize = 16;
 const String outputPath = "output.bmp";
 
-Scene scene = new Scene();
+Scene scene = new Scene(Sky.Default());
 scene.AddObject(new Object(
     new Transform(new Vec3(0f, 0f, 5f)),
     new Material(new Color(1f, 0.2f, 0.2f), new Color(1f, 0.2f, 0.2f)),
