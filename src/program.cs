@@ -7,8 +7,9 @@ Console.WriteLine("Performing setup");
 const uint width = 256;
 const uint height = 256;
 const uint blockSize = 16;
-const uint samples = 4;
-const uint bounces = 64;
+const uint samples = 32;
+const uint bounces = 128;
+const uint saveInterval = 10;
 const String outputPath = "output.bmp";
 
 Scene scene = new Scene(Sky.Default());
@@ -42,6 +43,11 @@ Console.WriteLine("Starting render");
 do
 {
     progress = renderer.Tick();
+
+    // Save intermediate results for previewing purposes.
+    if (progress.Step % saveInterval == 0)
+        renderer.Result.Save(outputPath);
+
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
 
