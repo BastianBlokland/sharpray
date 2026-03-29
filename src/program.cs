@@ -1,20 +1,23 @@
 using System;
+using System.IO;
 
 Timestamp timeStart = Timestamp.Now();
 
 Console.WriteLine("Performing setup");
 
-const uint width = 512;
-const uint height = 512;
+const uint width = 256;
+const uint height = 256;
 const uint blockSize = 16;
 const uint samples = 128;
 const uint bounces = 8;
 const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.15f;
 const float denoiseSigmaNormal = 0.5f;
-const String outputPath = "output.bmp";
-const String normalsPath = "normals.bmp";
+const String outputPath = "output";
+const bool outputImage = true, outputNormal = true, outputDepth = true;
 const uint previewInterval = 10;
+
+Directory.CreateDirectory(outputPath);
 
 Overlay overlay = new Overlay();
 
@@ -96,13 +99,16 @@ do
     progress = renderer.Tick();
 
     // Preview intermediate results.
-    if (progress.Step % previewInterval == 0)
-        compositor.Preview(renderer.Radiance, width, height, view, overlay).Save(outputPath);
+    if (outputImage && progress.Step % previewInterval == 0)
+    {
+        Image preview = compositor.Preview(renderer.Radiance, width, height, view, overlay);
+        preview.Save(Path.Combine(outputPath, "image.bmp"));
+    }
 
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
 
-if (!string.IsNullOrEmpty(normalsPath))
+if (outputNormal)
 {
     Image normalsImage = new Image(width, height);
     for (uint i = 0; i < width * height; ++i)
@@ -112,12 +118,29 @@ if (!string.IsNullOrEmpty(normalsPath))
             (byte)((renderer.Normals[i].Y * 0.5f + 0.5f) * 255f),
             (byte)((renderer.Normals[i].Z * 0.5f + 0.5f) * 255f));
     }
-    normalsImage.Save(normalsPath);
+    normalsImage.Save(Path.Combine(outputPath, "normal.bmp"));
 }
 
-Console.WriteLine("Compositing");
+if (outputDepth)
+{
+    Image depthImage = new Image(width, height);
+    for (uint i = 0; i < width * height; ++i)
+    {
+        const float depthMaxInv = 1f / 25f;
+        float depth = renderer.Depth[i];
+        depthImage.Pixels[i] = float.IsInfinity(depth)
+            ? Pixel.Red
+            : new Pixel((byte)(Math.Clamp(depth * depthMaxInv, 0f, 1f) * 255f));
+    }
+    depthImage.Save(Path.Combine(outputPath, "depth.bmp"));
+}
 
-compositor.Compose(renderer.Radiance, renderer.Normals, width, height, view, overlay).Save(outputPath);
+if (outputImage)
+{
+    Console.WriteLine("Compositing");
+    Image image = compositor.Compose(renderer.Radiance, renderer.Normals, width, height, view, overlay);
+    image.Save(Path.Combine(outputPath, "image.bmp"));
+}
 
 double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
 Console.WriteLine($"Finished (time: {timeElapsed:F1} s): {outputPath}");

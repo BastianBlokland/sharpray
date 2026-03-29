@@ -11,5 +11,4 @@
 
 # Output
 /result
-/output.*
-/normals.*
+/output/
