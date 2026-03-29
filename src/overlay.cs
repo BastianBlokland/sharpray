@@ -3,9 +3,15 @@ using System.Collections.Generic;
 
 class Overlay
 {
+    public enum Align
+    {
+        TopLeft,
+        Center,
+    }
+
     private record struct LineEntry(Line Line, Color Color, bool DepthTest, float DepthBias);
-    private record struct TextEntry3D(Vec3 WorldPos, string Text, Color Color);
-    private record struct TextEntry2D(Vec2i ScreenPos, string Text, Color Color);
+    private record struct TextEntry3D(Vec3 WorldPos, string Text, Color Color, Align Align);
+    private record struct TextEntry2D(Vec2i ScreenPos, string Text, Color Color, Align Align);
 
     private List<LineEntry> _lines = new List<LineEntry>();
     private List<TextEntry3D> _text3D = new List<TextEntry3D>();
@@ -38,11 +44,11 @@ class Overlay
         AddLine(new Line(corners[3], corners[7]), color, depthTest, depthBias);
     }
 
-    public void AddText(string text, Vec3 worldPos, Color color) =>
-        _text3D.Add(new TextEntry3D(worldPos, text, color));
+    public void AddText(string text, Vec3 worldPos, Color color, Align align = Align.Center) =>
+        _text3D.Add(new TextEntry3D(worldPos, text, color, align));
 
-    public void AddText(string text, Vec2i screenPos, Color color) =>
-        _text2D.Add(new TextEntry2D(screenPos, text, color));
+    public void AddText(string text, Vec2i screenPos, Color color, Align align = Align.TopLeft) =>
+        _text2D.Add(new TextEntry2D(screenPos, text, color, align));
 
     public void Draw(Image image, View view, float[]? depth = null)
     {
@@ -73,11 +79,11 @@ class Overlay
         foreach (TextEntry3D entry in _text3D)
         {
             if (view.Project(entry.WorldPos, aspect) is (Vec2 pos, float _))
-                RasterizeText(image, entry.Text, (pos * size).ToInt(), entry.Color.ToPixel());
+                RasterizeText(image, entry.Text, (pos * size).ToInt(), entry.Align, entry.Color.ToPixel());
         }
 
         foreach (TextEntry2D entry in _text2D)
-            RasterizeText(image, entry.Text, entry.ScreenPos, entry.Color.ToPixel());
+            RasterizeText(image, entry.Text, entry.ScreenPos, entry.Align, entry.Color.ToPixel());
     }
 
     private static void RasterizeLine(
@@ -134,8 +140,12 @@ class Overlay
         }
     }
 
-    private static void RasterizeText(Image image, string text, Vec2i coord, Pixel value)
+    private static void RasterizeText(Image image, string text, Vec2i coord, Align align, Pixel value)
     {
+        if (align == Align.Center)
+        {
+            coord -= new Vec2i(text.Length * Font.CharWidth / 2, Font.CharHeight / 2);
+        }
         for (int i = 0; i != text.Length; ++i)
         {
             int c = text[i];
