@@ -119,6 +119,38 @@ class Bvh<T> where T : IShape
         return best;
     }
 
+    public bool IntersectAny(Ray ray)
+    {
+        if (_nodeCount == 0)
+            return false;
+
+        Span<int> queue = stackalloc int[32];
+        int queueCount = 1; // Insert root node (index is already zero).
+
+        while (queueCount > 0)
+        {
+            ref Node node = ref _nodes[queue[--queueCount]];
+            if (node.ShapeCount == 0)
+            {
+                // Parent node: enqueue children whose bounds are hit.
+                if (_nodes[node.Child].Bounds.IntersectDist(ray) is not null)
+                    queue[queueCount++] = node.Child;
+                if (_nodes[node.Child + 1].Bounds.IntersectDist(ray) is not null)
+                    queue[queueCount++] = node.Child + 1;
+            }
+            else
+            {
+                // Leaf node: return true on the first shape hit.
+                for (int i = 0; i != node.ShapeCount; ++i)
+                {
+                    if (_shapes[_items[node.Child + i]].Intersect(ray) is not null)
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue)
     {
         OverlayBoundsNode(overlay, trans, 0, 0, maxDepth);
