@@ -33,21 +33,27 @@ Sky sky = new Sky(
     float.DegreesToRadians(2.6f));
 
 Scene scene = new Scene(sky);
-
-scene.AddObject(new Object(
-    Transform.Identity(),
-    new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
-    new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
-
+using (counters.Scope(Timer.Setup))
 {
-    Quat rot = Quat.AngleAxis(float.DegreesToRadians(200f), Vec3.Up);
-    Vec3 scale = new Vec3(32f, 32f, 32f);
-    Mesh mesh = ObjLoader.Load("assets/bunny.obj");
-    const float floorY = -1f;
-    float meshBottomY = (mesh.Bounds().Center.Y - mesh.Bounds().Min.Y) * scale.Y;
-    Vec3 desiredPos = new Vec3(-1, floorY + meshBottomY, 4f);
-    Transform trans = new Transform(desiredPos - rot * (mesh.Bounds().Center * scale), rot, scale);
-    scene.AddObject(new Object(trans, new Material(new Color(0.72f, 0.45f, 0.2f), 0.35f, 1.0f), mesh));
+    // Floor.
+    scene.AddObject(new Object(
+        Transform.Identity(),
+        new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
+        new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
+
+    // Bunny.
+    {
+        Quat rot = Quat.AngleAxis(float.DegreesToRadians(200f), Vec3.Up);
+        Vec3 scale = new Vec3(32f, 32f, 32f);
+        Mesh mesh = ObjLoader.Load("assets/bunny.obj");
+        const float floorY = -1f;
+        float meshBottomY = (mesh.Bounds().Center.Y - mesh.Bounds().Min.Y) * scale.Y;
+        Vec3 desiredPos = new Vec3(-1, floorY + meshBottomY, 4f);
+        Transform trans = new Transform(desiredPos - rot * (mesh.Bounds().Center * scale), rot, scale);
+        scene.AddObject(new Object(trans, new Material(new Color(0.72f, 0.45f, 0.2f), 0.35f, 1.0f), mesh));
+    }
+
+    scene.Lock();
 }
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));

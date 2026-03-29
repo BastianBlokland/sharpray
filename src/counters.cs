@@ -22,6 +22,7 @@ enum Counter
 
 enum Timer
 {
+    Setup,
     Render,
     Composite,
     Total,
