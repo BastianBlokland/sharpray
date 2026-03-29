@@ -11,6 +11,19 @@ struct Pixel
         G = g;
         B = b;
     }
+
+    public Pixel(byte v)
+    {
+        R = v;
+        G = v;
+        B = v;
+    }
+
+    public static Pixel Black => new Pixel(0);
+    public static Pixel White => new Pixel(255);
+    public static Pixel Red => new Pixel(255, 0, 0);
+    public static Pixel Green => new Pixel(0, 255, 0);
+    public static Pixel Blue => new Pixel(0, 0, 255);
 }
 
 class Image
