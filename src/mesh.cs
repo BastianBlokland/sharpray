@@ -4,26 +4,19 @@ using System.Collections.Generic;
 class Mesh : IShape
 {
     private IReadOnlyList<Triangle> _triangles;
-    private AABox _bounds;
     private Bvh<Triangle> _bvh;
 
     public Mesh(IReadOnlyList<Triangle> triangles)
     {
         _triangles = triangles;
         _bvh = new Bvh<Triangle>(_triangles);
-
-        _bounds = AABox.Inverted();
-        foreach (Triangle tri in _triangles)
-        {
-            _bounds.Encapsulate(tri.Bounds());
-        }
     }
 
-    public AABox Bounds() => _bounds;
+    public AABox Bounds() => _bvh.Bounds;
 
     public bool Overlaps(AABox box)
     {
-        if (!_bounds.Overlaps(box))
+        if (!_bvh.Bounds.Overlaps(box))
             return false;
 
         foreach (Triangle tri in _triangles)

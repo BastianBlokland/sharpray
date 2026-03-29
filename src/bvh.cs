@@ -42,6 +42,8 @@ class Bvh<T> where T : IShape
         }
     }
 
+    public AABox Bounds => _nodeCount > 0 ? _nodes[0].Bounds : AABox.Inverted();
+
     public (RayHit Hit, int Index)? Intersect(Ray ray)
     {
         if (_nodeCount == 0)
