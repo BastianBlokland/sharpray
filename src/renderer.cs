@@ -6,12 +6,12 @@ class Renderer
 {
     public uint Width { get; }
     public uint Height { get; }
+    public View View { get; }
     public Color[] Radiance { get; }
     public Vec3[] Normals { get; }
     public float[] Depth { get; }
 
     private Scene _scene;
-    private View _view;
     private float _aspect;
 
     private uint _blockSize;
@@ -39,9 +39,9 @@ class Renderer
 
         Width = width;
         Height = height;
+        View = view;
 
         _scene = scene;
-        _view = view;
         _aspect = (float)width / (float)height;
 
         _blockSize = blockSize;
@@ -134,7 +134,7 @@ class Renderer
         for (uint i = 0; i != _samples; ++i)
         {
             Vec2 pos = new Vec2((x + rng.NextFloat()) / Width, (y + rng.NextFloat()) / Height);
-            Ray ray = _view.Ray(pos, _aspect);
+            Ray ray = View.Ray(pos, _aspect);
 
             Fragment frag = _scene.Sample(ray, ref rng, _bounces);
 
