@@ -103,7 +103,13 @@ class Scene
         _locked = true;
         _bvh = new Bvh<Object>(_objects);
 
-        counters?.Bump(Counter.SceneObject, _objects.Count);
+        if (counters != null)
+        {
+            BvhStats stats = _bvh.GetStats();
+            counters.Bump(Counter.SceneObject, _objects.Count);
+            counters.Bump(Counter.SceneBvhNodes, stats.Nodes);
+            counters.Bump(Counter.SceneBvhDepth, stats.MaxDepth);
+        }
     }
 
     public void AddObject(Object obj)

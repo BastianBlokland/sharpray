@@ -15,6 +15,8 @@ enum Counter
     ShadowRayOccluded,
     ShadowRaySkipped,
     SceneObject,
+    SceneBvhNodes,
+    SceneBvhDepth,
     SceneTrace,
     SceneOcclude,
     MeshTriangle,
