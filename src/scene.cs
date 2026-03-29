@@ -184,10 +184,10 @@ class Scene
                 if (sunCosTheta > 0f && roughness > 0.05f)
                 {
                     Ray shadowRay = new Ray(hitPos, sunDir);
-                    if (!Occluded(shadowRay, counters))
-                        radiance += _sky.SunRadiance * energy * sunCosTheta;
-                    else
+                    if (Occluded(shadowRay, counters))
                         counters.Bump(Counter.ShadowRayOccluded);
+                    else
+                        radiance += _sky.SunRadiance * energy * sunCosTheta;
                 }
                 else
                     counters.Bump(Counter.ShadowRaySkipped);
