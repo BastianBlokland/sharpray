@@ -8,7 +8,7 @@ Console.WriteLine("> Performing setup");
 
 const uint width = 512;
 const uint height = 512;
-const uint blockSize = 16;
+const uint blockSize = 32;
 const uint samples = 64;
 const uint bounces = 8;
 const float denoiseSigmaSpace = 4.0f;
