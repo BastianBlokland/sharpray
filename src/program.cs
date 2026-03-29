@@ -33,64 +33,20 @@ Sky sky = new Sky(
 Scene scene = new Scene(sky);
 
 scene.AddObject(new Object(
-    new Transform(new Vec3(-3.5f, 0.5f, 9f)),
-    new Material(new Color(0.1f, 0.8f, 0.7f), 0.8f),
-    new Sphere(Vec3.Zero, 1.5f)));
-
-scene.AddObject(new Object(
-    new Transform(new Vec3(3.5f, 0.5f, 9f)),
-    new Material(new Color(1f, 0.75f, 0.1f), 0.1f, 1f),
-    new Sphere(Vec3.Zero, 1.5f)));
-
-scene.AddObject(new Object(
-    new Transform(new Vec3(-3.5f, 0f, 6f)),
-    new Material(new Color(1f, 0.2f, 0.2f), 1.0f),
-    new Sphere(Vec3.Zero, 1f)));
-
-scene.AddObject(new Object(
-    new Transform(new Vec3(3.5f, 0f, 6f)),
-    new Material(new Color(0.2f, 0.2f, 1f), 0.0f, 1f),
-    new Sphere(Vec3.Zero, 1f)));
-
-scene.AddObject(new Object(
-    new Transform(new Vec3(-2.5f, -0.4f, 3.5f)),
-    new Material(new Color(1f, 0.5f, 0.1f), 0.75f),
-    new Sphere(Vec3.Zero, 0.6f)));
-
-scene.AddObject(new Object(
-    new Transform(new Vec3(2.5f, -0.4f, 3.5f)),
-    new Material(new Color(0.6f, 0.2f, 1f), 0.25f),
-    new Sphere(Vec3.Zero, 0.6f)));
-
-scene.AddObject(new Object(
-    new Transform(new Vec3(-0.5f, -0.65f, 2.5f)),
-    new Material(new Color(0.9f, 0.9f, 0.9f), 0.9f),
-    new Sphere(Vec3.Zero, 0.525f)));
-
-scene.AddObject(new Object(
-    new Transform(new Vec3(0.5f, -0.65f, 2.5f)),
-    new Material(new Color(1f, 0.4f, 0.6f), 0.05f),
-    new Sphere(Vec3.Zero, 0.525f)));
-
-scene.AddObject(new Object(
     Transform.Identity(),
     new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
     new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
 
 {
     Quat rot = Quat.AngleAxis(float.DegreesToRadians(200f), Vec3.Up);
-    Vec3 scale = new Vec3(3f, 3f, 3f);
-    Mesh mesh = ObjLoader.Load("assets/suzanne.obj");
+    Vec3 scale = new Vec3(32f, 32f, 32f);
+    Mesh mesh = ObjLoader.Load("assets/bunny.obj");
     const float floorY = -1f;
     float meshBottomY = (mesh.Bounds().Center.Y - mesh.Bounds().Min.Y) * scale.Y;
-    Vec3 desiredPos = new Vec3(0f, floorY + meshBottomY, 7.5f);
+    Vec3 desiredPos = new Vec3(-1, floorY + meshBottomY, 4f);
     Transform trans = new Transform(desiredPos - rot * (mesh.Bounds().Center * scale), rot, scale);
-    scene.AddObject(new Object(trans, new Material(new Color(0.9f, 0.5f, 0.2f), 0.75f), mesh));
-    mesh.OverlayWireframe(overlay, trans, Color.Gray);
+    scene.AddObject(new Object(trans, new Material(new Color(0.72f, 0.45f, 0.2f), 0.35f, 1.0f), mesh));
 }
-
-scene.Lock();
-scene.OverlayBounds(overlay);
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces);
