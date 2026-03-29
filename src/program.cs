@@ -89,6 +89,8 @@ scene.AddObject(new Object(
     mesh.OverlayWireframe(overlay, trans, Color.Gray);
 }
 
+scene.OverlayBounds(overlay);
+
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces);
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth);

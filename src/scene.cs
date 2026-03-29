@@ -60,6 +60,9 @@ struct Object
     }
 
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
+
+    public void OverlayBounds(Overlay overlay, Color color) =>
+        overlay.AddWireBox(Shape.Bounds().Transform(Trans), color);
 }
 
 struct Sky
@@ -131,6 +134,12 @@ class Scene
         if (_locked)
             throw new InvalidOperationException("Scene locked");
         _objects.Add(obj);
+    }
+
+    public void OverlayBounds(Overlay overlay)
+    {
+        for (int i = 0; i != _objects.Count; ++i)
+            _objects[i].OverlayBounds(overlay, Color.ForIndex(i));
     }
 
     private bool Occluded(Ray ray)
