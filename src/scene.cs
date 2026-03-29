@@ -129,13 +129,20 @@ class Scene
     private List<Object> _objects = new List<Object>();
     private Sky _sky;
     private bool _locked;
+    private Bvh<Object>? _bvh;
 
     public Scene(Sky sky)
     {
         _sky = sky;
     }
 
-    public void Lock() => _locked = true;
+    public void Lock()
+    {
+        if (_locked)
+            return;
+        _locked = true;
+        _bvh = new Bvh<Object>(_objects);
+    }
 
     public void AddObject(Object obj)
     {
@@ -146,41 +153,40 @@ class Scene
 
     public void OverlayBounds(Overlay overlay)
     {
+        _bvh?.OverlayBounds(overlay, Transform.Identity());
+
         for (int i = 0; i != _objects.Count; ++i)
+        {
             _objects[i].OverlayBounds(overlay, Color.ForIndex(i));
+        }
     }
 
-    private bool Occluded(Ray ray)
+    public bool Occluded(Ray ray)
     {
-        foreach (Object obj in _objects)
-        {
-            if (obj.Intersect(ray) is RayHit)
-                return true;
-        }
-        return false;
+        if (!_locked)
+            throw new InvalidOperationException("Scene not locked");
+        return _bvh!.IntersectAny(ray);
     }
 
     public Surface Trace(Ray ray)
     {
-        RayHit? closestHit = null;
-        Material? closestMaterial = null;
-        foreach (Object obj in _objects)
-        {
-            if (obj.Intersect(ray) is RayHit hit && (closestHit is null || hit.Dist < closestHit.Value.Dist))
-            {
-                closestHit = hit;
-                closestMaterial = obj.Material;
-            }
-        }
+        if (!_locked)
+            throw new InvalidOperationException("Scene not locked");
 
-        if (closestHit is RayHit h)
-            return new Surface(closestMaterial!.Value.Radiance, h, closestMaterial);
+        if (_bvh!.Intersect(ray) is (RayHit hit, int idx))
+        {
+            Material mat = _objects[idx].Material;
+            return new Surface(mat.Radiance, hit, mat);
+        }
 
         return new Surface(_sky.AmbientRadianceRay(ray));
     }
 
     public Fragment Sample(Ray ray, ref Rng rng, uint bounces)
     {
+        if (!_locked)
+            throw new InvalidOperationException("Scene not locked");
+
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
         float? depth = null;

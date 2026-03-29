@@ -89,6 +89,7 @@ scene.AddObject(new Object(
     mesh.OverlayWireframe(overlay, trans, Color.Gray);
 }
 
+scene.Lock();
 scene.OverlayBounds(overlay);
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
