@@ -264,7 +264,7 @@ struct Vec3
     public static Vec3 Reflect(Vec3 v, Vec3 n)
     {
         Debug.Assert(n.IsUnit, "Reflect normal must be normalized");
-        return v - 2 * (Dot(v, n) / Dot(n, n)) * n;
+        return v - 2 * Dot(v, n) * n;
     }
 
     public static Vec3 Lerp(Vec3 a, Vec3 b, float t) => new Vec3(
