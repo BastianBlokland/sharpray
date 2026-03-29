@@ -16,6 +16,18 @@ struct Surface
     }
 }
 
+struct Fragment
+{
+    public Color Radiance;
+    public Vec3? Normal;
+
+    public Fragment(Color radiance, Vec3? normal)
+    {
+        Radiance = radiance;
+        Normal = normal;
+    }
+}
+
 struct Material
 {
     public Color Color;
@@ -148,7 +160,7 @@ class Scene
         return new Surface(null, null, _sky.AmbientRadianceRay(ray));
     }
 
-    public (Color Radiance, Vec3? Normal) Sample(Ray ray, ref Rng rng, uint bounces)
+    public Fragment Sample(Ray ray, ref Rng rng, uint bounces)
     {
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
@@ -213,6 +225,6 @@ class Scene
                 break;
             }
         }
-        return (radiance, normal);
+        return new Fragment(radiance, normal);
     }
 }
