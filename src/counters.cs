@@ -51,13 +51,13 @@ class Counters
 {
     private readonly long[] _data = new long[(int)Counter._Count];
     private readonly ThreadLocal<long[]> _dataLocal = new ThreadLocal<long[]>(() => new long[(int)Counter._Count]);
-    private readonly double[] _times = new double[(int)Timer._Count];
+    private readonly long[] _times = new long[(int)Timer._Count]; // microseconds
 
     public TimerScope Scope(Timer t) => new TimerScope(this, t);
 
     public void Bump(Counter c) => _dataLocal.Value![(int)c]++;
     public void Bump(Counter c, long n) => _dataLocal.Value![(int)c] += n;
-    public void Bump(Timer t, Timestamp duration) => _times[(int)t] += duration.Seconds;
+    public void Bump(Timer t, Timestamp duration) => Interlocked.Add(ref _times[(int)t], (long)duration.Micros);
 
     public void Flush()
     {
@@ -86,7 +86,7 @@ class Counters
         }
         for (int i = 0; i != (int)Timer._Count; ++i)
         {
-            if (_times[i] == 0)
+            if (Interlocked.Read(ref _times[i]) == 0)
                 continue;
             maxNameLen = Math.Max(maxNameLen, ((Timer)i).ToString().Length);
         }
@@ -106,7 +106,8 @@ class Counters
 
         for (int i = 0; i != (int)Timer._Count; ++i)
         {
-            if (_times[i] == 0)
+            long micros = Interlocked.Read(ref _times[i]);
+            if (micros == 0)
                 continue;
 
             string name = ((Timer)i).ToString();
@@ -114,7 +115,7 @@ class Counters
             sb.Append(name);
             sb.Append(' ', maxNameLen - name.Length);
             sb.Append(": ");
-            sb.Append($"{_times[i]:F2}s");
+            sb.Append($"{micros / 1_000_000.0:F2}s");
         }
 
         return sb.ToString();
