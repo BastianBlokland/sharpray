@@ -1164,7 +1164,7 @@ struct View
         float ndcX = (local.X / local.Z) / tanHalfHor;
         float ndcY = (local.Y / local.Z) / tanHalfVer;
         Vec2 screenPos = new Vec2((ndcX + 1f) * 0.5f, (1f - ndcY) * 0.5f);
-        return (screenPos, local.Magnitude());
+        return (screenPos, local.Magnitude() - Near);
     }
 }
 
