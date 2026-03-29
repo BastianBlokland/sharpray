@@ -32,4 +32,16 @@ class Mesh : IShape
             overlay.AddLine(new Line(c, a), color);
         }
     }
+
+    public void OverlayStats(Overlay overlay, Transform trans, Color color)
+    {
+        BvhStats bvhStats = _bvh.GetStats();
+        string text = $"""
+            tris:   {_triangles.Count}
+            nodes:  {bvhStats.Nodes}
+            leaves: {bvhStats.Leaves}
+            depth:  {bvhStats.MaxDepth}
+            """;
+        overlay.AddText(text, trans.TransformPoint(_bvh.Bounds.Center), color);
+    }
 }
