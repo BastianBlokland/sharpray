@@ -5,18 +5,18 @@ Timestamp timeStart = Timestamp.Now();
 
 Console.WriteLine("Performing setup");
 
-const uint width = 256;
-const uint height = 256;
+const uint width = 512;
+const uint height = 512;
 const uint blockSize = 16;
-const uint samples = 128;
+const uint samples = 64;
 const uint bounces = 8;
 const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.15f;
 const float denoiseSigmaNormal = 0.5f;
 const float denoiseSigmaDepth = 1.0f;
 const String outputPath = "output";
-const bool outputImage = true, outputNormal = true, outputDepth = true;
-const uint previewInterval = 10;
+const bool outputImage = true, outputPreview = true, outputNormal = true, outputDepth = true;
+const uint previewInterval = 50;
 
 Directory.CreateDirectory(outputPath);
 
@@ -101,7 +101,7 @@ do
     progress = renderer.Tick();
 
     // Preview intermediate results.
-    if (outputImage && progress.Step % previewInterval == 0)
+    if (outputImage && outputPreview && progress.Step % previewInterval == 0)
     {
         Image preview = compositor.Preview(renderer.Radiance, width, height, view, overlay);
         preview.Save(Path.Combine(outputPath, "image.bmp"));
