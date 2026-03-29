@@ -111,6 +111,13 @@ struct Color
         return new Color(r, g, b);
     }
 
+    public static Color ForIndex(int index)
+    {
+        const float goldenRatioConj = 0.618033988f;
+        float hue = (index * goldenRatioConj) % 1f;
+        return FromHsv(hue, 0.8f, 0.95f);
+    }
+
     public static Color FromHsv(float h, float s, float v)
     {
         Debug.Assert(h >= 0f && h <= 1f);
