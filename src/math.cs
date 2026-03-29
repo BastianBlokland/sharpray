@@ -1149,7 +1149,7 @@ struct Triangle : IShape
         Vec3 h = Vec3.Cross(ray.Dir, ac);
         float det = Vec3.Dot(ab, h);
 
-        if (det <= 1e-9f) return null; // Parallel or back-facing.
+        if (MathF.Abs(det) <= 1e-9f) return null; // Parallel.
 
         float invDet = 1f / det;
         Vec3 ao = ray.Origin - A;
@@ -1163,7 +1163,8 @@ struct Triangle : IShape
         float t = Vec3.Dot(ac, q) * invDet;
         if (t < 0f) return null;
 
-        return new RayHit(t, Normal);
+        Vec3 normal = det > 0f ? Normal : -Normal;
+        return new RayHit(t, normal);
     }
 }
 
