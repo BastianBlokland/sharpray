@@ -31,9 +31,9 @@ class Mesh : IShape
     {
         foreach (Triangle tri in _triangles)
         {
-            Vec3 a = trans.TransformPoint(tri.A);
-            Vec3 b = trans.TransformPoint(tri.B);
-            Vec3 c = trans.TransformPoint(tri.C);
+            Vec3 a = trans.TransformPoint(tri.PosA);
+            Vec3 b = trans.TransformPoint(tri.PosB);
+            Vec3 c = trans.TransformPoint(tri.PosC);
 
             overlay.AddLine(new Line(a, b), color);
             overlay.AddLine(new Line(b, c), color);

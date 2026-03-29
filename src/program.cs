@@ -4,8 +4,8 @@ using System.IO;
 Console.WriteLine("[SharpRay]");
 Console.WriteLine("> Performing setup");
 
-const uint width = 512;
-const uint height = 512;
+const uint width = 1024;
+const uint height = 1024;
 const uint blockSize = 32;
 const uint samples = 64;
 const uint bounces = 8;
@@ -25,10 +25,10 @@ Directory.CreateDirectory(outputPath);
 Overlay overlay = new Overlay();
 
 Sky sky = new Sky(
-    new Color(0.35f, 0.45f, 0.75f),
-    new Color(0.85f, 0.8f, 0.8f),
-    new Color(0.45f, 0.38f, 0.26f),
-    new Vec3(0.4f, 0.5f, 1f).Normalize(),
+    new Color(0.35f, 0.45f, 0.75f) * 0.75f,
+    new Color(0.85f, 0.8f, 0.8f) * 0.75f,
+    new Color(0.45f, 0.38f, 0.26f) * 0.75f,
+    new Vec3(0.4f, 0.3f, 1f).Normalize(),
     new Color(4f, 3.5f, 2.5f),
     float.DegreesToRadians(2.6f));
 
@@ -39,24 +39,40 @@ using (counters.Scope(Timer.Setup))
     scene.AddObject(new Object(
         Transform.Identity(),
         new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
-        new AABox(new Vec3(-10f, -1.2f, -2f), new Vec3(10f, -1f, 20f))));
+        new AABox(new Vec3(-10f, -0.2f, -2f), new Vec3(10f, 0f, 20f))));
 
-    // Bunny.
+    // Dragon.
     {
-        Quat rot = Quat.AngleAxis(float.DegreesToRadians(200f), Vec3.Up);
-        Vec3 scale = new Vec3(32f, 32f, 32f);
-        Mesh mesh = ObjLoader.Load("assets/bunny.obj", counters);
-        const float floorY = -1f;
+        Quat rot = Quat.AngleAxis(float.DegreesToRadians(60f), Vec3.Up);
+        Vec3 scale = new Vec3(6f, 6f, 6f);
+        Mesh mesh = ObjLoader.Load("assets/dragon.obj", counters);
+        const float floorY = 0f;
         float meshBottomY = (mesh.Bounds().Center.Y - mesh.Bounds().Min.Y) * scale.Y;
-        Vec3 desiredPos = new Vec3(-1, floorY + meshBottomY, 4f);
+        Vec3 desiredPos = new Vec3(1f, floorY + meshBottomY, 4f);
         Transform trans = new Transform(desiredPos - rot * (mesh.Bounds().Center * scale), rot, scale);
-        scene.AddObject(new Object(trans, new Material(new Color(0.72f, 0.45f, 0.2f), 0.35f, 1.0f), mesh));
+        scene.AddObject(new Object(trans, new Material(new Color(0.2f, 0.7f, 0.2f), 0.5f, 0.0f), mesh));
+    }
+
+    // Spheres.
+    {
+        Color ballColor = new Color(1f, 0.35f, 0.05f);
+        float radius = 0.75f;
+        Vec3 center = new Vec3(1f, radius, 4f);
+        float orbitRadius = 3.5f;
+        int sphereCount = 10;
+        for (int i = 0; i < sphereCount; ++i)
+        {
+            float angle = i * (MathF.PI * 2f / sphereCount);
+            float roughness = 1.0f - (float)i / (sphereCount - 1);
+            Vec3 pos = center + new Vec3(MathF.Cos(angle) * orbitRadius, 0f, MathF.Sin(angle) * orbitRadius);
+            scene.AddObject(new Object(Transform.Identity(), new Material(ballColor, roughness, 0.5f), new Sphere(pos, radius)));
+        }
     }
 
     scene.Lock();
 }
 
-View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
+View view = new View(new Transform(new Vec3(0.5f, 3f, -2f), Quat.AngleAxis(float.DegreesToRadians(20f), Vec3.Right)), float.DegreesToRadians(75f));
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth);
 
