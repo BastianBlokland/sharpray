@@ -208,6 +208,7 @@ struct Vec3
     public float MagnitudeSqr() => Dot(this, this);
     public float Magnitude() => MathF.Sqrt(MagnitudeSqr());
     public bool IsUnit => MathF.Abs(MagnitudeSqr() - 1f) < 1e-4f;
+    public bool IsOne => MathF.Abs(X - 1f) < 1e-4f && MathF.Abs(Y - 1f) < 1e-4f && MathF.Abs(Z - 1f) < 1e-4f;
 
     public Vec3 Normalize()
     {
@@ -1101,6 +1102,7 @@ struct View
 
     public View(Transform trans)
     {
+        Debug.Assert(trans.Scale.IsOne, "View cannot be scaled");
         Trans = trans;
         Fov = float.DegreesToRadians(60f);
         Near = 0.1f;
@@ -1108,6 +1110,7 @@ struct View
 
     public View(Transform trans, float fov, float near = 0.1f)
     {
+        Debug.Assert(trans.Scale.IsOne, "View cannot be scaled");
         Debug.Assert(fov > 0f && fov < MathF.PI, "Invalid fov");
         Debug.Assert(near > 0f, "Invalid near plane");
         Trans = trans;
@@ -1140,7 +1143,7 @@ struct View
         return new Ray(origin, dir);
     }
 
-    public Vec2? Project(Vec3 worldPos, float aspect)
+    public (Vec2 ScreenPos, float Depth)? Project(Vec3 worldPos, float aspect)
     {
         Vec3 local = Trans.TransformPointInv(worldPos);
         if (local.Z <= Near)
@@ -1160,7 +1163,8 @@ struct View
 
         float ndcX = (local.X / local.Z) / tanHalfHor;
         float ndcY = (local.Y / local.Z) / tanHalfVer;
-        return new Vec2((ndcX + 1f) * 0.5f, (1f - ndcY) * 0.5f);
+        Vec2 screenPos = new Vec2((ndcX + 1f) * 0.5f, (1f - ndcY) * 0.5f);
+        return (screenPos, local.Magnitude());
     }
 }
 
