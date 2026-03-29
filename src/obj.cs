@@ -15,18 +15,9 @@ using System.Text;
  * flipped.
  */
 
-struct ObjToken
+record struct ObjToken(ObjToken.Type Kind, string Value = "")
 {
     public enum Type { Word, Slash, Newline, End }
-
-    public Type Kind;
-    public string Value;
-
-    public ObjToken(Type kind, string value = "")
-    {
-        Kind = kind;
-        Value = value;
-    }
 }
 
 class ObjLexer

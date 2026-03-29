@@ -2,49 +2,9 @@
 using System;
 using System.Collections.Generic;
 
-struct Surface
-{
-    public Color Radiance;
-    public RayHit? Hit;
-    public Material? Material;
-
-    public Surface(Color radiance, RayHit? hit = null, Material? material = null)
-    {
-        Radiance = radiance;
-        Hit = hit;
-        Material = material;
-    }
-}
-
-struct Fragment
-{
-    public Color Radiance;
-    public Vec3? Normal;
-    public float? Depth;
-
-    public Fragment(Color radiance, Vec3? normal, float? depth)
-    {
-        Radiance = radiance;
-        Normal = normal;
-        Depth = depth;
-    }
-}
-
-struct Material
-{
-    public Color Color;
-    public float Roughness;
-    public float Metallic;
-    public Color Radiance;
-
-    public Material(Color color, float roughness, float metallic = 0f, Color radiance = default)
-    {
-        Color = color;
-        Roughness = roughness;
-        Metallic = metallic;
-        Radiance = radiance;
-    }
-}
+record struct Surface(Color Radiance, RayHit? Hit = null, Material? Material = null);
+record struct Fragment(Color Radiance, Vec3? Normal, float? Depth);
+record struct Material(Color Color, float Roughness, float Metallic = 0f, Color Radiance = default);
 
 struct Object : IShape
 {
