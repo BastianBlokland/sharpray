@@ -117,7 +117,7 @@ class Scene
     {
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
-        counters.Bump(Counter.OccludeRay);
+        counters.Bump(Counter.SceneOcclude);
         return _bvh!.IntersectAny(ray);
     }
 
@@ -125,7 +125,7 @@ class Scene
     {
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
-        counters.Bump(Counter.TraceRay);
+        counters.Bump(Counter.SceneTrace);
 
         if (_bvh!.Intersect(ray) is (RayHit hit, int idx))
         {
@@ -141,6 +141,7 @@ class Scene
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
 
+        counters.Bump(Counter.Sample);
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
         float? depth = null;

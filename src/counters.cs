@@ -4,13 +4,17 @@ using System.Threading;
 
 enum Counter
 {
-    TraceRay,
-    OccludeRay,
+    Worker,
+    Block,
+    Pixel,
+    Sample,
     SampleBounce,
     SampleHit,
     ShadowRayOccluded,
     ShadowRaySkipped,
     PathTerminated,
+    SceneTrace,
+    SceneOcclude,
 
     _Count
 }

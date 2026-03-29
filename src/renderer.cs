@@ -84,6 +84,7 @@ class Renderer
 
     private void Worker()
     {
+        _counters.Bump(Counter.Worker);
         while (true)
         {
             int block = Interlocked.Increment(ref _blockNext) - 1;
@@ -100,6 +101,7 @@ class Renderer
     private void Execute(uint block)
     {
         Debug.Assert(block < _blockCountTotal);
+        _counters.Bump(Counter.Block);
 
         uint blockX = block % _blockCountX;
         uint blockY = block / _blockCountX;
@@ -123,6 +125,7 @@ class Renderer
 
     private Fragment Render(uint x, uint y)
     {
+        _counters.Bump(Counter.Pixel);
         Rng rng = new Rng(x, y);
 
         Color radianceSum = new Color(0f);
