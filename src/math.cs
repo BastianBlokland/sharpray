@@ -131,7 +131,7 @@ struct Vec2
         }
     }
 
-    public Vec2i ToInt() => new Vec2i((int)X, (int)Y);
+    public Vec2i ToInt() => new Vec2i((int)MathF.Round(X), (int)MathF.Round(Y));
 
     public static Vec2 operator -(Vec2 v) => new Vec2(-v.X, -v.Y);
     public static Vec2 operator +(Vec2 a, Vec2 b) => new Vec2(a.X + b.X, a.Y + b.Y);
