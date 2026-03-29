@@ -1,5 +1,200 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 
-class Bvh
+class Bvh<T> where T : IShape
 {
+    private const int DivideThreshold = 8;
 
+    /**
+     * There are two types of BVH nodes:
+     * - Leaf node: Contains 'shapeCount' shapes starting from 'child' in the shapes array.
+     * - Parent node: Contains two child nodes starting at 'child' in the nodes array.
+     * The node-type can be determined by the 'shapeCount': '> 0' for leaf-node, '== 0' for parent node.
+     */
+    private struct Node
+    {
+        public AABox Bounds;
+        public int Child;
+        public int ShapeCount;
+    }
+
+    private readonly IReadOnlyList<T> _shapes;
+    private readonly Node[] _nodes;
+    private readonly int[] _items; // Indices into the shapes collection.
+    private int _nodeCount;
+
+    public Bvh(IReadOnlyList<T> shapes)
+    {
+        _shapes = shapes;
+        _nodes = new Node[Math.Max(shapes.Count * 2, 1)];
+        _items = new int[shapes.Count];
+
+        // Identity item -> shape mapping.
+        for (int i = 0; i != shapes.Count; ++i)
+            _items[i] = i;
+
+        if (shapes.Count > 0)
+        {
+            int root = InsertRoot();
+            if (_nodes[root].ShapeCount >= DivideThreshold)
+                Subdivide(root);
+        }
+    }
+
+    public (RayHit Hit, int Index)? Intersect(Ray ray)
+    {
+        if (_nodeCount == 0)
+            return null;
+
+        Span<int> queue = stackalloc int[32];
+        int queueCount = 1; // Insert root node (index is already zero).
+
+        (RayHit Hit, int Index)? best = null;
+        float bestDist = float.PositiveInfinity;
+
+        while (queueCount > 0)
+        {
+            ref Node node = ref _nodes[queue[--queueCount]];
+            if (node.ShapeCount == 0)
+            {
+                // Parent node: Test both child nodes (enqueue the closest first).
+                float? tA = _nodes[node.Child].Bounds.IntersectDist(ray);
+                float? tB = _nodes[node.Child + 1].Bounds.IntersectDist(ray);
+                if (tA <= bestDist)
+                    queue[queueCount++] = node.Child;
+                if (tB <= bestDist)
+                    queue[queueCount++] = node.Child + 1;
+                if (tA <= bestDist && tB <= bestDist && tA < tB)
+                    (queue[queueCount - 2], queue[queueCount - 1]) = (queue[queueCount - 1], queue[queueCount - 2]);
+            }
+            else
+            {
+                // Leaf node: Test all shapes in the node.
+                for (int i = 0; i != node.ShapeCount; ++i)
+                {
+                    int idx = _items[node.Child + i];
+                    if (_shapes[idx].Intersect(ray) is RayHit hit && hit.Dist < bestDist)
+                    {
+                        bestDist = hit.Dist;
+                        best = (hit, idx);
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    /**
+         * Insert a single root leaf-node containing all the shapes (needs at least 1 shape).
+         * NOTE: Bvh needs to be empty before inserting a new root.
+         * Returns the node index.
+         */
+    private int InsertRoot()
+    {
+        Debug.Assert(_nodeCount == 0);
+        int index = _nodeCount++;
+        ref Node node = ref _nodes[index];
+        node.Bounds = AABox.Inverted();
+        node.Child = 0;
+        node.ShapeCount = _shapes.Count;
+        for (int i = 0; i != _shapes.Count; ++i)
+            node.Bounds.Encapsulate(_shapes[i].Bounds());
+        return index;
+    }
+
+    /**
+     * Insert a new child leaf-node with the specified shapes.
+     * NOTE: Shapes need to be consecutively stored.
+     * Returns the node index.
+     */
+    private int Insert(int itemBegin, int itemCount)
+    {
+        int index = _nodeCount++;
+        ref Node node = ref _nodes[index];
+        node.Bounds = AABox.Inverted();
+        node.Child = itemBegin;
+        node.ShapeCount = itemCount;
+        for (int i = 0; i != itemCount; ++i)
+            node.Bounds.Encapsulate(_shapes[_items[itemBegin + i]].Bounds());
+        return index;
+    }
+
+    /**
+     * Pick a plane to split the leaf-node on.
+     * At the moment we just use the center of the longest axis of the node.
+     */
+    private (int Axis, float Pos) SplitPick(int nodeIdx)
+    {
+        AABox bounds = _nodes[nodeIdx].Bounds;
+        Vec3 size = bounds.Size;
+        int axis = 0;
+        if (size.Y > size[axis])
+            axis = 1;
+        if (size.Z > size[axis])
+            axis = 2;
+        float pos = bounds.Min[axis] + size[axis] * 0.5f;
+        return (axis, pos);
+    }
+
+    /**
+     * Partition the leaf-node so all shapes before the returned shape index are on one side of the
+     * plane and all shapes after on the other side.
+     */
+    private int Partition(int nodeIdx, int axis, float splitPos)
+    {
+        ref Node node = ref _nodes[nodeIdx];
+        int left = node.Child;
+        int right = node.Child + node.ShapeCount - 1;
+        while (true)
+        {
+            AABox leftBounds = _shapes[_items[left]].Bounds();
+            float center = (leftBounds.Min[axis] + leftBounds.Max[axis]) * 0.5f;
+            if (center < splitPos)
+            {
+                ++left;
+                if (left > right)
+                    break;
+            }
+            else
+            {
+                if (left == right)
+                    break;
+                // Wrong side; swap.
+                (_items[left], _items[right]) = (_items[right], _items[left]);
+                --right;
+            }
+        }
+        return left;
+    }
+
+    /**
+     * Subdivide the given leaf-node, if successful the node is no longer a leaf-node but contains a
+     * tree of child nodes encompassing the same shapes as it did before subdividing.
+     */
+    private void Subdivide(int nodeIdx)
+    {
+        Debug.Assert(_nodes[nodeIdx].ShapeCount > 0);
+
+        var (axis, splitPos) = SplitPick(nodeIdx);
+        int partitionIdx = Partition(nodeIdx, axis, splitPos);
+
+        ref Node node = ref _nodes[nodeIdx];
+        int countA = partitionIdx - node.Child;
+        int countB = node.ShapeCount - countA;
+        if (countA == 0 || countB == 0)
+            return; // One of the partitions is empty; abort the subdivide.
+
+        int childA = Insert(node.Child, countA);
+        int childB = Insert(partitionIdx, countB);
+
+        Debug.Assert(childB == childA + 1); // Children must be stored consecutively.
+        node.Child = childA;
+        node.ShapeCount = 0; // Node is no longer a leaf-node.
+
+        if (countA >= DivideThreshold)
+            Subdivide(childA);
+        if (countB >= DivideThreshold)
+            Subdivide(childB);
+    }
 }
