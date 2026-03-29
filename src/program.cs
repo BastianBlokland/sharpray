@@ -67,7 +67,7 @@ do
         compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
     }
 
-    Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total,4}]");
+    Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total}]");
 } while (progress.Step != progress.Total);
 
 if (outputPreview)
