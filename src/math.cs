@@ -799,6 +799,33 @@ struct AABox : IShape
         Min.Y < other.Max.Y && Max.Y > other.Min.Y &&
         Min.Z < other.Max.Z && Max.Z > other.Min.Z;
 
+    public float? IntersectDist(Ray ray)
+    {
+        // Cyrus-Beck slab clipping, returns entry distance (0 if ray starts inside).
+        // https://izzofinal.wordpress.com/2012/11/09/ray-vs-box-round-1/
+        float dirXInv = 1f / ray.Dir.X;
+        float dirYInv = 1f / ray.Dir.Y;
+        float dirZInv = 1f / ray.Dir.Z;
+
+        float t1 = (Min.X - ray.Origin.X) * dirXInv;
+        float t2 = (Max.X - ray.Origin.X) * dirXInv;
+        float t3 = (Min.Y - ray.Origin.Y) * dirYInv;
+        float t4 = (Max.Y - ray.Origin.Y) * dirYInv;
+        float t5 = (Min.Z - ray.Origin.Z) * dirZInv;
+        float t6 = (Max.Z - ray.Origin.Z) * dirZInv;
+
+        float minA = MathF.Min(t1, t2), minB = MathF.Min(t3, t4), minC = MathF.Min(t5, t6);
+        float maxA = MathF.Max(t1, t2), maxB = MathF.Max(t3, t4), maxC = MathF.Max(t5, t6);
+
+        float tMin = MathF.Max(MathF.Max(minA, minB), minC);
+        float tMax = MathF.Min(MathF.Min(maxA, maxB), maxC);
+
+        if (tMax < 0f || tMin > tMax)
+            return null;
+
+        return MathF.Max(0f, tMin); // 0 if ray starts inside.
+    }
+
     public RayHit? Intersect(Ray ray)
     {
         // Cyrus-Beck slab clipping.
@@ -820,7 +847,8 @@ struct AABox : IShape
         float tMin = MathF.Max(MathF.Max(minA, minB), minC);
         float tMax = MathF.Min(MathF.Min(maxA, maxB), maxC);
 
-        if (tMax < 0f || tMin > tMax) return null;
+        if (tMax < 0f || tMin > tMax)
+            return null;
 
         bool inside = tMin < 0f;
         float t = inside ? tMax : tMin;
