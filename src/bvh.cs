@@ -44,6 +44,38 @@ class Bvh<T> where T : IShape
 
     public AABox Bounds => _nodeCount > 0 ? _nodes[0].Bounds : AABox.Inverted();
 
+    public bool Overlaps(AABox box)
+    {
+        if (_nodeCount == 0)
+            return false;
+
+        Span<int> queue = stackalloc int[32];
+        int queueCount = 1; // Insert root node (index is already zero).
+
+        while (queueCount > 0)
+        {
+            ref Node node = ref _nodes[queue[--queueCount]];
+            if (node.ShapeCount == 0)
+            {
+                // Parent node: enqueue children whose bounds overlap.
+                if (_nodes[node.Child].Bounds.Overlaps(box))
+                    queue[queueCount++] = node.Child;
+                if (_nodes[node.Child + 1].Bounds.Overlaps(box))
+                    queue[queueCount++] = node.Child + 1;
+            }
+            else
+            {
+                // Leaf node: test all shapes.
+                for (int i = 0; i != node.ShapeCount; ++i)
+                {
+                    if (_shapes[_items[node.Child + i]].Overlaps(box))
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public (RayHit Hit, int Index)? Intersect(Ray ray)
     {
         if (_nodeCount == 0)
