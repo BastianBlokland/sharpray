@@ -7,22 +7,26 @@ class Compositor
     public float SigmaSpace; // Blur radius in pixels; higher = smoother.
     public float SigmaColor; // Radiance similarity threshold; lower = preserves more edges.
     public float SigmaNormal; // Normal similarity threshold; lower = respects geometry boundaries more.
+    public float SigmaDepth; // Depth similarity threshold in world units; lower = sharper depth edges.
 
     private int _radius;
     private float _sigmaSpaceSqr2;
     private float _sigmaColorSqr2;
     private float _sigmaNormalSqr2;
+    private float _sigmaDepthSqr2;
 
-    public Compositor(float sigmaSpace, float sigmaColor, float sigmaNormal)
+    public Compositor(float sigmaSpace, float sigmaColor, float sigmaNormal, float sigmaDepth)
     {
         SigmaSpace = sigmaSpace;
         SigmaColor = sigmaColor;
         SigmaNormal = sigmaNormal;
+        SigmaDepth = sigmaDepth;
 
         _radius = (int)MathF.Ceiling(sigmaSpace * 2f);
         _sigmaSpaceSqr2 = sigmaSpace * sigmaSpace * 2f;
         _sigmaColorSqr2 = sigmaColor * sigmaColor * 2f;
         _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
+        _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
     }
 
     public Image Preview(Color[] radiance, uint width, uint height, View view, Overlay? overlay)
@@ -39,9 +43,10 @@ class Compositor
         return result;
     }
 
-    public Image Compose(Color[] radiance, Vec3[] normals, uint width, uint height, View view, Overlay? overlay)
+    public Image Compose(Color[] radiance, Vec3[] normals, float[] depth, uint width, uint height, View view, Overlay? overlay)
     {
         Debug.Assert(radiance.Length == normals.Length);
+        Debug.Assert(radiance.Length == depth.Length);
         Debug.Assert(radiance.Length == width * height);
 
         Image result = new Image(width, height);
@@ -49,7 +54,7 @@ class Compositor
         {
             for (int x = 0; x != width; ++x)
             {
-                Color filtered = Filter(radiance, normals, (int)width, (int)height, x, y);
+                Color filtered = Filter(radiance, normals, depth, (int)width, (int)height, x, y);
                 result.Pixels[y * width + x] = Tonemap(filtered);
             }
         });
@@ -58,14 +63,16 @@ class Compositor
         return result;
     }
 
-    private Color Filter(Color[] radiance, Vec3[] normals, int width, int height, int x, int y)
+    private Color Filter(Color[] radiance, Vec3[] normals, float[] depth, int width, int height, int x, int y)
     {
-        // Joint bilateral filter with normal guidance.
+        // Joint bilateral filter with normal and depth guidance.
         // https://en.wikipedia.org/wiki/Bilateral_filter
 
         Color centerRadiance = radiance[y * width + x];
         Vec3 centerNormal = normals[y * width + x];
+        float centerDepth = depth[y * width + x];
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
+        bool hasCenterDepth = !float.IsInfinity(centerDepth);
 
         float weightSum = 0f;
         Color radianceSum = Color.Black;
@@ -79,8 +86,10 @@ class Compositor
                 if (refX < 0 || refX >= width || refY < 0 || refY >= height)
                     continue;
 
-                Color refRadiance = radiance[refY * width + refX];
-                Vec3 refNormal = normals[refY * width + refX];
+                int refIndex = refY * width + refX;
+                Color refRadiance = radiance[refIndex];
+                Vec3 refNormal = normals[refIndex];
+                float refDepth = depth[refIndex];
 
                 float spatialDist = kernelX * kernelX + kernelY * kernelY;
                 float weight = MathF.Exp(-spatialDist / _sigmaSpaceSqr2);
@@ -92,6 +101,12 @@ class Compositor
                 {
                     Vec3 normalDelta = centerNormal - refNormal;
                     weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / _sigmaNormalSqr2);
+                }
+
+                if (hasCenterDepth && !float.IsInfinity(refDepth))
+                {
+                    float depthDelta = centerDepth - refDepth;
+                    weight *= MathF.Exp(-(depthDelta * depthDelta) / _sigmaDepthSqr2);
                 }
 
                 weightSum += weight;

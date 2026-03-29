@@ -13,6 +13,7 @@ const uint bounces = 8;
 const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.15f;
 const float denoiseSigmaNormal = 0.5f;
+const float denoiseSigmaDepth = 1.0f;
 const String outputPath = "output";
 const bool outputImage = true, outputNormal = true, outputDepth = true;
 const uint previewInterval = 10;
@@ -89,7 +90,7 @@ scene.AddObject(new Object(
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces);
-Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal);
+Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth);
 
 Console.WriteLine("Starting render");
 
@@ -138,7 +139,7 @@ if (outputDepth)
 if (outputImage)
 {
     Console.WriteLine("Compositing");
-    Image image = compositor.Compose(renderer.Radiance, renderer.Normals, width, height, view, overlay);
+    Image image = compositor.Compose(renderer.Radiance, renderer.Normals, renderer.Depth, width, height, view, overlay);
     image.Save(Path.Combine(outputPath, "image.bmp"));
 }
 
