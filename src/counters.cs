@@ -44,24 +44,40 @@ struct TimerScope : IDisposable
         _start = Timestamp.Now();
     }
 
-    public void Dispose() => _counters.Set(_timer, Timestamp.Now() - _start);
+    public void Dispose() => _counters.Bump(_timer, Timestamp.Now() - _start);
 }
 
 class Counters
 {
-    private readonly ThreadLocal<long[]> _data = new ThreadLocal<long[]>(() => new long[(int)Counter._Count], trackAllValues: true);
+    private readonly long[] _data = new long[(int)Counter._Count];
+    private readonly ThreadLocal<long[]> _dataLocal = new ThreadLocal<long[]>(() => new long[(int)Counter._Count]);
     private readonly double[] _times = new double[(int)Timer._Count];
 
-    public void Bump(Counter c) => _data.Value![(int)c]++;
-    public void Bump(Counter c, long n) => _data.Value![(int)c] += n;
-
     public TimerScope Scope(Timer t) => new TimerScope(this, t);
-    public void Set(Timer t, Timestamp duration) => _times[(int)t] = duration.Seconds;
+
+    public void Bump(Counter c) => _dataLocal.Value![(int)c]++;
+    public void Bump(Counter c, long n) => _dataLocal.Value![(int)c] += n;
+    public void Bump(Timer t, Timestamp duration) => _times[(int)t] += duration.Seconds;
+
+    public void Flush()
+    {
+        if (!_dataLocal.IsValueCreated)
+            return;
+
+        long[] local = _dataLocal.Value!;
+        for (int i = 0; i < local.Length; ++i)
+        {
+            if (local[i] != 0)
+            {
+                Interlocked.Add(ref _data[i], local[i]);
+                local[i] = 0;
+            }
+        }
+    }
 
     public string Dump()
     {
-        Span<long> counters = stackalloc long[(int)Counter._Count];
-        CollectCounters(counters);
+        Flush();
 
         int maxNameLen = 0;
         for (int i = 0; i != (int)Counter._Count; ++i)
@@ -85,7 +101,7 @@ class Counters
             sb.Append(name);
             sb.Append(' ', maxNameLen - name.Length);
             sb.Append(": ");
-            sb.Append(FormatNum(counters[i]));
+            sb.Append(FormatNum(Interlocked.Read(ref _data[i])));
         }
 
         for (int i = 0; i != (int)Timer._Count; ++i)
@@ -102,15 +118,6 @@ class Counters
         }
 
         return sb.ToString();
-    }
-
-    private void CollectCounters(Span<long> totals)
-    {
-        foreach (long[] local in _data.Values)
-        {
-            for (int i = 0; i < local.Length; ++i)
-                totals[i] += local[i];
-        }
     }
 
     private static string FormatNum(long n)

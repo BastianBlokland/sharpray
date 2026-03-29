@@ -96,6 +96,7 @@ class Renderer
             Interlocked.Increment(ref _blockCompleted);
             _blockSignal.Release();
         }
+        _counters.Flush();
     }
 
     private void Execute(uint block)
