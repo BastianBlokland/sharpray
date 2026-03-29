@@ -59,7 +59,7 @@ class Compositor
             }
         });
 
-        overlay?.Draw(result, view);
+        overlay?.Draw(result, view, depth);
         return result;
     }
 

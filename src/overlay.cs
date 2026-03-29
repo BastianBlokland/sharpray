@@ -7,59 +7,99 @@ class Overlay
     {
         public Line Line;
         public Color Color;
+        public bool DepthTest;
+        public float DepthBias; // Relative bias; depth is multiplied by (1 - bias) before testing.
 
-        public LineEntry(Line line, Color color)
+        public LineEntry(Line line, Color color, bool depthTest, float depthBias)
         {
             Line = line;
             Color = color;
+            DepthTest = depthTest;
+            DepthBias = depthBias;
         }
     }
 
     private List<LineEntry> _lines = new List<LineEntry>();
 
-    public void AddLine(Line line, Color color) => _lines.Add(new LineEntry(line, color));
+    public void AddLine(Line line, Color color, bool depthTest = true, float depthBias = 0.02f) =>
+        _lines.Add(new LineEntry(line, color, depthTest, depthBias));
 
-    public void Draw(Image image, View view)
+    public void Draw(Image image, View view, float[]? depth = null)
     {
         float aspect = (float)image.Width / image.Height;
         Vec2 size = new Vec2(image.Width, image.Height);
+
         foreach (LineEntry line in _lines)
         {
-            Vec2? a = view.Project(line.Line.A, aspect);
-            Vec2? b = view.Project(line.Line.B, aspect);
-            if (a is Vec2 pa && b is Vec2 pb)
-                DrawLine(image, (pa * size).ToInt(), (pb * size).ToInt(), line.Color);
+            var projA = view.Project(line.Line.A, aspect);
+            var projB = view.Project(line.Line.B, aspect);
+            if (projA is (Vec2 posA, float depthA) && projB is (Vec2 posB, float depthB))
+            {
+                float depthBias = 1f - line.DepthBias;
+                Vec2i coordA = (posA * size).ToInt();
+                Vec2i coordB = (posB * size).ToInt();
+
+                RasterizeLine(
+                    image,
+                    line.DepthTest ? depth : null,
+                    coordA,
+                    coordB,
+                    depthA * depthBias,
+                    depthB * depthBias,
+                    line.Color);
+            }
         }
     }
 
-    private static void DrawLine(Image image, Vec2i a, Vec2i b, Color color)
+    private static void RasterizeLine(
+        Image image,
+        float[]? depth,
+        Vec2i start,
+        Vec2i end,
+        float depthA,
+        float depthB,
+        Color color)
     {
         // Bresenham's line algorithm.
         // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 
         Pixel pixel = color.ToPixel();
-        int dx = Math.Abs(b.X - a.X), sx = a.X < b.X ? 1 : -1;
-        int dy = -Math.Abs(b.Y - a.Y), sy = a.Y < b.Y ? 1 : -1;
-        int err = dx + dy;
+
+        int spanX = Math.Abs(end.X - start.X);
+        int spanY = -Math.Abs(end.Y - start.Y);
+        int stepX = start.X < end.X ? 1 : -1;
+        int stepY = start.Y < end.Y ? 1 : -1;
+        int bresenhamError = spanX + spanY;
+        int totalSteps = Math.Max(spanX, -spanY);
+        int step = -1;
+        Vec2i cursor = start;
 
         while (true)
         {
-            if ((uint)a.X < image.Width && (uint)a.Y < image.Height)
+            ++step;
+            if ((uint)cursor.X < image.Width && (uint)cursor.Y < image.Height)
             {
-                image.Pixels[a.Y * image.Width + a.X] = pixel;
+                int index = cursor.Y * (int)image.Width + cursor.X;
+                float lineFrac = totalSteps > 0 ? (float)step / totalSteps : 0f;
+                float lineDepth = float.Lerp(depthA, depthB, lineFrac);
+
+                if (depth is null || lineDepth <= depth[index])
+                    image.Pixels[index] = pixel;
             }
 
-            if (a.X == b.X && a.Y == b.Y)
+            if (cursor.X == end.X && cursor.Y == end.Y)
                 break;
 
-            int e2 = 2 * err;
-            if (e2 >= dy)
+            int err2 = 2 * bresenhamError;
+            if (err2 >= spanY)
             {
-                err += dy; a.X += sx;
+                bresenhamError += spanY;
+                cursor.X += stepX;
             }
-            if (e2 <= dx)
+            if (err2 <= spanX)
             {
-                err += dx; a.Y += sy;
+                bresenhamError += spanX;
+                cursor.Y += stepY;
             }
         }
     }

@@ -86,6 +86,7 @@ scene.AddObject(new Object(
     Vec3 desiredPos = new Vec3(0f, floorY + meshBottomY, 7.5f);
     Transform trans = new Transform(desiredPos - rot * (mesh.Bounds().Center * scale), rot, scale);
     scene.AddObject(new Object(trans, new Material(new Color(0.9f, 0.5f, 0.2f), 0.75f), mesh));
+    mesh.OverlayWireframe(overlay, trans, Color.Gray);
 }
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
