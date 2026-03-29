@@ -29,7 +29,7 @@ class Compositor
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
     }
 
-    public Image Preview(Color[] radiance, uint width, uint height, View view, Overlay? overlay)
+    public Image Preview(Color[] radiance, Vec3[] normals, float[] depth, uint width, uint height, View view, Overlay? overlay)
     {
         Debug.Assert(radiance.Length == width * height);
 
@@ -39,7 +39,7 @@ class Compositor
             result.Pixels[i] = Tonemap(radiance[i]);
         }
 
-        overlay?.Draw(result, view);
+        overlay?.Draw(result, view, depth);
         return result;
     }
 

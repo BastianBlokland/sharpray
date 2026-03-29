@@ -105,7 +105,7 @@ do
     // Preview intermediate results.
     if (outputImage && outputPreview && progress.Step % previewInterval == 0)
     {
-        Image preview = compositor.Preview(renderer.Radiance, width, height, view, overlay);
+        Image preview = compositor.Preview(renderer.Radiance, renderer.Normals, renderer.Depth, width, height, view, overlay);
         preview.Save(Path.Combine(outputPath, "image.bmp"));
     }
 
