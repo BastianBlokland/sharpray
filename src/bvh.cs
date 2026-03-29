@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
+record struct BvhStats(int Nodes, int Leaves, int MaxDepth);
+
 class Bvh<T> where T : IShape
 {
     private const int DivideThreshold = 8;
@@ -43,6 +45,19 @@ class Bvh<T> where T : IShape
     }
 
     public AABox Bounds => _nodeCount > 0 ? _nodes[0].Bounds : AABox.Inverted();
+
+    public BvhStats GetStats() => _nodeCount > 0 ? GetStatsNode(0, 0) : new BvhStats(0, 0, 0);
+
+    private BvhStats GetStatsNode(int nodeIdx, int depth)
+    {
+        Node node = _nodes[nodeIdx];
+        if (node.ShapeCount > 0)
+            return new BvhStats(1, 1, depth);
+
+        BvhStats a = GetStatsNode(node.Child, depth + 1);
+        BvhStats b = GetStatsNode(node.Child + 1, depth + 1);
+        return new BvhStats(1 + a.Nodes + b.Nodes, a.Leaves + b.Leaves, Math.Max(a.MaxDepth, b.MaxDepth));
+    }
 
     public bool Overlaps(AABox box)
     {
