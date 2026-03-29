@@ -825,6 +825,19 @@ struct Box : IShape
 
     public Vec3 Center => Local.Center;
 
+    public void Corners(Span<Vec3> corners)
+    {
+        Debug.Assert(corners.Length >= 8, "Span must hold at least 8 corners");
+        Vec3 halfSize = Local.Size * 0.5f;
+        for (int i = 0; i != 8; ++i)
+        {
+            corners[i] = Local.Center + Rot * new Vec3(
+                (i & 1) != 0 ? halfSize.X : -halfSize.X,
+                (i & 2) != 0 ? halfSize.Y : -halfSize.Y,
+                (i & 4) != 0 ? halfSize.Z : -halfSize.Z);
+        }
+    }
+
     public Vec3 ClosestPoint(Vec3 p) => Center + Rot * (Local.ClosestPoint(LocalPoint(p)) - Center);
 
     public AABox Bounds()
