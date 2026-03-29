@@ -85,23 +85,23 @@ class Bvh<T> where T : IShape
         return best;
     }
 
-    public void OverlayBounds(Overlay overlay, int maxDepth = int.MaxValue)
+    public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue)
     {
-        OverlayBoundsNode(overlay, 0, 0, maxDepth);
+        OverlayBoundsNode(overlay, trans, 0, 0, maxDepth);
     }
 
-    private void OverlayBoundsNode(Overlay overlay, int nodeIdx, int depth, int maxDepth)
+    private void OverlayBoundsNode(Overlay overlay, Transform trans, int nodeIdx, int depth, int maxDepth)
     {
         if (depth > maxDepth)
             return;
 
         ref Node node = ref _nodes[nodeIdx];
-        overlay.AddLineBox(node.Bounds, Color.ForIndex(depth));
+        overlay.AddLineBox(node.Bounds.Transform(trans), Color.ForIndex(depth));
 
         if (node.ShapeCount == 0)
         {
-            OverlayBoundsNode(overlay, node.Child, depth + 1, maxDepth);
-            OverlayBoundsNode(overlay, node.Child + 1, depth + 1, maxDepth);
+            OverlayBoundsNode(overlay, trans, node.Child, depth + 1, maxDepth);
+            OverlayBoundsNode(overlay, trans, node.Child + 1, depth + 1, maxDepth);
         }
     }
 
