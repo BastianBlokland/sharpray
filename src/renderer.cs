@@ -20,7 +20,7 @@ class Renderer
     private SemaphoreSlim _blockSignal;
 
     private uint _samples;
-    private uint _bounches;
+    private uint _bounces;
 
     public Renderer(
         Scene scene,
@@ -48,7 +48,7 @@ class Renderer
         _blockSignal = new SemaphoreSlim(0);
 
         _samples = samples;
-        _bounches = bounces;
+        _bounces = bounces;
 
         scene.Lock();
 
@@ -124,7 +124,7 @@ class Renderer
             Vec2 pos = new Vec2((x + rng.NextFloat()) / _width, (y + rng.NextFloat()) / _height);
             Ray ray = _view.Ray(pos, _aspect);
 
-            var (radiance, normal) = _scene.Sample(ray, ref rng, _bounches);
+            var (radiance, normal) = _scene.Sample(ray, ref rng, _bounces);
 
             radianceSum += radiance;
             if (normal is Vec3 n)
