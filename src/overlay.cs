@@ -3,23 +3,13 @@ using System.Collections.Generic;
 
 class Overlay
 {
-    private struct LineEntry
-    {
-        public Line Line;
-        public Color Color;
-        public bool DepthTest;
-        public float DepthBias; // Relative bias; depth is multiplied by (1 - bias) before testing.
-
-        public LineEntry(Line line, Color color, bool depthTest, float depthBias)
-        {
-            Line = line;
-            Color = color;
-            DepthTest = depthTest;
-            DepthBias = depthBias;
-        }
-    }
+    private record struct LineEntry(Line Line, Color Color, bool DepthTest, float DepthBias);
+    private record struct TextEntry3D(Vec3 WorldPos, string Text, Color Color);
+    private record struct TextEntry2D(Vec2i ScreenPos, string Text, Color Color);
 
     private List<LineEntry> _lines = new List<LineEntry>();
+    private List<TextEntry3D> _text3D = new List<TextEntry3D>();
+    private List<TextEntry2D> _text2D = new List<TextEntry2D>();
 
     public void AddLine(Line line, Color color, bool depthTest = true, float depthBias = 0.005f) =>
         _lines.Add(new LineEntry(line, color, depthTest, depthBias));
@@ -48,6 +38,12 @@ class Overlay
         AddLine(new Line(corners[3], corners[7]), color, depthTest, depthBias);
     }
 
+    public void AddText(string text, Vec3 worldPos, Color color) =>
+        _text3D.Add(new TextEntry3D(worldPos, text, color));
+
+    public void AddText(string text, Vec2i screenPos, Color color) =>
+        _text2D.Add(new TextEntry2D(screenPos, text, color));
+
     public void Draw(Image image, View view, float[]? depth = null)
     {
         float aspect = (float)image.Width / image.Height;
@@ -70,9 +66,18 @@ class Overlay
                     coordB,
                     depthA * depthBias,
                     depthB * depthBias,
-                    line.Color);
+                    line.Color.ToPixel());
             }
         }
+
+        foreach (TextEntry3D entry in _text3D)
+        {
+            if (view.Project(entry.WorldPos, aspect) is (Vec2 pos, float _))
+                RasterizeText(image, entry.Text, (pos * size).ToInt(), entry.Color.ToPixel());
+        }
+
+        foreach (TextEntry2D entry in _text2D)
+            RasterizeText(image, entry.Text, entry.ScreenPos, entry.Color.ToPixel());
     }
 
     private static void RasterizeLine(
@@ -82,12 +87,10 @@ class Overlay
         Vec2i end,
         float depthA,
         float depthB,
-        Color color)
+        Pixel value)
     {
         // Bresenham's line algorithm.
         // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-
-        Pixel pixel = color.ToPixel();
 
         float depthAInv = 1f / depthA;
         float depthBInv = 1f / depthB;
@@ -111,7 +114,7 @@ class Overlay
                 float lineDepth = 1f / float.Lerp(depthAInv, depthBInv, lineFrac);
 
                 if (depth is null || lineDepth <= depth[index])
-                    image.Pixels[index] = pixel;
+                    image.Pixels[index] = value;
             }
 
             if (cursor.X == end.X && cursor.Y == end.Y)
@@ -127,6 +130,32 @@ class Overlay
             {
                 bresenhamError += spanX;
                 cursor.Y += stepY;
+            }
+        }
+    }
+
+    private static void RasterizeText(Image image, string text, Vec2i coord, Pixel value)
+    {
+        for (int i = 0; i != text.Length; ++i)
+        {
+            int c = text[i];
+            if (c < Font.FirstChar || c > Font.LastChar)
+                continue;
+
+            int glyphBase = (c - Font.FirstChar) * Font.CharHeight;
+            for (int row = 0; row != Font.CharHeight; ++row)
+            {
+                byte bits = Font.Glyphs[glyphBase + row];
+                for (int col = 0; col != Font.CharWidth; ++col)
+                {
+                    if ((bits & (0x80 >> col)) == 0)
+                    {
+                        continue;
+                    }
+                    Vec2i pixel = new Vec2i(coord.X + i * Font.CharWidth + col, coord.Y + row);
+                    if ((uint)pixel.X < image.Width && (uint)pixel.Y < image.Height)
+                        image.Pixels[pixel.Y * (int)image.Width + pixel.X] = value;
+                }
             }
         }
     }
