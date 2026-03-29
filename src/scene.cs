@@ -151,15 +151,7 @@ class Scene
         _objects.Add(obj);
     }
 
-    public void OverlayBounds(Overlay overlay)
-    {
-        _bvh?.OverlayBounds(overlay, Transform.Identity());
-
-        for (int i = 0; i != _objects.Count; ++i)
-        {
-            _objects[i].OverlayBounds(overlay, Color.ForIndex(i));
-        }
-    }
+    public AABox Bounds() => _bvh?.Bounds ?? AABox.Inverted();
 
     public bool Occluded(Ray ray)
     {
@@ -255,5 +247,15 @@ class Scene
             }
         }
         return new Fragment(radiance, normal, depth);
+    }
+
+    public void OverlayBounds(Overlay overlay)
+    {
+        _bvh?.OverlayBounds(overlay, Transform.Identity());
+
+        for (int i = 0; i != _objects.Count; ++i)
+        {
+            _objects[i].OverlayBounds(overlay, Color.ForIndex(i));
+        }
     }
 }
