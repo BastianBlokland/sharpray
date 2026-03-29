@@ -21,7 +21,7 @@ class Overlay
 
     private List<LineEntry> _lines = new List<LineEntry>();
 
-    public void AddLine(Line line, Color color, bool depthTest = true, float depthBias = 0.02f) =>
+    public void AddLine(Line line, Color color, bool depthTest = true, float depthBias = 0.005f) =>
         _lines.Add(new LineEntry(line, color, depthTest, depthBias));
 
     public void Draw(Image image, View view, float[]? depth = null)
@@ -65,6 +65,9 @@ class Overlay
 
         Pixel pixel = color.ToPixel();
 
+        float depthAInv = 1f / depthA;
+        float depthBInv = 1f / depthB;
+
         int spanX = Math.Abs(end.X - start.X);
         int spanY = -Math.Abs(end.Y - start.Y);
         int stepX = start.X < end.X ? 1 : -1;
@@ -81,7 +84,7 @@ class Overlay
             {
                 int index = cursor.Y * (int)image.Width + cursor.X;
                 float lineFrac = totalSteps > 0 ? (float)step / totalSteps : 0f;
-                float lineDepth = float.Lerp(depthA, depthB, lineFrac);
+                float lineDepth = 1f / float.Lerp(depthAInv, depthBInv, lineFrac);
 
                 if (depth is null || lineDepth <= depth[index])
                     image.Pixels[index] = pixel;
