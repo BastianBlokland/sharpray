@@ -8,9 +8,9 @@ class Bvh<T> where T : IShape
 
     /**
      * There are two types of BVH nodes:
-     * - Leaf node: Contains 'shapeCount' shapes starting from 'child' in the shapes array.
-     * - Parent node: Contains two child nodes starting at 'child' in the nodes array.
-     * The node-type can be determined by the 'shapeCount': '> 0' for leaf-node, '== 0' for parent node.
+     * - Leaf node: Contains 'shapeCount' item indices starting from 'child' in the _items array.
+     * - Parent node: Contains two child nodes starting at 'child' in the _nodes array.
+     * The node-type can be determined by 'shapeCount': '> 0' for leaf-node, '== 0' for parent node.
      */
     private struct Node
     {
@@ -124,8 +124,8 @@ class Bvh<T> where T : IShape
     }
 
     /**
-     * Insert a new child leaf-node with the specified shapes.
-     * NOTE: Shapes need to be consecutively stored.
+     * Insert a new child leaf-node covering items [itemBegin, itemBegin + itemCount) in _items.
+     * NOTE: Items need to be consecutively stored in _items.
      * Returns the node index.
      */
     private int Insert(int itemBegin, int itemCount)
@@ -158,8 +158,8 @@ class Bvh<T> where T : IShape
     }
 
     /**
-     * Partition the leaf-node so all shapes before the returned shape index are on one side of the
-     * plane and all shapes after on the other side.
+     * Partition the leaf-node's items so all items before the returned _items index are on one side
+     * of the split plane and all items from the returned index onwards are on the other side.
      */
     private int Partition(int nodeIdx, int axis, float splitPos)
     {
