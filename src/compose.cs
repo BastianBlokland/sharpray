@@ -99,6 +99,7 @@ class Compositor
             }
         }
 
+        Debug.Assert(weightSum > 0f);
         return radianceSum / weightSum;
     }
 
