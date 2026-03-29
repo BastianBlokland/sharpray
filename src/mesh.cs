@@ -4,10 +4,12 @@ class Mesh : IShape
 {
     private Triangle[] _triangles;
     private AABox _bounds;
+    private Bvh<Triangle> _bvh;
 
     public Mesh(params Triangle[] triangles)
     {
         _triangles = triangles;
+        _bvh = new Bvh<Triangle>(_triangles);
 
         _bounds = AABox.Inverted();
         foreach (Triangle tri in _triangles)
@@ -32,20 +34,10 @@ class Mesh : IShape
         return false;
     }
 
-    public RayHit? Intersect(Ray ray)
-    {
-        if (_bounds.Intersect(ray) is null)
-            return null;
+    public RayHit? Intersect(Ray ray) => _bvh.Intersect(ray)?.Hit;
 
-        RayHit? closest = null;
-        foreach (Triangle tri in _triangles)
-        {
-            if (tri.Intersect(ray) is RayHit hit && (closest is null || hit.Dist < closest.Value.Dist))
-                closest = hit;
-        }
-
-        return closest;
-    }
+    public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue) =>
+        _bvh.OverlayBounds(overlay, trans, maxDepth);
 
     public void OverlayWireframe(Overlay overlay, Transform trans, Color color)
     {
