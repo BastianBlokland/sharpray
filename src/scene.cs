@@ -4,15 +4,15 @@ using System.Collections.Generic;
 
 struct Surface
 {
+    public Color Radiance;
     public RayHit? Hit;
     public Material? Material;
-    public Color Radiance;
 
-    public Surface(RayHit? hit, Material? material, Color radiance)
+    public Surface(Color radiance, RayHit? hit = null, Material? material = null)
     {
+        Radiance = radiance;
         Hit = hit;
         Material = material;
-        Radiance = radiance;
     }
 }
 
@@ -20,11 +20,13 @@ struct Fragment
 {
     public Color Radiance;
     public Vec3? Normal;
+    public float? Depth;
 
-    public Fragment(Color radiance, Vec3? normal)
+    public Fragment(Color radiance, Vec3? normal, float? depth)
     {
         Radiance = radiance;
         Normal = normal;
+        Depth = depth;
     }
 }
 
@@ -155,15 +157,16 @@ class Scene
         }
 
         if (closestHit is RayHit h)
-            return new Surface(h, closestMaterial, closestMaterial!.Value.Radiance);
+            return new Surface(closestMaterial!.Value.Radiance, h, closestMaterial);
 
-        return new Surface(null, null, _sky.AmbientRadianceRay(ray));
+        return new Surface(_sky.AmbientRadianceRay(ray));
     }
 
     public Fragment Sample(Ray ray, ref Rng rng, uint bounces)
     {
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
+        float? depth = null;
 
         for (uint i = 0; i != (bounces + 1); ++i)
         {
@@ -185,7 +188,10 @@ class Scene
             if (surf.Hit is RayHit hit)
             {
                 if (isPrimary)
+                {
                     normal = hit.Norm;
+                    depth = hit.Dist;
+                }
 
                 Vec3 hitPos = ray[hit.Dist] + hit.Norm * 1e-4f;
 
@@ -225,6 +231,6 @@ class Scene
                 break;
             }
         }
-        return new Fragment(radiance, normal);
+        return new Fragment(radiance, normal, depth);
     }
 }
