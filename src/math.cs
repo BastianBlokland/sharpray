@@ -1161,10 +1161,12 @@ struct View
             tanHalfHor = tanHalfVer * aspect;
         }
 
-        float ndcX = (local.X / local.Z) / tanHalfHor;
-        float ndcY = (local.Y / local.Z) / tanHalfVer;
+        // Project relative to the ray origin.
+        Vec3 localFromNear = new Vec3(local.X, local.Y, local.Z - Near);
+        float ndcX = (localFromNear.X / localFromNear.Z) / tanHalfHor;
+        float ndcY = (localFromNear.Y / localFromNear.Z) / tanHalfVer;
         Vec2 screenPos = new Vec2((ndcX + 1f) * 0.5f, (1f - ndcY) * 0.5f);
-        return (screenPos, local.Magnitude() - Near);
+        return (screenPos, localFromNear.Magnitude());
     }
 }
 
