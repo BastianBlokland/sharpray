@@ -5,16 +5,24 @@ class Mesh : IShape
 {
     private IReadOnlyList<Triangle> _triangles;
     private Bvh<Triangle> _bvh;
+    private Counters? _counters;
 
-    public Mesh(IReadOnlyList<Triangle> triangles)
+    public Mesh(IReadOnlyList<Triangle> triangles, Counters? counters = null)
     {
         _triangles = triangles;
         _bvh = new Bvh<Triangle>(_triangles);
+        _counters = counters;
+
+        counters?.Bump(Counter.MeshTriangle, triangles.Count);
     }
 
     public AABox Bounds() => _bvh.Bounds;
     public bool Overlaps(AABox box) => _bvh.Overlaps(box);
-    public RayHit? Intersect(Ray ray) => _bvh.Intersect(ray)?.Hit;
+    public RayHit? Intersect(Ray ray)
+    {
+        _counters?.Bump(Counter.MeshIntersect);
+        return _bvh.Intersect(ray)?.Hit;
+    }
 
     public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue) =>
         _bvh.OverlayBounds(overlay, trans, maxDepth);

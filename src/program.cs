@@ -45,7 +45,7 @@ using (counters.Scope(Timer.Setup))
     {
         Quat rot = Quat.AngleAxis(float.DegreesToRadians(200f), Vec3.Up);
         Vec3 scale = new Vec3(32f, 32f, 32f);
-        Mesh mesh = ObjLoader.Load("assets/bunny.obj");
+        Mesh mesh = ObjLoader.Load("assets/bunny.obj", counters);
         const float floorY = -1f;
         float meshBottomY = (mesh.Bounds().Center.Y - mesh.Bounds().Min.Y) * scale.Y;
         Vec3 desiredPos = new Vec3(-1, floorY + meshBottomY, 4f);

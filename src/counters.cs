@@ -16,6 +16,8 @@ enum Counter
     ShadowRaySkipped,
     SceneTrace,
     SceneOcclude,
+    MeshTriangle,
+    MeshIntersect,
 
     _Count
 }
@@ -51,6 +53,7 @@ class Counters
     private readonly double[] _times = new double[(int)Timer._Count];
 
     public void Bump(Counter c) => Interlocked.Increment(ref _data[(int)c]);
+    public void Bump(Counter c, long n) => Interlocked.Add(ref _data[(int)c], n);
     public long Get(Counter c) => Interlocked.Read(ref _data[(int)c]);
 
     public TimerScope Scope(Timer t) => new TimerScope(this, t);

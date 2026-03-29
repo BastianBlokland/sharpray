@@ -107,14 +107,14 @@ class ObjLexer
 
 static class ObjLoader
 {
-    public static Mesh Load(string path)
+    public static Mesh Load(string path, Counters? counters = null)
     {
         using var stream = File.OpenRead(path);
         using var reader = new StreamReader(stream);
-        return Parse(new ObjLexer(reader));
+        return Parse(new ObjLexer(reader), counters);
     }
 
-    private static Mesh Parse(ObjLexer lexer)
+    private static Mesh Parse(ObjLexer lexer, Counters? counters)
     {
         var positions = new List<Vec3>();
         var faces = new List<int[]>();
@@ -156,7 +156,7 @@ static class ObjLoader
             }
         }
 
-        return new Mesh(triangles);
+        return new Mesh(triangles, counters);
     }
 
     private static int[] ReadFace(ObjLexer lexer, int posCount)
