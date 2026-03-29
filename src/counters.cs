@@ -49,19 +49,19 @@ struct TimerScope : IDisposable
 
 class Counters
 {
-    private readonly ThreadLocal<long[]> _local = new ThreadLocal<long[]>(() => new long[(int)Counter._Count], trackAllValues: true);
+    private readonly ThreadLocal<long[]> _data = new ThreadLocal<long[]>(() => new long[(int)Counter._Count], trackAllValues: true);
     private readonly double[] _times = new double[(int)Timer._Count];
 
-    public void Bump(Counter c) => _local.Value![(int)c]++;
-    public void Bump(Counter c, long n) => _local.Value![(int)c] += n;
+    public void Bump(Counter c) => _data.Value![(int)c]++;
+    public void Bump(Counter c, long n) => _data.Value![(int)c] += n;
 
     public TimerScope Scope(Timer t) => new TimerScope(this, t);
     public void Set(Timer t, Timestamp duration) => _times[(int)t] = duration.Seconds;
 
     public string Dump()
     {
-        Span<long> totals = stackalloc long[(int)Counter._Count];
-        CollectCounters(totals);
+        Span<long> counters = stackalloc long[(int)Counter._Count];
+        CollectCounters(counters);
 
         int maxNameLen = 0;
         for (int i = 0; i != (int)Counter._Count; ++i)
@@ -85,7 +85,7 @@ class Counters
             sb.Append(name);
             sb.Append(' ', maxNameLen - name.Length);
             sb.Append(": ");
-            sb.Append(FormatNum(totals[i]));
+            sb.Append(FormatNum(counters[i]));
         }
 
         for (int i = 0; i != (int)Timer._Count; ++i)
@@ -106,7 +106,7 @@ class Counters
 
     private void CollectCounters(Span<long> totals)
     {
-        foreach (long[] local in _local.Values)
+        foreach (long[] local in _data.Values)
         {
             for (int i = 0; i < local.Length; ++i)
                 totals[i] += local[i];
