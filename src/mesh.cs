@@ -1,12 +1,13 @@
 using System;
+using System.Collections.Generic;
 
 class Mesh : IShape
 {
-    private Triangle[] _triangles;
+    private IReadOnlyList<Triangle> _triangles;
     private AABox _bounds;
     private Bvh<Triangle> _bvh;
 
-    public Mesh(params Triangle[] triangles)
+    public Mesh(IReadOnlyList<Triangle> triangles)
     {
         _triangles = triangles;
         _bvh = new Bvh<Triangle>(_triangles);

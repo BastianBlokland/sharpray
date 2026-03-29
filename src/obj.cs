@@ -165,7 +165,7 @@ static class ObjLoader
             }
         }
 
-        return new Mesh(triangles.ToArray());
+        return new Mesh(triangles);
     }
 
     private static int[] ReadFace(ObjLexer lexer, int posCount)
