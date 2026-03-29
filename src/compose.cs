@@ -29,37 +29,32 @@ class Compositor
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
     }
 
-    public Image Preview(Color[] radiance, Vec3[] normals, float[] depth, uint width, uint height, View view, Overlay? overlay)
+    public Image Preview(Renderer rend, Overlay? overlay)
     {
-        Debug.Assert(radiance.Length == width * height);
-
-        Image result = new Image(width, height);
-        for (uint i = 0; i != width * height; ++i)
+        Image result = new Image(rend.Width, rend.Height);
+        for (uint i = 0; i != rend.Width * rend.Height; ++i)
         {
-            result.Pixels[i] = Tonemap(radiance[i]);
+            result.Pixels[i] = Tonemap(rend.Radiance[i]);
         }
 
-        overlay?.Draw(result, view, depth);
+        overlay?.Draw(result, rend.View, rend.Depth);
         return result;
     }
 
-    public Image Compose(Color[] radiance, Vec3[] normals, float[] depth, uint width, uint height, View view, Overlay? overlay)
+    public Image Compose(Renderer rend, Overlay? overlay)
     {
-        Debug.Assert(radiance.Length == normals.Length);
-        Debug.Assert(radiance.Length == depth.Length);
-        Debug.Assert(radiance.Length == width * height);
+        Image result = new Image(rend.Width, rend.Height);
 
-        Image result = new Image(width, height);
-        Parallel.For(0, (int)height, y =>
+        Parallel.For(0, (int)rend.Height, y =>
         {
-            for (int x = 0; x != width; ++x)
+            for (int x = 0; x != rend.Width; ++x)
             {
-                Color filtered = Filter(radiance, normals, depth, (int)width, (int)height, x, y);
-                result.Pixels[y * width + x] = Tonemap(filtered);
+                Color filtered = Filter(rend.Radiance, rend.Normals, rend.Depth, (int)rend.Width, (int)rend.Height, x, y);
+                result.Pixels[y * rend.Width + x] = Tonemap(filtered);
             }
         });
 
-        overlay?.Draw(result, view, depth);
+        overlay?.Draw(result, rend.View, rend.Depth);
         return result;
     }
 

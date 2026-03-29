@@ -16,7 +16,7 @@ const float denoiseSigmaNormal = 0.5f;
 const float denoiseSigmaDepth = 1.0f;
 const String outputPath = "output";
 const bool outputImage = true, outputPreview = true, outputNormal = true, outputDepth = true;
-const uint previewInterval = 50;
+const uint previewInterval = 100;
 
 Directory.CreateDirectory(outputPath);
 
@@ -103,14 +103,19 @@ do
     progress = renderer.Tick();
 
     // Preview intermediate results.
-    if (outputImage && outputPreview && progress.Step % previewInterval == 0)
+    if (outputPreview && progress.Step % previewInterval == 0)
     {
-        Image preview = compositor.Preview(renderer.Radiance, renderer.Normals, renderer.Depth, width, height, view, overlay);
-        preview.Save(Path.Combine(outputPath, "image.bmp"));
+        compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
     }
 
     Console.WriteLine($"Rendering [{progress.Step,3} / {progress.Total}]");
 } while (progress.Step != progress.Total);
+
+if (outputPreview)
+{
+    // Output final 'preview' (non-denoised) output.
+    compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
+}
 
 if (outputNormal)
 {
@@ -142,8 +147,7 @@ if (outputDepth)
 if (outputImage)
 {
     Console.WriteLine("Compositing");
-    Image image = compositor.Compose(renderer.Radiance, renderer.Normals, renderer.Depth, width, height, view, overlay);
-    image.Save(Path.Combine(outputPath, "image.bmp"));
+    compositor.Compose(renderer, overlay).Save(Path.Combine(outputPath, "final.bmp"));
 }
 
 double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
