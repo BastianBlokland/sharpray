@@ -8,6 +8,9 @@ enum Counter
     OccludeRay,
     SampleBounce,
     SampleHit,
+    ShadowRayOccluded,
+    ShadowRaySkipped,
+    PathTerminated,
 
     _Count
 }

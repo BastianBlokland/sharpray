@@ -184,14 +184,21 @@ class Scene
                     Ray shadowRay = new Ray(hitPos, sunDir);
                     if (!Occluded(shadowRay, counters))
                         radiance += _sky.SunRadiance * energy * sunCosTheta;
+                    else
+                        counters.Bump(Counter.ShadowRayOccluded);
                 }
+                else
+                    counters.Bump(Counter.ShadowRaySkipped);
 
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
                 {
                     float survive = MathF.Max(energy.R, MathF.Max(energy.G, energy.B));
                     if (rng.NextFloat() >= survive)
+                    {
+                        counters.Bump(Counter.PathTerminated);
                         break;
+                    }
                     energy /= survive;
                 }
 
