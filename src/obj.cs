@@ -117,7 +117,10 @@ static class ObjLoader
     private static Mesh Parse(ObjLexer lexer, Counters? counters)
     {
         var positions = new List<Vec3>();
-        var faces = new List<int[]>();
+        var normals = new List<Vec3>();
+        var triangles = new List<Triangle>();
+        var faceEntries = new List<(int Pos, int Norm)>();
+        int faceCount = 0;
 
         while (true)
         {
@@ -133,8 +136,15 @@ static class ObjLoader
                     positions.Add(ReadVec3(lexer));
                     lexer.SkipLine();
                     break;
+                case "vn":
+                    normals.Add(ReadVec3(lexer));
+                    lexer.SkipLine();
+                    break;
                 case "f":
-                    faces.Add(ReadFace(lexer, positions.Count));
+                    faceEntries.Clear();
+                    ReadFace(lexer, positions.Count, normals.Count, faceEntries);
+                    TriangulateFace(faceEntries, positions, normals, triangles);
+                    faceCount++;
                     break;
                 default:
                     lexer.SkipLine();
@@ -142,49 +152,61 @@ static class ObjLoader
             }
         }
 
-        if (faces.Count == 0)
+        if (faceCount == 0)
             throw new Exception("OBJ: no faces found");
-
-        // Triangulate faces using a triangle fan from the first vertex.
-        var triangles = new List<Triangle>();
-        foreach (int[] face in faces)
-        {
-            Vec3 a = positions[face[0]];
-            for (int i = 2; i < face.Length; ++i)
-            {
-                triangles.Add(new Triangle(a, positions[face[i - 1]], positions[face[i]]));
-            }
-        }
 
         return new Mesh(triangles, counters);
     }
 
-    private static int[] ReadFace(ObjLexer lexer, int posCount)
+    private static void TriangulateFace(
+        IReadOnlyList<(int Pos, int Norm)> entries,
+        IReadOnlyList<Vec3> positions,
+        IReadOnlyList<Vec3> normals,
+        List<Triangle> output)
     {
-        var indices = new List<int>();
+        if (entries.Count < 3)
+            throw new Exception("OBJ: face has fewer than 3 vertices");
+
+        // Triangle fan from the first vertex.
+
+        (int facePosA, int faceNormA) = entries[0];
+        Vec3 triPosA = positions[facePosA];
+
+        for (int i = 2; i < entries.Count; ++i)
+        {
+            (int facePosB, int faceNormB) = entries[i - 1];
+            (int facePosC, int faceNormC) = entries[i];
+
+            Vec3 triPosB = positions[facePosB];
+            Vec3 triPosC = positions[facePosC];
+
+            if (faceNormA >= 0 && faceNormB >= 0 && faceNormC >= 0)
+                output.Add(new Triangle(triPosA, triPosB, triPosC, normals[faceNormA], normals[faceNormB], normals[faceNormC]));
+            else
+                output.Add(new Triangle(triPosA, triPosB, triPosC));
+        }
+    }
+
+    private static void ReadFace(ObjLexer lexer, int posCount, int normCount, List<(int Pos, int Norm)> output)
+    {
         while (lexer.Peek().Kind == ObjToken.Type.Word)
         {
-            indices.Add(ReadIndex(lexer, posCount));
-
-            // Skip optional slash-separated texcoord and normal indices.
+            int pos = ReadIndex(lexer, posCount);
+            int norm = -1;
             if (lexer.Peek().Kind == ObjToken.Type.Slash)
             {
                 lexer.Next(); // First slash
                 if (lexer.Peek().Kind == ObjToken.Type.Word)
-                    lexer.Next(); // Texcoord index
+                    lexer.Next(); // Skip texcoord index
                 if (lexer.Peek().Kind == ObjToken.Type.Slash)
                 {
                     lexer.Next(); // Second slash
                     if (lexer.Peek().Kind == ObjToken.Type.Word)
-                        lexer.Next(); // Normal index
+                        norm = ReadIndex(lexer, normCount);
                 }
             }
+            output.Add((pos, norm));
         }
-
-        if (indices.Count < 3)
-            throw new Exception("OBJ: face has fewer than 3 vertices");
-
-        return indices.ToArray();
     }
 
     private static float ReadFloat(ObjLexer lexer)
