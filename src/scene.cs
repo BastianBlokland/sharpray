@@ -46,23 +46,31 @@ struct Material
     }
 }
 
-struct Object
+struct Object : IShape
 {
     public Transform Trans;
     public Material Material;
     public IShape Shape;
+
+    private Box _boundsRotated;
+    private AABox _bounds;
 
     public Object(Transform trans, Material material, IShape shape)
     {
         Trans = trans;
         Material = material;
         Shape = shape;
+
+        _boundsRotated = shape.Bounds().Transform(trans);
+        _bounds = _boundsRotated.Bounds();
     }
 
+    public AABox Bounds() => _bounds;
+    public bool Overlaps(AABox box) => _boundsRotated.Overlaps(box);
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
 
     public void OverlayBounds(Overlay overlay, Color color) =>
-        overlay.AddLineBox(Shape.Bounds().Transform(Trans), color);
+        overlay.AddLineBox(_boundsRotated, color);
 }
 
 struct Sky
