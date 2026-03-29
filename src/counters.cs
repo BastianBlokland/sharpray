@@ -26,7 +26,7 @@ enum Timer
 {
     Setup,
     Render,
-    Composite,
+    Compose,
     Total,
     _Count
 }

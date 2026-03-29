@@ -118,7 +118,7 @@ overlay.AddText(counters.Dump(), new Vec2i(8, 8), Color.White);
 if (outputImage)
 {
     Console.WriteLine("> Compositing");
-    using (counters.Scope(Timer.Composite))
+    using (counters.Scope(Timer.Compose))
     {
         compositor.Compose(renderer, overlay).Save(Path.Combine(outputPath, "final.bmp"));
     }
