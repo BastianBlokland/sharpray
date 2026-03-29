@@ -24,6 +24,30 @@ class Overlay
     public void AddLine(Line line, Color color, bool depthTest = true, float depthBias = 0.005f) =>
         _lines.Add(new LineEntry(line, color, depthTest, depthBias));
 
+    public void AddWireBox(AABox box, Color color, bool depthTest = true, float depthBias = 0.005f) =>
+        AddWireBox(new Box(box, Quat.Identity()), color, depthTest, depthBias);
+
+    public void AddWireBox(Box box, Color color, bool depthTest = true, float depthBias = 0.005f)
+    {
+        Span<Vec3> corners = stackalloc Vec3[8];
+        box.Corners(corners);
+
+        AddLine(new Line(corners[0], corners[1]), color, depthTest, depthBias);
+        AddLine(new Line(corners[2], corners[3]), color, depthTest, depthBias);
+        AddLine(new Line(corners[4], corners[5]), color, depthTest, depthBias);
+        AddLine(new Line(corners[6], corners[7]), color, depthTest, depthBias);
+
+        AddLine(new Line(corners[0], corners[2]), color, depthTest, depthBias);
+        AddLine(new Line(corners[1], corners[3]), color, depthTest, depthBias);
+        AddLine(new Line(corners[4], corners[6]), color, depthTest, depthBias);
+        AddLine(new Line(corners[5], corners[7]), color, depthTest, depthBias);
+
+        AddLine(new Line(corners[0], corners[4]), color, depthTest, depthBias);
+        AddLine(new Line(corners[1], corners[5]), color, depthTest, depthBias);
+        AddLine(new Line(corners[2], corners[6]), color, depthTest, depthBias);
+        AddLine(new Line(corners[3], corners[7]), color, depthTest, depthBias);
+    }
+
     public void Draw(Image image, View view, float[]? depth = null)
     {
         float aspect = (float)image.Width / image.Height;
