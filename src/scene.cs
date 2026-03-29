@@ -96,12 +96,14 @@ class Scene
         _sky = sky;
     }
 
-    public void Lock()
+    public void Lock(Counters? counters = null) 
     {
         if (_locked)
             return;
         _locked = true;
         _bvh = new Bvh<Object>(_objects);
+
+        counters?.Bump(Counter.SceneObject, _objects.Count);
     }
 
     public void AddObject(Object obj)

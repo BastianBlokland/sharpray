@@ -14,6 +14,7 @@ enum Counter
     SampleTerminate,
     ShadowRayOccluded,
     ShadowRaySkipped,
+    SceneObject,
     SceneTrace,
     SceneOcclude,
     MeshTriangle,

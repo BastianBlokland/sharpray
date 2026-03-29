@@ -69,7 +69,7 @@ using (counters.Scope(Timer.Setup))
         }
     }
 
-    scene.Lock();
+    scene.Lock(counters);
 }
 
 View view = new View(new Transform(new Vec3(0.5f, 3f, -2f), Quat.AngleAxis(float.DegreesToRadians(20f), Vec3.Right)), float.DegreesToRadians(75f));

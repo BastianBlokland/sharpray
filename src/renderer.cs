@@ -56,7 +56,7 @@ class Renderer
         _bounces = bounces;
         _counters = counters;
 
-        scene.Lock();
+        scene.Lock(counters);
 
         Radiance = new Color[Width * Height];
         Normals = new Vec3[Width * Height];
