@@ -1,8 +1,6 @@
 using System;
 using System.IO;
 
-Timestamp timeStart = Timestamp.Now();
-
 Console.WriteLine("[SharpRay]");
 Console.WriteLine("> Performing setup");
 
@@ -17,6 +15,9 @@ const float denoiseSigmaNormal = 0.5f;
 const float denoiseSigmaDepth = 1.0f;
 const bool outputImage = true, outputPreview = true, outputNormal = true, outputDepth = true;
 const uint previewInterval = 100;
+
+Counters counters = new Counters();
+var timerTotal = counters.Scope(Timer.Total);
 
 String outputPath = Path.GetFullPath("output");
 Directory.CreateDirectory(outputPath);
@@ -50,25 +51,28 @@ scene.AddObject(new Object(
 }
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
-Counters counters = new Counters();
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth);
 
 Console.WriteLine("> Starting render");
 
 (uint Step, uint Total) progress;
-do
+
+using (counters.Scope(Timer.Render))
 {
-    progress = renderer.Tick();
-
-    // Preview intermediate results.
-    if (outputPreview && progress.Step % previewInterval == 0)
+    do
     {
-        compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
-    }
+        progress = renderer.Tick();
 
-    Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total}]");
-} while (progress.Step != progress.Total);
+        // Preview intermediate results.
+        if (outputPreview && progress.Step % previewInterval == 0)
+        {
+            compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
+        }
+
+        Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total}]");
+    } while (progress.Step != progress.Total);
+}
 
 if (outputPreview)
 {
@@ -108,12 +112,15 @@ overlay.AddText(counters.Dump(), new Vec2i(8, 8), Color.White);
 if (outputImage)
 {
     Console.WriteLine("> Compositing");
-    compositor.Compose(renderer, overlay).Save(Path.Combine(outputPath, "final.bmp"));
+    using (counters.Scope(Timer.Composite))
+    {
+        compositor.Compose(renderer, overlay).Save(Path.Combine(outputPath, "final.bmp"));
+    }
 }
 
-double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
+timerTotal.Dispose();
 
 Console.WriteLine(string.Empty);
 Console.WriteLine(counters.Dump());
 Console.WriteLine(string.Empty);
-Console.WriteLine($"Finished (time: {timeElapsed:F1} s): {outputPath}");
+Console.WriteLine($"Finished: {outputPath}");
