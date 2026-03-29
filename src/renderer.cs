@@ -4,13 +4,14 @@ using System.Threading;
 
 class Renderer
 {
+    public uint Width { get; }
+    public uint Height { get; }
     public Color[] Radiance { get; }
     public Vec3[] Normals { get; }
     public float[] Depth { get; }
 
     private Scene _scene;
     private View _view;
-    private uint _width, _height;
     private float _aspect;
 
     private uint _blockSize;
@@ -36,15 +37,16 @@ class Renderer
         Debug.Assert(blockSize > 0);
         Debug.Assert(samples > 0);
 
+        Width = width;
+        Height = height;
+
         _scene = scene;
         _view = view;
-        _width = width;
-        _height = height;
-        _aspect = (float)_width / (float)_height;
+        _aspect = (float)width / (float)height;
 
         _blockSize = blockSize;
-        _blockCountX = (_width + _blockSize - 1) / _blockSize;
-        _blockCountY = (_height + _blockSize - 1) / _blockSize;
+        _blockCountX = (width + blockSize - 1) / blockSize;
+        _blockCountY = (height + blockSize - 1) / blockSize;
         _blockCountTotal = _blockCountX * _blockCountY;
         _blockSignal = new SemaphoreSlim(0);
 
@@ -53,9 +55,9 @@ class Renderer
 
         scene.Lock();
 
-        Radiance = new Color[width * height];
-        Normals = new Vec3[width * height];
-        Depth = new float[width * height];
+        Radiance = new Color[Width * Height];
+        Normals = new Vec3[Width * Height];
+        Depth = new float[Width * Height];
 
         // Start the worker threads.
         for (int i = 0; i < Environment.ProcessorCount; ++i)
@@ -100,8 +102,8 @@ class Renderer
         uint blockY = block / _blockCountX;
         uint xMin = blockX * _blockSize;
         uint yMin = blockY * _blockSize;
-        uint xMax = Math.Min(xMin + _blockSize, _width);
-        uint yMax = Math.Min(yMin + _blockSize, _height);
+        uint xMax = Math.Min(xMin + _blockSize, Width);
+        uint yMax = Math.Min(yMin + _blockSize, Height);
 
         for (uint y = yMin; y != yMax; ++y)
         {
@@ -109,9 +111,9 @@ class Renderer
             {
                 Fragment frag = Render(x, y);
 
-                Radiance[y * _width + x] = frag.Radiance;
-                Normals[y * _width + x] = frag.Normal ?? Vec3.Zero;
-                Depth[y * _width + x] = frag.Depth ?? float.PositiveInfinity;
+                Radiance[y * Width + x] = frag.Radiance;
+                Normals[y * Width + x] = frag.Normal ?? Vec3.Zero;
+                Depth[y * Width + x] = frag.Depth ?? float.PositiveInfinity;
             }
         }
     }
@@ -131,7 +133,7 @@ class Renderer
 
         for (uint i = 0; i != _samples; ++i)
         {
-            Vec2 pos = new Vec2((x + rng.NextFloat()) / _width, (y + rng.NextFloat()) / _height);
+            Vec2 pos = new Vec2((x + rng.NextFloat()) / Width, (y + rng.NextFloat()) / Height);
             Ray ray = _view.Ray(pos, _aspect);
 
             Fragment frag = _scene.Sample(ray, ref rng, _bounces);
