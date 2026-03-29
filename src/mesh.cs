@@ -13,21 +13,7 @@ class Mesh : IShape
     }
 
     public AABox Bounds() => _bvh.Bounds;
-
-    public bool Overlaps(AABox box)
-    {
-        if (!_bvh.Bounds.Overlaps(box))
-            return false;
-
-        foreach (Triangle tri in _triangles)
-        {
-            if (tri.Overlaps(box))
-                return true;
-        }
-
-        return false;
-    }
-
+    public bool Overlaps(AABox box) => _bvh.Overlaps(box);
     public RayHit? Intersect(Ray ray) => _bvh.Intersect(ray)?.Hit;
 
     public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue) =>
