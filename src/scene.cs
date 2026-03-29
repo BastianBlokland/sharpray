@@ -103,13 +103,21 @@ class Scene
 {
     private List<Object> _objects = new List<Object>();
     private Sky _sky;
+    private bool _locked;
 
     public Scene(Sky sky)
     {
         _sky = sky;
     }
 
-    public void AddObject(Object obj) => _objects.Add(obj);
+    public void Lock() => _locked = true;
+
+    public void AddObject(Object obj)
+    {
+        if (_locked)
+            throw new InvalidOperationException("Scene locked");
+        _objects.Add(obj);
+    }
 
     private bool Occluded(Ray ray)
     {

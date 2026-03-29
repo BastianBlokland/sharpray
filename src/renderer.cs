@@ -50,6 +50,8 @@ class Renderer
         _samples = samples;
         _bounches = bounces;
 
+        scene.Lock();
+
         Radiance = new Color[width * height];
         Normals = new Vec3[width * height];
 
