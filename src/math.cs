@@ -110,6 +110,35 @@ struct Color
         float b = MathF.Pow(pixel.B / 255f, 2.233333333f);
         return new Color(r, g, b);
     }
+
+    public static Color FromHsv(float h, float s, float v)
+    {
+        Debug.Assert(h >= 0f && h <= 1f);
+        Debug.Assert(s >= 0f && s <= 1f);
+        Debug.Assert(v >= 0f && v <= 1f);
+
+        if (v == 0f) return Black;
+        if (s == 0f) return new Color(v);
+
+        // hsv to rgb.
+        // http://ilab.usc.edu/wiki/index.php/HSV_And_H2SV_Color_Space#HSV_Transformation_C_.2F_C.2B.2B_Code_2
+
+        float hueSeg = h * 6f;
+        int hueIdx = (int)MathF.Floor(hueSeg);
+        float hueFrac = hueSeg - hueIdx;
+        float pV = v * (1f - s);
+        float qV = v * (1f - s * hueFrac);
+        float tV = v * (1f - s * (1f - hueFrac));
+        return hueIdx switch
+        {
+            0 => new Color(v, tV, pV),
+            1 => new Color(qV, v, pV),
+            2 => new Color(pV, v, tV),
+            3 => new Color(pV, qV, v),
+            4 => new Color(tV, pV, v),
+            _ => new Color(v, pV, qV),
+        };
+    }
 }
 
 struct Vec2
