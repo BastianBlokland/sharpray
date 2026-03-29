@@ -85,11 +85,31 @@ class Bvh<T> where T : IShape
         return best;
     }
 
+    public void OverlayBounds(Overlay overlay, int maxDepth = int.MaxValue)
+    {
+        OverlayBoundsNode(overlay, 0, 0, maxDepth);
+    }
+
+    private void OverlayBoundsNode(Overlay overlay, int nodeIdx, int depth, int maxDepth)
+    {
+        if (depth > maxDepth)
+            return;
+
+        ref Node node = ref _nodes[nodeIdx];
+        overlay.AddLineBox(node.Bounds, Color.ForIndex(depth));
+
+        if (node.ShapeCount == 0)
+        {
+            OverlayBoundsNode(overlay, node.Child, depth + 1, maxDepth);
+            OverlayBoundsNode(overlay, node.Child + 1, depth + 1, maxDepth);
+        }
+    }
+
     /**
-         * Insert a single root leaf-node containing all the shapes (needs at least 1 shape).
-         * NOTE: Bvh needs to be empty before inserting a new root.
-         * Returns the node index.
-         */
+      * Insert a single root leaf-node containing all the shapes (needs at least 1 shape).
+      * NOTE: Bvh needs to be empty before inserting a new root.
+      * Returns the node index.
+      */
     private int InsertRoot()
     {
         Debug.Assert(_nodeCount == 0);
