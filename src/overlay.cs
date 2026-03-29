@@ -86,6 +86,11 @@ class Overlay
             RasterizeText(image, entry.Text, entry.ScreenPos, entry.Align, entry.Color.ToPixel());
     }
 
+    private static int? PixelIndex(Image image, Vec2i coord) =>
+        (uint)coord.X < image.Width && (uint)coord.Y < image.Height
+            ? coord.Y * (int)image.Width + coord.X
+            : null;
+
     private static void RasterizeLine(
         Image image,
         float[]? depth,
@@ -113,9 +118,8 @@ class Overlay
         while (true)
         {
             ++step;
-            if ((uint)cursor.X < image.Width && (uint)cursor.Y < image.Height)
+            if (PixelIndex(image, cursor) is int index)
             {
-                int index = cursor.Y * (int)image.Width + cursor.X;
                 float lineFrac = totalSteps > 0 ? (float)step / totalSteps : 0f;
                 float lineDepth = 1f / float.Lerp(depthAInv, depthBInv, lineFrac);
 
@@ -140,33 +144,47 @@ class Overlay
         }
     }
 
-    private static void RasterizeText(Image image, string text, Vec2i coord, Align align, Pixel value)
+    private static void RasterizeTextLine(Image image, ReadOnlySpan<char> line, Vec2i coord, Pixel value)
     {
-        if (align == Align.Center)
+        for (int i = 0; i != line.Length; ++i)
         {
-            coord -= new Vec2i(text.Length * Font.CharWidth / 2, Font.CharHeight / 2);
-        }
-        for (int i = 0; i != text.Length; ++i)
-        {
-            int c = text[i];
-            if (c < Font.FirstChar || c > Font.LastChar)
-                continue;
+            if (line[i] < Font.FirstChar || line[i] > Font.LastChar)
+                continue; // Unsupported character.
 
-            int glyphBase = (c - Font.FirstChar) * Font.CharHeight;
-            for (int row = 0; row != Font.CharHeight; ++row)
+            int glyphBase = (line[i] - Font.FirstChar) * Font.CharHeight;
+            for (int glyphRow = 0; glyphRow != Font.CharHeight; ++glyphRow)
             {
-                byte bits = Font.Glyphs[glyphBase + row];
-                for (int col = 0; col != Font.CharWidth; ++col)
+                byte fontBits = Font.Glyphs[glyphBase + glyphRow];
+                for (int glyphCol = 0; glyphCol != Font.CharWidth; ++glyphCol)
                 {
-                    if ((bits & (0x80 >> col)) == 0)
-                    {
+                    if ((fontBits & (0x80 >> glyphCol)) == 0)
                         continue;
-                    }
-                    Vec2i pixel = new Vec2i(coord.X + i * Font.CharWidth + col, coord.Y + row);
-                    if ((uint)pixel.X < image.Width && (uint)pixel.Y < image.Height)
-                        image.Pixels[pixel.Y * (int)image.Width + pixel.X] = value;
+                    if (PixelIndex(image, coord + new Vec2i(i * Font.CharWidth + glyphCol, glyphRow)) is int index)
+                        image.Pixels[index] = value;
                 }
             }
+        }
+    }
+
+    private static void RasterizeText(Image image, ReadOnlySpan<char> text, Vec2i coord, Align align, Pixel value)
+    {
+        Span<Range> lines = stackalloc Range[64];
+        int lineCount = text.Split(lines, '\n');
+
+        if (align == Align.Center)
+        {
+            int width = 0;
+            for (int i = 0; i != lineCount; ++i)
+                width = Math.Max(width, text[lines[i]].Length);
+
+            coord.X -= width * Font.CharWidth / 2;
+            coord.Y -= lineCount * Font.CharHeight / 2;
+        }
+
+        for (int i = 0; i != lineCount; ++i)
+        {
+            ReadOnlySpan<char> line = text[lines[i]];
+            RasterizeTextLine(image, line, new Vec2i(coord.X, coord.Y + i * Font.CharHeight), value);
         }
     }
 }
