@@ -24,10 +24,10 @@ class Overlay
     public void AddLine(Line line, Color color, bool depthTest = true, float depthBias = 0.005f) =>
         _lines.Add(new LineEntry(line, color, depthTest, depthBias));
 
-    public void AddWireBox(AABox box, Color color, bool depthTest = true, float depthBias = 0.005f) =>
-        AddWireBox(new Box(box, Quat.Identity()), color, depthTest, depthBias);
+    public void AddLineBox(AABox box, Color color, bool depthTest = true, float depthBias = 0.005f) =>
+        AddLineBox(new Box(box, Quat.Identity()), color, depthTest, depthBias);
 
-    public void AddWireBox(Box box, Color color, bool depthTest = true, float depthBias = 0.005f)
+    public void AddLineBox(Box box, Color color, bool depthTest = true, float depthBias = 0.005f)
     {
         Span<Vec3> corners = stackalloc Vec3[8];
         box.Corners(corners);

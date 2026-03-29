@@ -62,7 +62,7 @@ struct Object
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
 
     public void OverlayBounds(Overlay overlay, Color color) =>
-        overlay.AddWireBox(Shape.Bounds().Transform(Trans), color);
+        overlay.AddLineBox(Shape.Bounds().Transform(Trans), color);
 }
 
 struct Sky
