@@ -1121,22 +1121,34 @@ struct Plane : IShape
 
 struct Triangle : IShape
 {
-    public Vec3 A, B, C;
+    public Vec3 PosA, PosB, PosC;
+    public Vec3 NormalA, NormalB, NormalC;
 
-    public Triangle(Vec3 a, Vec3 b, Vec3 c)
+    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC)
     {
-        A = a;
-        B = b;
-        C = c;
+        PosA = posA;
+        PosB = posB;
+        PosC = posC;
+        NormalA = NormalB = NormalC = Normal;
     }
 
-    public Vec3 Normal => Vec3.Cross(B - A, C - A).Normalize();
-    public Vec3 Center => (A + B + C) / 3f;
-    public Plane Plane => Plane.AtTriangle(A, B, C);
+    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC, Vec3 normalA, Vec3 normalB, Vec3 normalC)
+    {
+        PosA = posA;
+        PosB = posB;
+        PosC = posC;
+        NormalA = normalA;
+        NormalB = normalB;
+        NormalC = normalC;
+    }
+
+    public Vec3 Normal => Vec3.Cross(PosB - PosA, PosC - PosA).Normalize();
+    public Vec3 Center => (PosA + PosB + PosC) / 3f;
+    public Plane Plane => Plane.AtTriangle(PosA, PosB, PosC);
 
     public AABox Bounds() => new AABox(
-        new Vec3(MathF.Min(A.X, MathF.Min(B.X, C.X)), MathF.Min(A.Y, MathF.Min(B.Y, C.Y)), MathF.Min(A.Z, MathF.Min(B.Z, C.Z))),
-        new Vec3(MathF.Max(A.X, MathF.Max(B.X, C.X)), MathF.Max(A.Y, MathF.Max(B.Y, C.Y)), MathF.Max(A.Z, MathF.Max(B.Z, C.Z))));
+        new Vec3(MathF.Min(PosA.X, MathF.Min(PosB.X, PosC.X)), MathF.Min(PosA.Y, MathF.Min(PosB.Y, PosC.Y)), MathF.Min(PosA.Z, MathF.Min(PosB.Z, PosC.Z))),
+        new Vec3(MathF.Max(PosA.X, MathF.Max(PosB.X, PosC.X)), MathF.Max(PosA.Y, MathF.Max(PosB.Y, PosC.Y)), MathF.Max(PosA.Z, MathF.Max(PosB.Z, PosC.Z))));
 
     public bool Overlaps(AABox box) => Bounds().Overlaps(box);
 
@@ -1144,15 +1156,15 @@ struct Triangle : IShape
     {
         // Möller–Trumbore intersection.
         // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-        Vec3 ab = B - A;
-        Vec3 ac = C - A;
+        Vec3 ab = PosB - PosA;
+        Vec3 ac = PosC - PosA;
         Vec3 h = Vec3.Cross(ray.Dir, ac);
         float det = Vec3.Dot(ab, h);
 
         if (MathF.Abs(det) <= 1e-9f) return null; // Parallel.
 
         float invDet = 1f / det;
-        Vec3 ao = ray.Origin - A;
+        Vec3 ao = ray.Origin - PosA;
         float u = Vec3.Dot(ao, h) * invDet;
         if (u < 0f || u > 1f) return null;
 
@@ -1163,7 +1175,8 @@ struct Triangle : IShape
         float t = Vec3.Dot(ac, q) * invDet;
         if (t < 0f) return null;
 
-        Vec3 normal = det > 0f ? Normal : -Normal;
+        Vec3 interp = NormalA * (1f - u - v) + NormalB * u + NormalC * v;
+        Vec3 normal = (det > 0f ? interp : -interp).NormalizeOr(det > 0f ? Normal : -Normal);
         return new RayHit(t, normal);
     }
 }
