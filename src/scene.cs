@@ -2,13 +2,13 @@
 using System;
 using System.Collections.Generic;
 
-struct Fragment
+struct Surface
 {
     public RayHit? Hit;
     public Material? Material;
     public Color Radiance;
 
-    public Fragment(RayHit? hit, Material? material, Color radiance)
+    public Surface(RayHit? hit, Material? material, Color radiance)
     {
         Hit = hit;
         Material = material;
@@ -129,7 +129,7 @@ class Scene
         return false;
     }
 
-    public Fragment Trace(Ray ray)
+    public Surface Trace(Ray ray)
     {
         RayHit? closestHit = null;
         Material? closestMaterial = null;
@@ -143,9 +143,9 @@ class Scene
         }
 
         if (closestHit is RayHit h)
-            return new Fragment(h, closestMaterial, closestMaterial!.Value.Radiance);
+            return new Surface(h, closestMaterial, closestMaterial!.Value.Radiance);
 
-        return new Fragment(null, null, _sky.AmbientRadianceRay(ray));
+        return new Surface(null, null, _sky.AmbientRadianceRay(ray));
     }
 
     public (Color Radiance, Vec3? Normal) Sample(Ray ray, ref Rng rng, uint bounces)
@@ -156,21 +156,21 @@ class Scene
         for (uint i = 0; i != (bounces + 1); ++i)
         {
             bool isPrimary = i == 0;
-            Fragment frag = Trace(ray);
+            Surface surf = Trace(ray);
 
             // Accumulate radiance.
-            radiance += frag.Radiance * energy;
+            radiance += surf.Radiance * energy;
 
             // Absorb some of the light frequencies.
             float roughness = 1.0f;
-            if (frag.Material is Material material)
+            if (surf.Material is Material material)
             {
                 Color specularColor = Color.Lerp(Color.White, material.Color, material.Metallic);
                 energy *= Color.Lerp(material.Color, specularColor, 1f - roughness);
                 roughness = material.Roughness;
             }
 
-            if (frag.Hit is RayHit hit)
+            if (surf.Hit is RayHit hit)
             {
                 if (isPrimary)
                     normal = hit.Norm;
