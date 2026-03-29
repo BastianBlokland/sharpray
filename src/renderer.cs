@@ -6,6 +6,7 @@ class Renderer
 {
     public Color[] Radiance { get; }
     public Vec3[] Normals { get; }
+    public float[] Depth { get; }
 
     private Scene _scene;
     private View _view;
@@ -54,6 +55,7 @@ class Renderer
 
         Radiance = new Color[width * height];
         Normals = new Vec3[width * height];
+        Depth = new float[width * height];
 
         // Start the worker threads.
         for (int i = 0; i < Environment.ProcessorCount; ++i)
@@ -105,19 +107,27 @@ class Renderer
         {
             for (uint x = xMin; x != xMax; ++x)
             {
-                (Color radiance, Vec3 normal) = Render(x, y);
+                Fragment frag = Render(x, y);
 
-                Radiance[y * _width + x] = radiance;
-                Normals[y * _width + x] = normal;
+                Radiance[y * _width + x] = frag.Radiance;
+                Normals[y * _width + x] = frag.Normal ?? Vec3.Zero;
+                Depth[y * _width + x] = frag.Depth ?? float.PositiveInfinity;
             }
         }
     }
 
-    private (Color Radiance, Vec3 Normal) Render(uint x, uint y)
+    private Fragment Render(uint x, uint y)
     {
         Rng rng = new Rng(x, y);
+
         Color radianceSum = new Color(0f);
+
         Vec3 normalSum = Vec3.Zero;
+        Vec3 normalFallback = Vec3.Zero;
+        uint normalCount = 0;
+
+        float depthSum = 0f;
+        uint depthCount = 0;
 
         for (uint i = 0; i != _samples; ++i)
         {
@@ -128,9 +138,22 @@ class Renderer
 
             radianceSum += frag.Radiance;
             if (frag.Normal is Vec3 n)
+            {
+                Debug.Assert(n.IsUnit, "Invalid normal");
                 normalSum += n;
+                normalFallback = n;
+                normalCount++;
+            }
+            if (frag.Depth is float d)
+            {
+                depthSum += d;
+                depthCount++;
+            }
         }
 
-        return (radianceSum / _samples, normalSum.NormalizeOr(Vec3.Zero));
+        Color radiance = radianceSum / _samples;
+        Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
+        float? depth = depthCount > 0 ? depthSum / depthCount : null;
+        return new Fragment(radiance, normal, depth);
     }
 }
