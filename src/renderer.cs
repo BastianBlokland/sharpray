@@ -23,6 +23,7 @@ class Renderer
 
     private uint _samples;
     private uint _bounces;
+    private Counters _counters;
 
     public Renderer(
         Scene scene,
@@ -31,7 +32,8 @@ class Renderer
         uint height,
         uint blockSize,
         uint samples,
-        uint bounces)
+        uint bounces,
+        Counters counters)
     {
         Debug.Assert(width > 0 && height > 0);
         Debug.Assert(blockSize > 0);
@@ -52,6 +54,7 @@ class Renderer
 
         _samples = samples;
         _bounces = bounces;
+        _counters = counters;
 
         scene.Lock();
 
@@ -136,7 +139,7 @@ class Renderer
             Vec2 pos = new Vec2((x + rng.NextFloat()) / Width, (y + rng.NextFloat()) / Height);
             Ray ray = View.Ray(pos, _aspect);
 
-            Fragment frag = _scene.Sample(ray, ref rng, _bounces);
+            Fragment frag = _scene.Sample(ray, ref rng, _bounces, _counters);
 
             radianceSum += frag.Radiance;
             if (frag.Normal is Vec3 n)

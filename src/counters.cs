@@ -6,8 +6,8 @@ enum Counter
 {
     TraceRay,
     OccludeRay,
-    RayBounce,
-    RayHit,
+    SampleBounce,
+    SampleHit,
 
     _Count
 }

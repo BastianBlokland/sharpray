@@ -113,17 +113,19 @@ class Scene
 
     public AABox Bounds() => _bvh?.Bounds ?? AABox.Inverted();
 
-    public bool Occluded(Ray ray)
+    public bool Occluded(Ray ray, Counters counters)
     {
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
+        counters.Bump(Counter.OccludeRay);
         return _bvh!.IntersectAny(ray);
     }
 
-    public Surface Trace(Ray ray)
+    public Surface Trace(Ray ray, Counters counters)
     {
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
+        counters.Bump(Counter.TraceRay);
 
         if (_bvh!.Intersect(ray) is (RayHit hit, int idx))
         {
@@ -134,7 +136,7 @@ class Scene
         return new Surface(_sky.AmbientRadianceRay(ray));
     }
 
-    public Fragment Sample(Ray ray, ref Rng rng, uint bounces)
+    public Fragment Sample(Ray ray, ref Rng rng, uint bounces, Counters counters)
     {
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
@@ -145,8 +147,10 @@ class Scene
 
         for (uint i = 0; i != (bounces + 1); ++i)
         {
+            counters.Bump(Counter.SampleBounce);
+
             bool isPrimary = i == 0;
-            Surface surf = Trace(ray);
+            Surface surf = Trace(ray, counters);
 
             // Accumulate radiance.
             radiance += surf.Radiance * energy;
@@ -162,6 +166,8 @@ class Scene
 
             if (surf.Hit is RayHit hit)
             {
+                counters.Bump(Counter.SampleHit);
+
                 if (isPrimary)
                 {
                     normal = hit.Norm;
@@ -176,7 +182,7 @@ class Scene
                 if (sunCosTheta > 0f && roughness > 0.05f)
                 {
                     Ray shadowRay = new Ray(hitPos, sunDir);
-                    if (!Occluded(shadowRay))
+                    if (!Occluded(shadowRay, counters))
                         radiance += _sky.SunRadiance * energy * sunCosTheta;
                 }
 

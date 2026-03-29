@@ -3,7 +3,8 @@ using System.IO;
 
 Timestamp timeStart = Timestamp.Now();
 
-Console.WriteLine("Performing setup");
+Console.WriteLine("[SharpRay]");
+Console.WriteLine("> Performing setup");
 
 const uint width = 512;
 const uint height = 512;
@@ -14,10 +15,10 @@ const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.15f;
 const float denoiseSigmaNormal = 0.5f;
 const float denoiseSigmaDepth = 1.0f;
-const String outputPath = "output";
 const bool outputImage = true, outputPreview = true, outputNormal = true, outputDepth = true;
 const uint previewInterval = 100;
 
+String outputPath = Path.GetFullPath("output");
 Directory.CreateDirectory(outputPath);
 
 Overlay overlay = new Overlay();
@@ -49,10 +50,11 @@ scene.AddObject(new Object(
 }
 
 View view = new View(new Transform(new Vec3(0f, 0.5f, -1f)), float.DegreesToRadians(75f));
-Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces);
+Counters counters = new Counters();
+Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth);
 
-Console.WriteLine("Starting render");
+Console.WriteLine("> Starting render");
 
 (uint Step, uint Total) progress;
 do
@@ -65,7 +67,7 @@ do
         compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
     }
 
-    Console.WriteLine($"Rendering [{progress.Step,4} / {progress.Total,4}]");
+    Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total,4}]");
 } while (progress.Step != progress.Total);
 
 if (outputPreview)
@@ -101,11 +103,17 @@ if (outputDepth)
     depthImage.Save(Path.Combine(outputPath, "depth.bmp"));
 }
 
+overlay.AddText(counters.Dump(), new Vec2i(8, 8), Color.White);
+
 if (outputImage)
 {
-    Console.WriteLine("Compositing");
+    Console.WriteLine("> Compositing");
     compositor.Compose(renderer, overlay).Save(Path.Combine(outputPath, "final.bmp"));
 }
 
 double timeElapsed = (Timestamp.Now() - timeStart).Seconds;
+
+Console.WriteLine(string.Empty);
+Console.WriteLine(counters.Dump());
+Console.WriteLine(string.Empty);
 Console.WriteLine($"Finished (time: {timeElapsed:F1} s): {outputPath}");
