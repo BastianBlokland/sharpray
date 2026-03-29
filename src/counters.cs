@@ -10,9 +10,10 @@ enum Counter
     Sample,
     SampleBounce,
     SampleHit,
+    SampleMiss,
+    SampleTerminate,
     ShadowRayOccluded,
     ShadowRaySkipped,
-    PathTerminated,
     SceneTrace,
     SceneOcclude,
 

@@ -142,6 +142,7 @@ class Scene
             throw new InvalidOperationException("Scene not locked");
 
         counters.Bump(Counter.Sample);
+
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
         float? depth = null;
@@ -197,7 +198,7 @@ class Scene
                     float survive = MathF.Max(energy.R, MathF.Max(energy.G, energy.B));
                     if (rng.NextFloat() >= survive)
                     {
-                        counters.Bump(Counter.PathTerminated);
+                        counters.Bump(Counter.SampleTerminate);
                         break;
                     }
                     energy /= survive;
@@ -212,6 +213,8 @@ class Scene
             }
             else
             {
+                counters.Bump(Counter.SampleMiss);
+
                 // Add sun contibution for primary rays.
                 if (isPrimary)
                 {
