@@ -753,6 +753,9 @@ struct AABox : IShape
         Max = new Vec3(MathF.Max(Max.X, other.Max.X), MathF.Max(Max.Y, other.Max.Y), MathF.Max(Max.Z, other.Max.Z));
     }
 
+    public Box Transform(Transform trans) =>
+        new Box(AABox.FromCenter(trans.TransformPoint(Center), Size * trans.Scale), trans.Rot);
+
     public AABox Bounds() => this;
 
     public bool Overlaps(AABox other) =>
