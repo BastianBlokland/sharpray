@@ -128,7 +128,7 @@ static class ObjLoader
     public static Mesh Load(string path, Counters? counters = null)
     {
         using var stream = File.OpenRead(path);
-        using var reader = new StreamReader(stream);
+        using var reader = new StreamReader(stream, bufferSize: 65536);
         return Parse(new ObjLexer(reader), counters);
     }
 
