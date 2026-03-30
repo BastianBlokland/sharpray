@@ -85,7 +85,6 @@ using (counters.Scope(Timer.Render))
     do
     {
         progress = renderer.Tick();
-        counters.UpdateRuntimeValues();
 
         // Preview intermediate results.
         if (outputPreview && progress.Step % previewInterval == 0)

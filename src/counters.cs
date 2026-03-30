@@ -87,22 +87,13 @@ class Counters
         }
     }
 
-    public void UpdateRuntimeValues()
-    {
-        Interlocked.Exchange(ref _data[(int)Counter.RtPeakWorkingSet], System.Diagnostics.Process.GetCurrentProcess().PeakWorkingSet64);
-        Interlocked.Exchange(ref _data[(int)Counter.RtGcAllocatedBytes], (long)GC.GetTotalAllocatedBytes());
-        Interlocked.Exchange(ref _data[(int)Counter.RtGcCurrentBytes], GC.GetTotalMemory(false));
-        Interlocked.Exchange(ref _data[(int)Counter.RtGcGen0], GC.CollectionCount(0));
-        Interlocked.Exchange(ref _data[(int)Counter.RtGcGen1], GC.CollectionCount(1));
-        Interlocked.Exchange(ref _data[(int)Counter.RtGcGen2], GC.CollectionCount(2));
-    }
-
     private long GetFlushed(Counter c) => Interlocked.Read(ref _data[(int)c]);
     private long GetFlushed(Timer t) => Interlocked.Read(ref _times[(int)t]);
 
     public string Dump()
     {
         Flush();
+        FetchRuntimeValues();
 
         int maxNameLen = 0;
         for (int i = 0; i != (int)Counter._Count; ++i)
@@ -150,6 +141,16 @@ class Counters
         }
 
         return sb.ToString();
+    }
+
+    private void FetchRuntimeValues()
+    {
+        Interlocked.Exchange(ref _data[(int)Counter.RtPeakWorkingSet], System.Diagnostics.Process.GetCurrentProcess().PeakWorkingSet64);
+        Interlocked.Exchange(ref _data[(int)Counter.RtGcAllocatedBytes], (long)GC.GetTotalAllocatedBytes());
+        Interlocked.Exchange(ref _data[(int)Counter.RtGcCurrentBytes], GC.GetTotalMemory(false));
+        Interlocked.Exchange(ref _data[(int)Counter.RtGcGen0], GC.CollectionCount(0));
+        Interlocked.Exchange(ref _data[(int)Counter.RtGcGen1], GC.CollectionCount(1));
+        Interlocked.Exchange(ref _data[(int)Counter.RtGcGen2], GC.CollectionCount(2));
     }
 
     private static string FormatNum(long n)
