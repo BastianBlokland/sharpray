@@ -45,7 +45,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     {
         Quat rot = Quat.AngleAxis(float.DegreesToRadians(60f), Vec3.Up);
         Vec3 scale = new Vec3(6f, 6f, 6f);
-        Transform trans = new Transform(new Vec3(1f, 0f, 4f), rot, scale);
+        Transform trans = new Transform(new Vec3(1f, 1.7f, 4f), rot, scale);
         Material mat = new Material(new Color(0.2f, 0.7f, 0.2f), 0.5f, 0.0f);
         ObjLoader.Load("assets/dragon.obj", scene, trans, mat, counters);
     }
