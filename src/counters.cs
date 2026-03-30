@@ -78,6 +78,9 @@ class Counters
         }
     }
 
+    private long GetFlushed(Counter c) => Interlocked.Read(ref _data[(int)c]);
+    private long GetFlushed(Timer t) => Interlocked.Read(ref _times[(int)t]);
+
     public string Dump()
     {
         Flush();
@@ -85,11 +88,13 @@ class Counters
         int maxNameLen = 0;
         for (int i = 0; i != (int)Counter._Count; ++i)
         {
+            if (GetFlushed((Counter)i) == 0)
+                continue;
             maxNameLen = Math.Max(maxNameLen, ((Counter)i).ToString().Length);
         }
         for (int i = 0; i != (int)Timer._Count; ++i)
         {
-            if (Interlocked.Read(ref _times[i]) == 0)
+            if (GetFlushed((Timer)i) == 0)
                 continue;
             maxNameLen = Math.Max(maxNameLen, ((Timer)i).ToString().Length);
         }
@@ -97,6 +102,10 @@ class Counters
         var sb = new StringBuilder();
         for (int i = 0; i != (int)Counter._Count; ++i)
         {
+            long value = GetFlushed((Counter)i);
+            if (value == 0)
+                continue;
+
             if (sb.Length > 0)
                 sb.Append('\n');
 
@@ -104,12 +113,12 @@ class Counters
             sb.Append(name);
             sb.Append(' ', maxNameLen - name.Length);
             sb.Append(": ");
-            sb.Append(FormatNum(Interlocked.Read(ref _data[i])));
+            sb.Append(FormatNum(value));
         }
 
         for (int i = 0; i != (int)Timer._Count; ++i)
         {
-            long micros = Interlocked.Read(ref _times[i]);
+            long micros = GetFlushed((Timer)i);
             if (micros == 0)
                 continue;
 
