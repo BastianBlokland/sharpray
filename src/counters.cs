@@ -21,6 +21,9 @@ enum Counter
     SceneOcclude,
     MeshTriangle,
     MeshIntersect,
+    ComposeFilterSample,
+    OverlayLine,
+    OverlayText,
 
     _Count
 }

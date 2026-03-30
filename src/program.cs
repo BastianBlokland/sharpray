@@ -74,7 +74,7 @@ using (counters.Scope(Timer.Setup))
 
 View view = new View(new Transform(new Vec3(0.5f, 3f, -2f), Quat.AngleAxis(float.DegreesToRadians(20f), Vec3.Right)), float.DegreesToRadians(75f));
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
-Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth);
+Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
 
 Console.WriteLine("> Starting render");
 

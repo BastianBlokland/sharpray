@@ -50,13 +50,15 @@ class Overlay
     public void AddText(string text, Vec2i screenPos, Color color, Align align = Align.TopLeft) =>
         _text2D.Add(new TextEntry2D(screenPos, text, color, align));
 
-    public void Draw(Image image, View view, float[]? depth = null)
+    public void Draw(Image image, View view, float[]? depth = null, Counters? counters = null)
     {
         float aspect = (float)image.Width / image.Height;
         Vec2 size = new Vec2(image.Width, image.Height);
 
         foreach (LineEntry line in _lines)
         {
+            counters?.Bump(Counter.OverlayLine);
+
             var projA = view.Project(line.Line.A, aspect);
             var projB = view.Project(line.Line.B, aspect);
             if (projA is (Vec2 posA, float depthA) && projB is (Vec2 posB, float depthB))
@@ -78,12 +80,18 @@ class Overlay
 
         foreach (TextEntry3D entry in _text3D)
         {
+            counters?.Bump(Counter.OverlayText);
+
             if (view.Project(entry.WorldPos, aspect) is (Vec2 pos, float _))
                 RasterizeText(image, entry.Text, (pos * size).ToInt(), entry.Align, entry.Color.ToPixel());
         }
 
         foreach (TextEntry2D entry in _text2D)
+        {
+            counters?.Bump(Counter.OverlayText);
+
             RasterizeText(image, entry.Text, entry.ScreenPos, entry.Align, entry.Color.ToPixel());
+        }
     }
 
     private static int? PixelIndex(Image image, Vec2i coord) =>

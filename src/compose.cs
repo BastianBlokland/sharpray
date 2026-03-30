@@ -14,9 +14,11 @@ class Compositor
     private float _sigmaColorSqr2;
     private float _sigmaNormalSqr2;
     private float _sigmaDepthSqr2;
+    private Counters _counters;
 
-    public Compositor(float sigmaSpace, float sigmaColor, float sigmaNormal, float sigmaDepth)
+    public Compositor(float sigmaSpace, float sigmaColor, float sigmaNormal, float sigmaDepth, Counters counters)
     {
+        _counters = counters;
         SigmaSpace = sigmaSpace;
         SigmaColor = sigmaColor;
         SigmaNormal = sigmaNormal;
@@ -37,7 +39,7 @@ class Compositor
             result.Pixels[i] = Tonemap(rend.Radiance[i]);
         }
 
-        overlay?.Draw(result, rend.View, rend.Depth);
+        overlay?.Draw(result, rend.View, rend.Depth, _counters);
         return result;
     }
 
@@ -52,9 +54,10 @@ class Compositor
                 Color filtered = Filter(rend.Radiance, rend.Normals, rend.Depth, (int)rend.Width, (int)rend.Height, x, y);
                 result.Pixels[y * rend.Width + x] = Tonemap(filtered);
             }
+            _counters.Flush();
         });
 
-        overlay?.Draw(result, rend.View, rend.Depth);
+        overlay?.Draw(result, rend.View, rend.Depth, _counters);
         return result;
     }
 
@@ -106,6 +109,8 @@ class Compositor
 
                 weightSum += weight;
                 radianceSum += refRadiance * weight;
+
+                _counters.Bump(Counter.ComposeFilterSample);
             }
         }
 
