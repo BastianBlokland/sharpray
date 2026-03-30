@@ -110,7 +110,7 @@ class Compositor
                 weightSum += weight;
                 radianceSum += refRadiance * weight;
 
-                _counters.Bump(Counter.ComposeFilterSample);
+                _counters.Bump(Counters.Type.ComposeFilterSample);
             }
         }
 

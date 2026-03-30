@@ -106,9 +106,9 @@ class Scene
         if (counters != null)
         {
             BvhStats stats = _bvh.GetStats();
-            counters.Bump(Counter.SceneObject, _objects.Count);
-            counters.Bump(Counter.SceneBvhNodes, stats.Nodes);
-            counters.Bump(Counter.SceneBvhDepth, stats.MaxDepth);
+            counters.Bump(Counters.Type.SceneObject, _objects.Count);
+            counters.Bump(Counters.Type.SceneBvhNodes, stats.Nodes);
+            counters.Bump(Counters.Type.SceneBvhDepth, stats.MaxDepth);
         }
     }
 
@@ -125,7 +125,7 @@ class Scene
     {
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
-        counters.Bump(Counter.SceneOcclude);
+        counters.Bump(Counters.Type.SceneOcclude);
         return _bvh!.IntersectAny(ray);
     }
 
@@ -133,7 +133,7 @@ class Scene
     {
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
-        counters.Bump(Counter.SceneTrace);
+        counters.Bump(Counters.Type.SceneTrace);
 
         if (_bvh!.Intersect(ray) is (RayHit hit, int idx))
         {
@@ -149,7 +149,7 @@ class Scene
         if (!_locked)
             throw new InvalidOperationException("Scene not locked");
 
-        counters.Bump(Counter.Sample);
+        counters.Bump(Counters.Type.Sample);
 
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
@@ -157,7 +157,7 @@ class Scene
 
         for (uint i = 0; i != (bounces + 1); ++i)
         {
-            counters.Bump(Counter.SampleBounce);
+            counters.Bump(Counters.Type.SampleBounce);
 
             bool isPrimary = i == 0;
             Surface surf = Trace(ray, counters);
@@ -176,7 +176,7 @@ class Scene
 
             if (surf.Hit is RayHit hit)
             {
-                counters.Bump(Counter.SampleHit);
+                counters.Bump(Counters.Type.SampleHit);
 
                 if (isPrimary)
                 {
@@ -193,12 +193,12 @@ class Scene
                 {
                     Ray shadowRay = new Ray(hitPos, sunDir);
                     if (Occluded(shadowRay, counters))
-                        counters.Bump(Counter.ShadowRayOccluded);
+                        counters.Bump(Counters.Type.ShadowRayOccluded);
                     else
                         radiance += _sky.SunRadiance * energy * sunCosTheta;
                 }
                 else
-                    counters.Bump(Counter.ShadowRaySkipped);
+                    counters.Bump(Counters.Type.ShadowRaySkipped);
 
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
@@ -206,7 +206,7 @@ class Scene
                     float survive = MathF.Max(energy.R, MathF.Max(energy.G, energy.B));
                     if (rng.NextFloat() >= survive)
                     {
-                        counters.Bump(Counter.SampleTerminate);
+                        counters.Bump(Counters.Type.SampleTerminate);
                         break;
                     }
                     energy /= survive;
@@ -221,7 +221,7 @@ class Scene
             }
             else
             {
-                counters.Bump(Counter.SampleMiss);
+                counters.Bump(Counters.Type.SampleMiss);
 
                 // Add sun contibution for primary rays.
                 if (isPrimary)

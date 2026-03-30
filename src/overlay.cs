@@ -57,7 +57,7 @@ class Overlay
 
         foreach (LineEntry line in _lines)
         {
-            counters?.Bump(Counter.OverlayLine);
+            counters?.Bump(Counters.Type.OverlayLine);
 
             var projA = view.Project(line.Line.A, aspect);
             var projB = view.Project(line.Line.B, aspect);
@@ -80,7 +80,7 @@ class Overlay
 
         foreach (TextEntry3D entry in _text3D)
         {
-            counters?.Bump(Counter.OverlayText);
+            counters?.Bump(Counters.Type.OverlayText);
 
             if (view.Project(entry.WorldPos, aspect) is (Vec2 pos, float _))
                 RasterizeText(image, entry.Text, (pos * size).ToInt(), entry.Align, entry.Color.ToPixel());
@@ -88,7 +88,7 @@ class Overlay
 
         foreach (TextEntry2D entry in _text2D)
         {
-            counters?.Bump(Counter.OverlayText);
+            counters?.Bump(Counters.Type.OverlayText);
 
             RasterizeText(image, entry.Text, entry.ScreenPos, entry.Align, entry.Color.ToPixel());
         }

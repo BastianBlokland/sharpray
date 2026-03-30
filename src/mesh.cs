@@ -13,14 +13,14 @@ class Mesh : IShape
         _bvh = new Bvh<Triangle>(_triangles);
         _counters = counters;
 
-        counters?.Bump(Counter.MeshTriangle, triangles.Count);
+        counters?.Bump(Counters.Type.MeshTriangle, triangles.Count);
     }
 
     public AABox Bounds() => _bvh.Bounds;
     public bool Overlaps(AABox box) => _bvh.Overlaps(box);
     public RayHit? Intersect(Ray ray)
     {
-        _counters?.Bump(Counter.MeshIntersect);
+        _counters?.Bump(Counters.Type.MeshIntersect);
         return _bvh.Intersect(ray)?.Hit;
     }
 
