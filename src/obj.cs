@@ -180,6 +180,9 @@ static class ObjLoader
             Vec3 triPosB = positions[facePosB];
             Vec3 triPosC = positions[facePosC];
 
+            if (Vec3.Cross(triPosB - triPosA, triPosC - triPosA).MagnitudeSqr() < 1e-12f)
+                continue; // Zero area triangle; skip.
+
             if (faceNormA >= 0 && faceNormB >= 0 && faceNormC >= 0)
                 output.Add(new Triangle(triPosA, triPosB, triPosC, normals[faceNormA], normals[faceNormB], normals[faceNormC]));
             else
