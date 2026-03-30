@@ -17,7 +17,7 @@ const bool outputImage = true, outputPreview = true, outputNormal = true, output
 const uint previewInterval = 100;
 
 Counters counters = new Counters();
-var timerTotal = counters.Scope(Timer.Total);
+var timerTotal = counters.TimeScope(Counter.TimeTotal);
 
 String outputPath = Path.GetFullPath("output");
 Directory.CreateDirectory(outputPath);
@@ -33,7 +33,7 @@ Sky sky = new Sky(
     float.DegreesToRadians(2.6f));
 
 Scene scene = new Scene(sky);
-using (counters.Scope(Timer.Setup))
+using (counters.TimeScope(Counter.TimeSetup))
 {
     // Floor.
     scene.AddObject(new Object(
@@ -80,7 +80,7 @@ Console.WriteLine("> Starting render");
 
 (uint Step, uint Total) progress;
 
-using (counters.Scope(Timer.Render))
+using (counters.TimeScope(Counter.TimeRender))
 {
     do
     {
@@ -134,7 +134,7 @@ overlay.AddText(counters.Dump(), new Vec2i(8, 8), Color.White);
 if (outputImage)
 {
     Console.WriteLine("> Compositing");
-    using (counters.Scope(Timer.Compose))
+    using (counters.TimeScope(Counter.TimeCompose))
     {
         compositor.Compose(renderer, overlay).Save(Path.Combine(outputPath, "final.bmp"));
     }

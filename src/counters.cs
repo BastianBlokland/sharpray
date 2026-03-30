@@ -2,6 +2,8 @@ using System;
 using System.Text;
 using System.Threading;
 
+enum CounterType { Raw, Memory, Timer }
+
 enum Counter
 {
     Worker,
@@ -30,46 +32,40 @@ enum Counter
     RtGcGen0,
     RtGcGen1,
     RtGcGen2,
+    TimeSetup,
+    TimeRender,
+    TimeCompose,
+    TimeTotal,
 
-    _Count
-}
-
-enum Timer
-{
-    Setup,
-    Render,
-    Compose,
-    Total,
     _Count
 }
 
 struct TimerScope : IDisposable
 {
     private Counters _counters;
-    private Timer _timer;
+    private Counter _counter;
     private Timestamp _start;
 
-    internal TimerScope(Counters counters, Timer timer)
+    internal TimerScope(Counters counters, Counter counter)
     {
         _counters = counters;
-        _timer = timer;
+        _counter = counter;
         _start = Timestamp.Now();
     }
 
-    public void Dispose() => _counters.Bump(_timer, Timestamp.Now() - _start);
+    public void Dispose() => _counters.Bump(_counter, Timestamp.Now() - _start);
 }
 
 class Counters
 {
     private readonly long[] _data = new long[(int)Counter._Count];
     private readonly ThreadLocal<long[]> _dataLocal = new ThreadLocal<long[]>(() => new long[(int)Counter._Count]);
-    private readonly long[] _times = new long[(int)Timer._Count]; // microseconds
 
-    public TimerScope Scope(Timer t) => new TimerScope(this, t);
+    public TimerScope TimeScope(Counter c) => new TimerScope(this, c);
 
     public void Bump(Counter c) => _dataLocal.Value![(int)c]++;
     public void Bump(Counter c, long n) => _dataLocal.Value![(int)c] += n;
-    public void Bump(Timer t, Timestamp duration) => Interlocked.Add(ref _times[(int)t], (long)duration.Micros);
+    public void Bump(Counter c, Timestamp duration) => _dataLocal.Value![(int)c] += (long)duration.Micros;
 
     public void Flush()
     {
@@ -88,7 +84,6 @@ class Counters
     }
 
     private long GetFlushed(Counter c) => Interlocked.Read(ref _data[(int)c]);
-    private long GetFlushed(Timer t) => Interlocked.Read(ref _times[(int)t]);
 
     public string Dump()
     {
@@ -101,12 +96,6 @@ class Counters
             if (GetFlushed((Counter)i) == 0)
                 continue;
             maxNameLen = Math.Max(maxNameLen, ((Counter)i).ToString().Length);
-        }
-        for (int i = 0; i != (int)Timer._Count; ++i)
-        {
-            if (GetFlushed((Timer)i) == 0)
-                continue;
-            maxNameLen = Math.Max(maxNameLen, ((Timer)i).ToString().Length);
         }
 
         var sb = new StringBuilder();
@@ -123,21 +112,11 @@ class Counters
             sb.Append(name);
             sb.Append(' ', maxNameLen - name.Length);
             sb.Append(": ");
-            sb.Append(FormatNum(value));
-        }
-
-        for (int i = 0; i != (int)Timer._Count; ++i)
-        {
-            long micros = GetFlushed((Timer)i);
-            if (micros == 0)
-                continue;
-
-            string name = ((Timer)i).ToString();
-            sb.Append('\n');
-            sb.Append(name);
-            sb.Append(' ', maxNameLen - name.Length);
-            sb.Append(": ");
-            sb.Append($"{micros / 1_000_000.0:F2}s");
+            sb.Append(Type((Counter)i) switch {
+                CounterType.Memory => FormatMem(value),
+                CounterType.Timer  => $"{value / 1_000_000.0:F2}s",
+                _                  => FormatNum(value),
+            });
         }
 
         return sb.ToString();
@@ -153,6 +132,12 @@ class Counters
         Interlocked.Exchange(ref _data[(int)Counter.RtGcGen2], GC.CollectionCount(2));
     }
 
+    private static CounterType Type(Counter c) => c switch {
+        Counter.RtPeakWorkingSet or Counter.RtGcAllocatedBytes or Counter.RtGcCurrentBytes => CounterType.Memory,
+        Counter.TimeSetup or Counter.TimeRender or Counter.TimeCompose or Counter.TimeTotal => CounterType.Timer,
+        _ => CounterType.Raw
+    };
+
     private static string FormatNum(long n)
     {
         if (n < 1_000)
@@ -160,5 +145,14 @@ class Counters
         if (n < 1_000_000)
             return $"{n / 1_000.0:F1}K";
         return $"{n / 1_000_000.0:F1}M";
+    }
+
+    private static string FormatMem(long n)
+    {
+        if (n < 1_024)
+            return $"{n}B";
+        if (n < 1_024 * 1_024)
+            return $"{n / 1_024.0:F1}KiB";
+        return $"{n / (1_024.0 * 1_024.0):F1}MiB";
     }
 }
