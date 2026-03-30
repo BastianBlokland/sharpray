@@ -45,12 +45,9 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     {
         Quat rot = Quat.AngleAxis(float.DegreesToRadians(60f), Vec3.Up);
         Vec3 scale = new Vec3(6f, 6f, 6f);
-        Mesh mesh = ObjLoader.Load("assets/dragon.obj", counters);
-        const float floorY = 0f;
-        float meshBottomY = (mesh.Bounds().Center.Y - mesh.Bounds().Min.Y) * scale.Y;
-        Vec3 desiredPos = new Vec3(1f, floorY + meshBottomY, 4f);
-        Transform trans = new Transform(desiredPos - rot * (mesh.Bounds().Center * scale), rot, scale);
-        scene.AddObject(new Object(trans, new Material(new Color(0.2f, 0.7f, 0.2f), 0.5f, 0.0f), mesh));
+        Transform trans = new Transform(new Vec3(1f, 0f, 4f), rot, scale);
+        Material mat = new Material(new Color(0.2f, 0.7f, 0.2f), 0.5f, 0.0f);
+        ObjLoader.Load("assets/dragon.obj", scene, trans, mat, counters);
     }
 
     // Spheres.

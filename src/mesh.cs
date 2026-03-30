@@ -1,19 +1,18 @@
 using System;
-using System.Collections.Generic;
 
 class Mesh : IShape
 {
-    private IReadOnlyList<Triangle> _triangles;
+    private Triangle[] _triangles;
     private Bvh<Triangle> _bvh;
     private Counters? _counters;
 
-    public Mesh(IReadOnlyList<Triangle> triangles, Counters? counters = null)
+    public Mesh(Triangle[] triangles, Counters? counters = null)
     {
         _triangles = triangles;
         _bvh = new Bvh<Triangle>(_triangles);
         _counters = counters;
 
-        counters?.Bump(Counters.Type.MeshTriangle, triangles.Count);
+        counters?.Bump(Counters.Type.MeshTriangle, triangles.Length);
     }
 
     public AABox Bounds() => _bvh.Bounds;
@@ -45,7 +44,7 @@ class Mesh : IShape
     {
         BvhStats bvhStats = _bvh.GetStats();
         string text = $"""
-            tris:   {_triangles.Count}
+            tris:   {_triangles.Length}
             nodes:  {bvhStats.Nodes}
             leaves: {bvhStats.Leaves}
             depth:  {bvhStats.MaxDepth}

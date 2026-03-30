@@ -125,20 +125,45 @@ class ObjLexer
 
 static class ObjLoader
 {
-    public static Mesh Load(string path, Counters? counters = null)
+    public static void Load(
+        string path,
+        Scene scene,
+        Transform? transform = null,
+        Material? material = null,
+        Counters? counters = null)
     {
         using var stream = File.OpenRead(path);
         using var reader = new StreamReader(stream, bufferSize: 65536);
-        return Parse(new ObjLexer(reader), counters);
+        Parse(new ObjLexer(reader), scene, transform, material, counters);
     }
 
-    private static Mesh Parse(ObjLexer lexer, Counters? counters)
+    private static void Parse(
+        ObjLexer lexer,
+        Scene scene,
+        Transform? transform,
+        Material? material,
+        Counters? counters)
     {
         var positions = new List<Vec3>();
         var normals = new List<Vec3>();
         var triangles = new List<Triangle>();
         var faceEntries = new List<(int Pos, int Norm)>();
-        int faceCount = 0;
+        int objCount = 0;
+
+        void BuildObject()
+        {
+            if (triangles.Count == 0)
+                return;
+
+            Transform objTrans = transform ?? Transform.Identity();
+            Material objMaterial = material ?? new Material(Color.White, 1.0f);
+            Mesh mesh = new Mesh(triangles.ToArray(), counters);
+
+            scene.AddObject(new Object(objTrans, objMaterial, mesh));
+
+            triangles.Clear();
+            objCount++;
+        }
 
         Span<char> wordBuf = stackalloc char[64];
         while (true)
@@ -165,7 +190,11 @@ static class ObjLoader
                 faceEntries.Clear();
                 ReadFace(lexer, positions.Count, normals.Count, faceEntries);
                 TriangulateFace(faceEntries, positions, normals, triangles);
-                faceCount++;
+            }
+            else if (word.SequenceEqual("o") || word.SequenceEqual("g"))
+            {
+                BuildObject();
+                lexer.SkipLine();
             }
             else
             {
@@ -173,10 +202,10 @@ static class ObjLoader
             }
         }
 
-        if (faceCount == 0)
-            throw new Exception("OBJ: no faces found");
+        BuildObject();
 
-        return new Mesh(triangles, counters);
+        if (objCount == 0)
+            throw new Exception("OBJ: no objects found");
     }
 
     private static void TriangulateFace(
