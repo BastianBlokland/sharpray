@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Text;
 
 /**
  * Wavefront Obj.
@@ -15,62 +14,71 @@ using System.Text;
  * flipped.
  */
 
-record struct ObjToken(ObjToken.Type Kind, string Value = "")
-{
-    public enum Type { Word, Slash, Newline, End }
-}
+enum ObjToken { Word, Slash, Newline, End }
 
 class ObjLexer
 {
     private StreamReader _reader;
-    private ObjToken? _peeked;
-    private StringBuilder _wordBuf = new StringBuilder();
+    private bool _hasPeek;
+    private ObjToken _peekKind;
+    private char[] _peekWordBuf = new char[64];
+    private int _peekWordLen;
 
     public ObjLexer(StreamReader reader) => _reader = reader;
 
     public ObjToken Peek()
     {
-        if (_peeked is null)
-            _peeked = Read();
-        return _peeked.Value;
+        if (!_hasPeek)
+        {
+            _peekKind = Read(_peekWordBuf, out _peekWordLen);
+            _hasPeek = true;
+        }
+        return _peekKind;
+    }
+
+    public ObjToken Next(Span<char> wordBuf, out int wordLen)
+    {
+        if (_hasPeek)
+        {
+            _hasPeek = false;
+            _peekWordBuf.AsSpan(0, _peekWordLen).CopyTo(wordBuf);
+            wordLen = _peekWordLen;
+            return _peekKind;
+        }
+        return Read(wordBuf, out wordLen);
     }
 
     public ObjToken Next()
     {
-        if (_peeked is ObjToken tok)
+        if (_hasPeek)
         {
-            _peeked = null;
-            return tok;
+            _hasPeek = false;
+            return _peekKind;
         }
-        return Read();
+        Span<char> scratch = stackalloc char[64];
+        return Read(scratch, out _);
     }
 
     public void SkipLine()
     {
-        while (true)
+        ObjToken k;
+        do
         {
-            switch (Next().Kind)
-            {
-                case ObjToken.Type.Newline:
-                case ObjToken.Type.End:
-                    return;
-            }
-        }
+            k = Next();
+        } while (k != ObjToken.Newline && k != ObjToken.End);
     }
 
-    private ObjToken Read()
+    private ObjToken Read(Span<char> wordBuf, out int wordLen)
     {
+        wordLen = 0;
         while (true)
         {
             int ch;
             switch (ch = _reader.Read())
             {
-                case -1:
-                    return new ObjToken(ObjToken.Type.End);
-                case '\n':
-                    return new ObjToken(ObjToken.Type.Newline);
-                case '/':
-                    return new ObjToken(ObjToken.Type.Slash);
+                case -1: return ObjToken.End;
+                case '\n': return ObjToken.Newline;
+                case '/': return ObjToken.Slash;
                 case ' ':
                 case '\t':
                 case '\r':
@@ -80,22 +88,31 @@ class ObjLexer
                     while (true)
                     {
                         int c = _reader.Read();
-                        if (c == -1) return new ObjToken(ObjToken.Type.End);
-                        if ((char)c == '\n') return new ObjToken(ObjToken.Type.Newline);
+                        if (c == -1)
+                        {
+                            return ObjToken.End;
+                        }
+                        if ((char)c == '\n')
+                        {
+                            return ObjToken.Newline;
+                        }
                     }
                 default:
-                    return ReadWord((char)ch);
+                    return ReadWord((char)ch, wordBuf, out wordLen);
             }
         }
     }
 
-    private ObjToken ReadWord(char first)
+    private ObjToken ReadWord(char first, Span<char> buf, out int len)
     {
-        _wordBuf.Clear();
-        _wordBuf.Append(first);
+        int i = 0;
+        buf[i++] = first;
         while (_reader.Peek() != -1 && !IsWordEnd((char)_reader.Peek()))
-            _wordBuf.Append((char)_reader.Read());
-        return new ObjToken(ObjToken.Type.Word, _wordBuf.ToString());
+        {
+            buf[i++] = (char)_reader.Read();
+        }
+        len = i;
+        return ObjToken.Word;
     }
 
     private static bool IsWordEnd(char ch) => ch switch
@@ -122,33 +139,36 @@ static class ObjLoader
         var faceEntries = new List<(int Pos, int Norm)>();
         int faceCount = 0;
 
+        Span<char> wordBuf = stackalloc char[64];
         while (true)
         {
-            ObjToken tok = lexer.Next();
-            if (tok.Kind == ObjToken.Type.End)
+            ObjToken kind = lexer.Next(wordBuf, out int wordLen);
+            if (kind == ObjToken.End)
                 break;
-            if (tok.Kind != ObjToken.Type.Word)
+            if (kind != ObjToken.Word)
                 continue;
 
-            switch (tok.Value)
+            var word = wordBuf[..wordLen];
+            if (word.SequenceEqual("v"))
             {
-                case "v":
-                    positions.Add(ReadVec3(lexer));
-                    lexer.SkipLine();
-                    break;
-                case "vn":
-                    normals.Add(ReadVec3(lexer));
-                    lexer.SkipLine();
-                    break;
-                case "f":
-                    faceEntries.Clear();
-                    ReadFace(lexer, positions.Count, normals.Count, faceEntries);
-                    TriangulateFace(faceEntries, positions, normals, triangles);
-                    faceCount++;
-                    break;
-                default:
-                    lexer.SkipLine();
-                    break;
+                positions.Add(ReadVec3(lexer));
+                lexer.SkipLine();
+            }
+            else if (word.SequenceEqual("vn"))
+            {
+                normals.Add(ReadVec3(lexer));
+                lexer.SkipLine();
+            }
+            else if (word.SequenceEqual("f"))
+            {
+                faceEntries.Clear();
+                ReadFace(lexer, positions.Count, normals.Count, faceEntries);
+                TriangulateFace(faceEntries, positions, normals, triangles);
+                faceCount++;
+            }
+            else
+            {
+                lexer.SkipLine();
             }
         }
 
@@ -192,19 +212,19 @@ static class ObjLoader
 
     private static void ReadFace(ObjLexer lexer, int posCount, int normCount, List<(int Pos, int Norm)> output)
     {
-        while (lexer.Peek().Kind == ObjToken.Type.Word)
+        while (lexer.Peek() == ObjToken.Word)
         {
             int pos = ReadIndex(lexer, posCount);
             int norm = -1;
-            if (lexer.Peek().Kind == ObjToken.Type.Slash)
+            if (lexer.Peek() == ObjToken.Slash)
             {
                 lexer.Next(); // First slash
-                if (lexer.Peek().Kind == ObjToken.Type.Word)
+                if (lexer.Peek() == ObjToken.Word)
                     lexer.Next(); // Skip texcoord index
-                if (lexer.Peek().Kind == ObjToken.Type.Slash)
+                if (lexer.Peek() == ObjToken.Slash)
                 {
                     lexer.Next(); // Second slash
-                    if (lexer.Peek().Kind == ObjToken.Type.Word)
+                    if (lexer.Peek() == ObjToken.Word)
                         norm = ReadIndex(lexer, normCount);
                 }
             }
@@ -214,11 +234,12 @@ static class ObjLoader
 
     private static float ReadFloat(ObjLexer lexer)
     {
-        ObjToken tok = lexer.Next();
-        if (tok.Kind != ObjToken.Type.Word)
-            throw new Exception($"OBJ: expected number, got {tok.Kind}");
-        if (!float.TryParse(tok.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out float val))
-            throw new Exception($"OBJ: invalid number '{tok.Value}'");
+        Span<char> buf = stackalloc char[32];
+        ObjToken kind = lexer.Next(buf, out int len);
+        if (kind != ObjToken.Word)
+            throw new Exception($"OBJ: expected number, got {kind}");
+        if (!float.TryParse(buf[..len], NumberStyles.Float, CultureInfo.InvariantCulture, out float val))
+            throw new Exception($"OBJ: invalid number '{buf[..len].ToString()}'");
         return val;
     }
 
@@ -227,11 +248,12 @@ static class ObjLoader
 
     private static int ReadIndex(ObjLexer lexer, int count)
     {
-        ObjToken tok = lexer.Next();
-        if (tok.Kind != ObjToken.Type.Word)
-            throw new Exception($"OBJ: expected index, got {tok.Kind}");
-        if (!int.TryParse(tok.Value, out int idx))
-            throw new Exception($"OBJ: invalid index '{tok.Value}'");
+        Span<char> buf = stackalloc char[16];
+        ObjToken kind = lexer.Next(buf, out int len);
+        if (kind != ObjToken.Word)
+            throw new Exception($"OBJ: expected index, got {kind}");
+        if (!int.TryParse(buf[..len], out int idx))
+            throw new Exception($"OBJ: invalid index '{buf[..len].ToString()}'");
 
         // OBJ indices are 1-based; negative indices are relative to the end.
         idx = idx < 0 ? count + idx : idx - 1;
