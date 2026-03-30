@@ -107,7 +107,8 @@ class ObjLexer
     {
         int i = 0;
         buf[i++] = first;
-        while (_reader.Peek() != -1 && !IsWordEnd((char)_reader.Peek()))
+        int c;
+        while ((c = _reader.Peek()) != -1 && !IsWordEnd((char)c))
         {
             buf[i++] = (char)_reader.Read();
         }
