@@ -40,7 +40,7 @@ class Bvh<T> where T : IShape
         {
             int root = InsertRoot();
             if (_nodes[root].ShapeCount >= DivideThreshold)
-                Subdivide(root);
+                Subdivide(root, 0);
         }
     }
 
@@ -64,7 +64,7 @@ class Bvh<T> where T : IShape
         if (_nodeCount == 0)
             return false;
 
-        Span<int> queue = stackalloc int[32];
+        Span<int> queue = stackalloc int[128];
         int queueCount = 1; // Insert root node (index is already zero).
 
         while (queueCount > 0)
@@ -96,7 +96,7 @@ class Bvh<T> where T : IShape
         if (_nodeCount == 0)
             return null;
 
-        Span<int> queue = stackalloc int[32];
+        Span<int> queue = stackalloc int[128];
         int queueCount = 1; // Insert root node (index is already zero).
 
         (RayHit Hit, int Index)? best = null;
@@ -139,7 +139,7 @@ class Bvh<T> where T : IShape
         if (_nodeCount == 0)
             return false;
 
-        Span<int> queue = stackalloc int[32];
+        Span<int> queue = stackalloc int[128];
         int queueCount = 1; // Insert root node (index is already zero).
 
         while (queueCount > 0)
@@ -273,9 +273,12 @@ class Bvh<T> where T : IShape
      * Subdivide the given leaf-node, if successful the node is no longer a leaf-node but contains a
      * tree of child nodes encompassing the same shapes as it did before subdividing.
      */
-    private void Subdivide(int nodeIdx)
+    private void Subdivide(int nodeIdx, int depth)
     {
         Debug.Assert(_nodes[nodeIdx].ShapeCount > 0);
+
+        if (depth >= 64)
+            return; // Depth limit reached; keep node as a leaf.
 
         var (axis, splitPos) = SplitPick(nodeIdx);
         int partitionIdx = Partition(nodeIdx, axis, splitPos);
@@ -293,9 +296,10 @@ class Bvh<T> where T : IShape
         node.Child = childA;
         node.ShapeCount = 0; // Node is no longer a leaf-node.
 
-        if (countA >= DivideThreshold)
-            Subdivide(childA);
-        if (countB >= DivideThreshold)
-            Subdivide(childB);
+        const int maxDepth = 64;
+        if (countA >= DivideThreshold && depth < maxDepth)
+            Subdivide(childA, depth + 1);
+        if (countB >= DivideThreshold && depth < maxDepth)
+            Subdivide(childB, depth + 1);
     }
 }
