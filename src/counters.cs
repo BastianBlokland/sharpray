@@ -164,12 +164,5 @@ class Counters
         return $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB";
     }
 
-    private static string FormatTime(long micros)
-    {
-        if (micros < 60_000_000L)
-            return $"{micros / 1_000_000.0:F2}s";
-        long mins = micros / 60_000_000L;
-        double secs = (micros % 60_000_000L) / 1_000_000.0;
-        return $"{mins}m {secs:F0}s";
-    }
+    private static string FormatTime(long micros) => Timestamp.FromMicros(micros).Format();
 }
