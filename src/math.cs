@@ -63,6 +63,8 @@ struct Color
         return new Pixel((byte)(r * 255f + 0.5f), (byte)(g * 255f + 0.5f), (byte)(b * 255f + 0.5f));
     }
 
+    public override string ToString() => $"({R:G3}, {G:G3}, {B:G3})";
+
     public static Color operator +(Color a, Color b) => new Color(a.R + b.R, a.G + b.G, a.B + b.B);
     public static Color operator -(Color a, Color b) => new Color(a.R - b.R, a.G - b.G, a.B - b.B);
     public static Color operator *(Color a, Color b) => new Color(a.R * b.R, a.G * b.G, a.B * b.B);
@@ -169,6 +171,8 @@ struct Vec2
 
     public Vec2i ToInt() => new Vec2i((int)MathF.Round(X), (int)MathF.Round(Y));
 
+    public override string ToString() => $"({X:G3}, {Y:G3})";
+
     public static Vec2 operator -(Vec2 v) => new Vec2(-v.X, -v.Y);
     public static Vec2 operator +(Vec2 a, Vec2 b) => new Vec2(a.X + b.X, a.Y + b.Y);
     public static Vec2 operator -(Vec2 a, Vec2 b) => new Vec2(a.X - b.X, a.Y - b.Y);
@@ -204,6 +208,8 @@ struct Vec2i
     }
 
     public Vec2 ToFloat() => new Vec2(X, Y);
+
+    public override string ToString() => $"({X}, {Y})";
 
     public static Vec2i operator -(Vec2i v) => new Vec2i(-v.X, -v.Y);
     public static Vec2i operator +(Vec2i a, Vec2i b) => new Vec2i(a.X + b.X, a.Y + b.Y);
@@ -258,6 +264,8 @@ struct Vec3
         float mSqr = MagnitudeSqr();
         return mSqr >= 1e-12f ? this / MathF.Sqrt(mSqr) : fallback;
     }
+
+    public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3})";
 
     public static Vec3 operator -(Vec3 v) => new Vec3(-v.X, -v.Y, -v.Z);
     public static Vec3 operator +(Vec3 a, Vec3 b) => new Vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
@@ -375,6 +383,8 @@ struct Vec4
         }
     }
 
+    public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})";
+
     public static Vec4 operator -(Vec4 v) => new Vec4(-v.X, -v.Y, -v.Z, -v.W);
     public static Vec4 operator +(Vec4 a, Vec4 b) => new Vec4(a.X + b.X, a.Y + b.Y, a.Z + b.Z, a.W + b.W);
     public static Vec4 operator -(Vec4 a, Vec4 b) => new Vec4(a.X - b.X, a.Y - b.Y, a.Z - b.Z, a.W - b.W);
@@ -422,6 +432,8 @@ struct Quat
         float magInv = 1.0f / mag;
         return new Quat(X * magInv, Y * magInv, Z * magInv, W * magInv);
     }
+
+    public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})";
 
     public static Quat operator *(Quat a, Quat b) => new Quat(
         a.W * b.X + a.X * b.W + a.Y * b.Z - a.Z * b.Y,
