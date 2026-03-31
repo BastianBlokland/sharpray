@@ -1348,6 +1348,25 @@ struct Timestamp
     public double Millis => (double)_ticks * 1_000.0 / Stopwatch.Frequency;
     public double Seconds => (double)_ticks / Stopwatch.Frequency;
 
+    public string Format()
+    {
+        const double usPerMin = 60_000_000.0;
+        const double usPerHour = 3_600_000_000.0;
+
+        double us = Micros;
+        if (us < usPerMin)
+            return $"{us / 1_000_000.0:F2}s";
+        if (us < usPerHour)
+        {
+            long mins = (long)(us / usPerMin);
+            double remSecs = (us % usPerMin) / 1_000_000.0;
+            return $"{mins}m {remSecs:F0}s";
+        }
+        long hours = (long)(us / usPerHour);
+        long remMins = (long)((us % usPerHour) / usPerMin);
+        return $"{hours}h {remMins}m";
+    }
+
     public static Timestamp operator -(Timestamp a, Timestamp b) => new Timestamp(a._ticks - b._ticks);
 
     public static Timestamp Now() => new Timestamp(Stopwatch.GetTimestamp());
