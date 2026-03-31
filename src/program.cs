@@ -77,7 +77,7 @@ Console.WriteLine("> Starting render");
 
 (uint Step, uint Total) progress;
 
-using (counters.TimeScope(Counters.Type.TimeRender))
+using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
 {
     do
     {
@@ -89,7 +89,12 @@ using (counters.TimeScope(Counters.Type.TimeRender))
             compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
         }
 
-        Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total}]");
+        Timestamp? eta = null;
+        if (progress.Step > 0)
+        {
+            eta = timerRender.Elapsed * (progress.Total - progress.Step) / progress.Step;
+        }
+        Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total}] {timerRender.Elapsed.Format(),8} / {(eta?.Format() ?? "?"),-8}");
     } while (progress.Step != progress.Total);
 }
 
