@@ -1369,5 +1369,7 @@ struct Timestamp
 
     public static Timestamp operator -(Timestamp a, Timestamp b) => new Timestamp(a._ticks - b._ticks);
 
+    public static Timestamp FromNanos(long nanos) => new Timestamp(nanos * Stopwatch.Frequency / 1_000_000_000);
+    public static Timestamp FromMicros(long micros) => new Timestamp(micros * Stopwatch.Frequency / 1_000_000);
     public static Timestamp Now() => new Timestamp(Stopwatch.GetTimestamp());
 }
