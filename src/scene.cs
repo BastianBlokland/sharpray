@@ -3,8 +3,18 @@ using System;
 using System.Collections.Generic;
 
 record struct Surface(Color Radiance, RayHit? Hit = null, Material? Material = null);
+
 record struct Fragment(Color Radiance, Vec3? Normal, float? Depth);
-record struct Material(Color Color, float Roughness, float Metallic = 0f, Color Radiance = default);
+
+record struct Material(Color Color, float Roughness, float Metallic = 0f, Color Radiance = default)
+{
+    public void Describe(InfoWriter w)
+    {
+        w.WriteLine($"color: {Color}");
+        w.WriteLine($"roughness: {Roughness:G3}");
+        w.WriteLine($"metallic: {Metallic:G3}");
+    }
+}
 
 struct Object : IShape
 {
