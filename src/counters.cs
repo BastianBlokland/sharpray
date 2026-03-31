@@ -15,6 +15,8 @@ struct TimeScope : IDisposable
         _start = Timestamp.Now();
     }
 
+    public Timestamp Elapsed => Timestamp.Now() - _start;
+
     public void Dispose() => _counters.Bump(_type, Timestamp.Now() - _start);
 }
 
