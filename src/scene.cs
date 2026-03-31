@@ -10,9 +10,9 @@ record struct Material(Color Color, float Roughness, float Metallic = 0f, Color 
 {
     public void Describe(InfoWriter w)
     {
-        w.WriteLine($"color: {Color}");
-        w.WriteLine($"roughness: {Roughness:G3}");
-        w.WriteLine($"metallic: {Metallic:G3}");
+        w.WriteLine($"color={Color}");
+        w.WriteLine($"roughness={Roughness:G3}");
+        w.WriteLine($"metallic={Metallic:G3}");
     }
 }
 
@@ -38,6 +38,29 @@ struct Object : IShape
     public AABox Bounds() => _bounds;
     public bool Overlaps(AABox box) => _boundsRotated.Overlaps(box);
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
+
+    public void Describe(InfoWriter w)
+    {
+        w.WriteLine("transform");
+        w.Indent();
+        w.WriteLine($"pos={Trans.Pos}");
+        w.WriteLine($"rot={Trans.Rot}");
+        w.WriteLine($"scale={Trans.Scale}");
+        w.Outdent();
+
+        w.WriteLine("material");
+        w.Indent();
+        Material.Describe(w);
+        w.Outdent();
+
+        if (Shape is Mesh mesh)
+        {
+            w.WriteLine("mesh");
+            w.Indent();
+            mesh.Describe(w);
+            w.Outdent();
+        }
+    }
 
     public void OverlayBounds(Overlay overlay, Color color) =>
         overlay.AddLineBox(_boundsRotated, color);
@@ -249,6 +272,17 @@ class Scene
             }
         }
         return new Fragment(radiance, normal, depth);
+    }
+
+    public void Describe(InfoWriter w)
+    {
+        for (int i = 0; i != _objects.Count; ++i)
+        {
+            w.WriteLine($"object {i}");
+            w.Indent();
+            _objects[i].Describe(w);
+            w.Outdent();
+        }
     }
 
     public void OverlayBounds(Overlay overlay)

@@ -6,10 +6,10 @@ struct InfoWriter
     private StringBuilder _sb;
     private int _indent;
 
-    public InfoWriter()
+    public InfoWriter(int indent = 0)
     {
         _sb = new StringBuilder();
-        _indent = 0;
+        _indent = indent;
     }
 
     public void Clear()
@@ -27,5 +27,5 @@ struct InfoWriter
 
     public void WriteLine(string text) => _sb.AppendLine(new string(' ', _indent * 2) + text);
 
-    public override string ToString() => _sb.ToString().TrimEnd();
+    public override string ToString() => _sb.ToString();
 }

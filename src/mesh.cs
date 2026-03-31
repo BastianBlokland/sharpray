@@ -43,9 +43,9 @@ class Mesh : IShape
     public void Describe(InfoWriter w)
     {
         BvhStats bvhStats = _bvh.GetStats();
-        w.WriteLine($"tris: {_triangles.Length}");
-        w.WriteLine($"nodes: {bvhStats.Nodes}");
-        w.WriteLine($"leaves: {bvhStats.Leaves}");
-        w.WriteLine($"depth: {bvhStats.MaxDepth}");
+        w.WriteLine($"tris={_triangles.Length}");
+        w.WriteLine($"nodes={bvhStats.Nodes}");
+        w.WriteLine($"leaves={bvhStats.Leaves}");
+        w.WriteLine($"depth={bvhStats.MaxDepth}");
     }
 }

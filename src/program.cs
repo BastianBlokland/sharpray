@@ -13,6 +13,7 @@ const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.15f;
 const float denoiseSigmaNormal = 0.5f;
 const float denoiseSigmaDepth = 1.0f;
+const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true, outputDepth = true;
 const uint previewInterval = 100;
 
@@ -67,6 +68,14 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     }
 
     scene.Build(counters);
+}
+
+if (dumpScene)
+{
+    Console.WriteLine("> Scene");
+    InfoWriter sceneInfoWriter = new InfoWriter(1);
+    scene.Describe(sceneInfoWriter);
+    Console.WriteLine(sceneInfoWriter.ToString());
 }
 
 View view = new View(new Transform(new Vec3(0.5f, 3f, -2f), Quat.AngleAxis(float.DegreesToRadians(20f), Vec3.Right)), float.DegreesToRadians(75f));
