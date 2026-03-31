@@ -87,8 +87,9 @@ struct Sky
 class Scene
 {
     private List<Object> _objects = new List<Object>();
+    private readonly object _lock = new object();
     private Sky _sky;
-    private bool _locked;
+    private bool _built;
     private Bvh<Object>? _bvh;
 
     public Scene(Sky sky)
@@ -96,11 +97,14 @@ class Scene
         _sky = sky;
     }
 
-    public void Lock(Counters? counters = null) 
+    public void Build(Counters? counters = null)
     {
-        if (_locked)
-            return;
-        _locked = true;
+        lock (_lock)
+        {
+            if (_built)
+                return;
+            _built = true;
+        }
         _bvh = new Bvh<Object>(_objects);
 
         if (counters != null)
@@ -114,25 +118,28 @@ class Scene
 
     public void AddObject(Object obj)
     {
-        if (_locked)
-            throw new InvalidOperationException("Scene locked");
-        _objects.Add(obj);
+        lock (_lock)
+        {
+            if (_built)
+                throw new InvalidOperationException("Scene already built");
+            _objects.Add(obj);
+        }
     }
 
     public AABox Bounds() => _bvh?.Bounds ?? AABox.Inverted();
 
     public bool Occluded(Ray ray, Counters counters)
     {
-        if (!_locked)
-            throw new InvalidOperationException("Scene not locked");
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
         counters.Bump(Counters.Type.SceneOcclude);
         return _bvh!.IntersectAny(ray);
     }
 
     public Surface Trace(Ray ray, Counters counters)
     {
-        if (!_locked)
-            throw new InvalidOperationException("Scene not locked");
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
         counters.Bump(Counters.Type.SceneTrace);
 
         if (_bvh!.Intersect(ray) is (RayHit hit, int idx))
@@ -146,8 +153,8 @@ class Scene
 
     public Fragment Sample(Ray ray, ref Rng rng, uint bounces, Counters counters)
     {
-        if (!_locked)
-            throw new InvalidOperationException("Scene not locked");
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
 
         counters.Bump(Counters.Type.Sample);
 
