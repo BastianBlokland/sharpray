@@ -142,21 +142,32 @@ class Counters
 
     private static string FormatNum(long n)
     {
-        if (n < 1_000)
+        if (n < 1_000L)
             return n.ToString();
-        if (n < 1_000_000)
+        if (n < 1_000_000L)
             return $"{n / 1_000.0:F1}K";
-        return $"{n / 1_000_000.0:F1}M";
+        if (n < 1_000_000_000L)
+            return $"{n / 1_000_000.0:F1}M";
+        return $"{n / 1_000_000_000.0:F2}B";
     }
 
     private static string FormatMem(long n)
     {
-        if (n < 1_024)
+        if (n < 1_024L)
             return $"{n}B";
-        if (n < 1_024 * 1_024)
+        if (n < 1_024L * 1_024L)
             return $"{n / 1_024.0:F1}KiB";
-        return $"{n / (1_024.0 * 1_024.0):F1}MiB";
+        if (n < 1_024L * 1_024L * 1_024L)
+            return $"{n / (1_024.0 * 1_024.0):F1}MiB";
+        return $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB";
     }
 
-    private static string FormatTime(long micros) => $"{micros / 1_000_000.0:F2}s";
+    private static string FormatTime(long micros)
+    {
+        if (micros < 60_000_000L)
+            return $"{micros / 1_000_000.0:F2}s";
+        long mins = micros / 60_000_000L;
+        double secs = (micros % 60_000_000L) / 1_000_000.0;
+        return $"{mins}m {secs:F0}s";
+    }
 }
