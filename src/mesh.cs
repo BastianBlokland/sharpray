@@ -40,15 +40,12 @@ class Mesh : IShape
         }
     }
 
-    public void OverlayStats(Overlay overlay, Transform trans, Color color)
+    public void Describe(InfoWriter w)
     {
         BvhStats bvhStats = _bvh.GetStats();
-        string text = $"""
-            tris:   {_triangles.Length}
-            nodes:  {bvhStats.Nodes}
-            leaves: {bvhStats.Leaves}
-            depth:  {bvhStats.MaxDepth}
-            """;
-        overlay.AddText(text, trans.TransformPoint(_bvh.Bounds.Center), color);
+        w.WriteLine($"tris: {_triangles.Length}");
+        w.WriteLine($"nodes: {bvhStats.Nodes}");
+        w.WriteLine($"leaves: {bvhStats.Leaves}");
+        w.WriteLine($"depth: {bvhStats.MaxDepth}");
     }
 }
