@@ -43,9 +43,9 @@ class Mesh : IShape
     public void Describe(ref FormatWriter fmt)
     {
         BvhStats bvhStats = _bvh.GetStats();
-        fmt.WriteLine($"tris={_triangles.Length}");
-        fmt.WriteLine($"nodes={bvhStats.Nodes}");
-        fmt.WriteLine($"leaves={bvhStats.Leaves}");
+        fmt.WriteLine($"tris={new FormatNum(_triangles.Length)}");
+        fmt.WriteLine($"nodes={new FormatNum(bvhStats.Nodes)}");
+        fmt.WriteLine($"leaves={new FormatNum(bvhStats.Leaves)}");
         fmt.WriteLine($"depth={bvhStats.MaxDepth}");
     }
 }
