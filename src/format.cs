@@ -120,7 +120,6 @@ struct FormatWriter
     public override string ToString() => _sb.ToString();
 }
 
-
 static class FormatUtils
 {
     public static string FormatNum(long n)
