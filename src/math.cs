@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Numerics;
 
 static class FormatUtils
@@ -21,7 +22,7 @@ static class FormatUtils
                 dest[written++] = ',';
                 dest[written++] = ' ';
             }
-            if (!values[i].TryFormat(dest[written..], out int len, format, null))
+            if (!values[i].TryFormat(dest[written..], out int len, format, CultureInfo.InvariantCulture))
                 return false;
             written += len;
         }
@@ -93,7 +94,7 @@ struct Color : ISpanFormattable
         return new Pixel((byte)(r * 255f + 0.5f), (byte)(g * 255f + 0.5f), (byte)(b * 255f + 0.5f));
     }
 
-    public override string ToString() => $"({R:G3}, {G:G3}, {B:G3})";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({R:G3}, {G:G3}, {B:G3})");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { R, G, B }, format.IsEmpty ? "G3" : format);
@@ -204,7 +205,7 @@ struct Vec2 : ISpanFormattable
 
     public Vec2i ToInt() => new Vec2i((int)MathF.Round(X), (int)MathF.Round(Y));
 
-    public override string ToString() => $"({X:G3}, {Y:G3})";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X:G3}, {Y:G3})");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y }, format.IsEmpty ? "G3" : format);
@@ -304,7 +305,7 @@ struct Vec3 : ISpanFormattable
         return mSqr >= 1e-12f ? this / MathF.Sqrt(mSqr) : fallback;
     }
 
-    public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3})";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X:G3}, {Y:G3}, {Z:G3})");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z }, format.IsEmpty ? "G3" : format);
@@ -425,7 +426,7 @@ struct Vec4 : ISpanFormattable
         }
     }
 
-    public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, format.IsEmpty ? "G3" : format);
@@ -478,7 +479,7 @@ struct Quat : ISpanFormattable
         return new Quat(X * magInv, Y * magInv, Z * magInv, W * magInv);
     }
 
-    public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, format.IsEmpty ? "G3" : format);
@@ -1415,16 +1416,16 @@ struct Timestamp
 
         double us = Micros;
         if (us < usPerMin)
-            return $"{us / 1_000_000.0:F2}s";
+            return string.Create(CultureInfo.InvariantCulture, $"{us / 1_000_000.0:F2}s");
         if (us < usPerHour)
         {
             long mins = (long)(us / usPerMin);
             double remSecs = (us % usPerMin) / 1_000_000.0;
-            return $"{mins}m {remSecs:F0}s";
+            return string.Create(CultureInfo.InvariantCulture, $"{mins}m {remSecs:F0}s");
         }
         long hours = (long)(us / usPerHour);
         long remMins = (long)((us % usPerHour) / usPerMin);
-        return $"{hours}h {remMins}m";
+        return string.Create(CultureInfo.InvariantCulture, $"{hours}h {remMins}m");
     }
 
     public static Timestamp operator -(Timestamp a, Timestamp b) => new Timestamp(a._ticks - b._ticks);
