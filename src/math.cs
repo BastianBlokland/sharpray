@@ -2,6 +2,39 @@ using System;
 using System.Diagnostics;
 using System.Numerics;
 
+static class FormatUtils
+{
+    public static bool FormatFloatSet(
+        Span<char> dest,
+        out int written,
+        ReadOnlySpan<float> values,
+        ReadOnlySpan<char> format = default)
+    {
+        written = 0;
+        if (dest.IsEmpty)
+            return false;
+
+        dest[written++] = '(';
+        for (int i = 0; i != values.Length; ++i)
+        {
+            if (i > 0)
+            {
+                if (written + 2 > dest.Length)
+                    return false;
+                dest[written++] = ',';
+                dest[written++] = ' ';
+            }
+            if (!values[i].TryFormat(dest[written..], out int len, format, null))
+                return false;
+            written += len;
+        }
+        if (written >= dest.Length)
+            return false;
+        dest[written++] = ')';
+        return true;
+    }
+}
+
 interface IShape
 {
     AABox Bounds();
@@ -23,7 +56,7 @@ static class ShapeExtensions
     }
 }
 
-struct Color
+struct Color : ISpanFormattable
 {
     public float R, G, B;
 
@@ -64,6 +97,9 @@ struct Color
     }
 
     public override string ToString() => $"({R:G3}, {G:G3}, {B:G3})";
+    public string ToString(string? format, IFormatProvider? provider) => ToString();
+    public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
+        => FormatUtils.FormatFloatSet(dest, out written, stackalloc float[] { R, G, B }, "G3");
 
     public static Color operator +(Color a, Color b) => new Color(a.R + b.R, a.G + b.G, a.B + b.B);
     public static Color operator -(Color a, Color b) => new Color(a.R - b.R, a.G - b.G, a.B - b.B);
@@ -150,7 +186,7 @@ struct Color
     }
 }
 
-struct Vec2
+struct Vec2 : ISpanFormattable
 {
     public float X, Y;
 
@@ -172,6 +208,9 @@ struct Vec2
     public Vec2i ToInt() => new Vec2i((int)MathF.Round(X), (int)MathF.Round(Y));
 
     public override string ToString() => $"({X:G3}, {Y:G3})";
+    public string ToString(string? format, IFormatProvider? provider) => ToString();
+    public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
+        => FormatUtils.FormatFloatSet(dest, out written, stackalloc float[] { X, Y }, "G3");
 
     public static Vec2 operator -(Vec2 v) => new Vec2(-v.X, -v.Y);
     public static Vec2 operator +(Vec2 a, Vec2 b) => new Vec2(a.X + b.X, a.Y + b.Y);
@@ -220,7 +259,7 @@ struct Vec2i
     public static Vec2i Zero => new Vec2i(0, 0);
 }
 
-struct Vec3
+struct Vec3 : ISpanFormattable
 {
     public float X, Y, Z;
 
@@ -266,6 +305,9 @@ struct Vec3
     }
 
     public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3})";
+    public string ToString(string? format, IFormatProvider? provider) => ToString();
+    public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
+        => FormatUtils.FormatFloatSet(dest, out written, stackalloc float[] { X, Y, Z }, "G3");
 
     public static Vec3 operator -(Vec3 v) => new Vec3(-v.X, -v.Y, -v.Z);
     public static Vec3 operator +(Vec3 a, Vec3 b) => new Vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
@@ -354,7 +396,7 @@ struct Vec3
     }
 }
 
-struct Vec4
+struct Vec4 : ISpanFormattable
 {
     public float X, Y, Z, W;
 
@@ -384,6 +426,9 @@ struct Vec4
     }
 
     public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})";
+    public string ToString(string? format, IFormatProvider? provider) => ToString();
+    public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
+        => FormatUtils.FormatFloatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, "G3");
 
     public static Vec4 operator -(Vec4 v) => new Vec4(-v.X, -v.Y, -v.Z, -v.W);
     public static Vec4 operator +(Vec4 a, Vec4 b) => new Vec4(a.X + b.X, a.Y + b.Y, a.Z + b.Z, a.W + b.W);
@@ -399,7 +444,7 @@ struct Vec4
     public static float Dot(Vec4 a, Vec4 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 }
 
-struct Quat
+struct Quat : ISpanFormattable
 {
     public float X, Y, Z, W;
 
@@ -434,6 +479,9 @@ struct Quat
     }
 
     public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})";
+    public string ToString(string? format, IFormatProvider? provider) => ToString();
+    public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
+        => FormatUtils.FormatFloatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, "G3");
 
     public static Quat operator *(Quat a, Quat b) => new Quat(
         a.W * b.X + a.X * b.W + a.Y * b.Z - a.Z * b.Y,
