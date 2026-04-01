@@ -1,31 +1,52 @@
+using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 ref struct InfoWriter
 {
+    [InterpolatedStringHandler]
+    public struct Formatter
+    {
+        private StringBuilder _sb;
+
+        public Formatter(int literalLength, int formattedCount, InfoWriter writer)
+        {
+            _sb = writer._sb;
+            _sb.Append(' ', writer.Indent * 2);
+        }
+
+        public void AppendLiteral(string s) => _sb.Append(s);
+        public void AppendFormatted<T>(T value) => _sb.Append(value);
+        public void AppendFormatted<T>(T value, string format) where T : IFormattable =>
+            _sb.Append(value?.ToString(format, null));
+    }
+
+    public int Indent { get; private set; }
+
     private StringBuilder _sb;
-    private int _indent;
 
     public InfoWriter(int indent = 0)
     {
+        Indent = indent;
         _sb = new StringBuilder();
-        _indent = indent;
     }
 
     public void Clear()
     {
+        Indent = 0;
         _sb.Clear();
-        _indent = 0;
     }
 
-    public void Indent() => _indent++;
-    public void Outdent()
+    public void IndentPush() => ++Indent;
+    public void IndentPop()
     {
-        Debug.Assert(_indent > 0, "Indent underflow");
-        _indent--;
+        Debug.Assert(Indent > 0, "Indent underflow");
+        --Indent;
     }
 
-    public void WriteLine(string text) => _sb.AppendLine(new string(' ', _indent * 2) + text);
+    public void WriteLine(string text) => _sb.AppendLine(new string(' ', Indent * 2) + text);
+    public void WriteLine([InterpolatedStringHandlerArgument("")] ref Formatter f) => _sb.AppendLine();
 
     public void Separate(int lines = 1)
     {

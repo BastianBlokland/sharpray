@@ -44,37 +44,37 @@ struct Object : IShape
     public void Describe(ref InfoWriter w)
     {
         w.WriteLine(Name);
-        w.Indent();
+        w.IndentPush();
         {
             w.WriteLine("transform");
-            w.Indent();
+            w.IndentPush();
             {
                 w.WriteLine($"pos={Trans.Pos}");
                 w.WriteLine($"rot={Trans.Rot}");
                 w.WriteLine($"scale={Trans.Scale}");
             }
-            w.Outdent();
+            w.IndentPop();
 
             w.WriteLine("material");
-            w.Indent();
+            w.IndentPush();
             Material.Describe(ref w);
-            w.Outdent();
+            w.IndentPop();
 
             w.WriteLine("bounds");
-            w.Indent();
+            w.IndentPush();
             w.WriteLine($"min={_bounds.Min}");
             w.WriteLine($"max={_bounds.Max}");
-            w.Outdent();
+            w.IndentPop();
 
             if (Shape is Mesh mesh)
             {
                 w.WriteLine("mesh");
-                w.Indent();
+                w.IndentPush();
                 mesh.Describe(ref w);
-                w.Outdent();
+                w.IndentPop();
             }
         }
-        w.Outdent();
+        w.IndentPop();
     }
 
     public void OverlayBounds(Overlay overlay, Color color) =>
