@@ -1,6 +1,26 @@
 using System;
 using System.Globalization;
 
+readonly struct FormatNum(long n) : ISpanFormattable
+{
+    public string ToString(string? format, IFormatProvider? provider) => FormatUtils.FormatNum(n);
+
+    public override string ToString() => FormatUtils.FormatNum(n);
+
+    public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider) =>
+        FormatUtils.FormatNum(dest, out written, n);
+}
+
+readonly struct FormatMem(long n) : ISpanFormattable
+{
+    public string ToString(string? format, IFormatProvider? provider) => FormatUtils.FormatMem(n);
+
+    public override string ToString() => FormatUtils.FormatMem(n);
+
+    public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider) =>
+        FormatUtils.FormatMem(dest, out written, n);
+}
+
 static class FormatUtils
 {
     public static string FormatNum(long n)
