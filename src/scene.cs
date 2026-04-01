@@ -8,7 +8,7 @@ record struct Fragment(Color Radiance, Vec3? Normal, float? Depth);
 
 record struct Material(Color Color, float Roughness, float Metallic = 0f, Color Radiance = default)
 {
-    public void Describe(InfoWriter w)
+    public void Describe(ref InfoWriter w)
     {
         w.WriteLine($"color={Color}");
         w.WriteLine($"roughness={Roughness:G3}");
@@ -18,6 +18,7 @@ record struct Material(Color Color, float Roughness, float Metallic = 0f, Color 
 
 struct Object : IShape
 {
+    public string Name;
     public Transform Trans;
     public Material Material;
     public IShape Shape;
@@ -25,8 +26,9 @@ struct Object : IShape
     private Box _boundsRotated;
     private AABox _bounds;
 
-    public Object(Transform trans, Material material, IShape shape)
+    public Object(String name, Transform trans, Material material, IShape shape)
     {
+        Name = name;
         Trans = trans;
         Material = material;
         Shape = shape;
@@ -39,27 +41,34 @@ struct Object : IShape
     public bool Overlaps(AABox box) => _boundsRotated.Overlaps(box);
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
 
-    public void Describe(InfoWriter w)
+    public void Describe(ref InfoWriter w)
     {
-        w.WriteLine("transform");
+        w.WriteLine(Name);
         w.Indent();
-        w.WriteLine($"pos={Trans.Pos}");
-        w.WriteLine($"rot={Trans.Rot}");
-        w.WriteLine($"scale={Trans.Scale}");
-        w.Outdent();
-
-        w.WriteLine("material");
-        w.Indent();
-        Material.Describe(w);
-        w.Outdent();
-
-        if (Shape is Mesh mesh)
         {
-            w.WriteLine("mesh");
+            w.WriteLine("transform");
             w.Indent();
-            mesh.Describe(w);
+            {
+                w.WriteLine($"pos={Trans.Pos}");
+                w.WriteLine($"rot={Trans.Rot}");
+                w.WriteLine($"scale={Trans.Scale}");
+            }
             w.Outdent();
+
+            w.WriteLine("material");
+            w.Indent();
+            Material.Describe(ref w);
+            w.Outdent();
+
+            if (Shape is Mesh mesh)
+            {
+                w.WriteLine("mesh");
+                w.Indent();
+                mesh.Describe(ref w);
+                w.Outdent();
+            }
         }
+        w.Outdent();
     }
 
     public void OverlayBounds(Overlay overlay, Color color) =>
@@ -274,14 +283,12 @@ class Scene
         return new Fragment(radiance, normal, depth);
     }
 
-    public void Describe(InfoWriter w)
+    public void Describe(ref InfoWriter w)
     {
-        for (int i = 0; i != _objects.Count; ++i)
+        foreach (Object obj in _objects)
         {
-            w.WriteLine($"object {i}");
-            w.Indent();
-            _objects[i].Describe(w);
-            w.Outdent();
+            w.Separate();
+            obj.Describe(ref w);
         }
     }
 

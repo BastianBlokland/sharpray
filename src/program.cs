@@ -38,6 +38,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
 {
     // Floor.
     scene.AddObject(new Object(
+        "floor",
         Transform.Identity(),
         new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
         new AABox(new Vec3(-10f, -0.2f, -2f), new Vec3(10f, 0f, 20f))));
@@ -63,7 +64,9 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
             float angle = i * (MathF.PI * 2f / sphereCount);
             float roughness = 1.0f - (float)i / (sphereCount - 1);
             Vec3 pos = center + new Vec3(MathF.Cos(angle) * orbitRadius, 0f, MathF.Sin(angle) * orbitRadius);
-            scene.AddObject(new Object(Transform.Identity(), new Material(ballColor, roughness, 0.5f), new Sphere(pos, radius)));
+            Material mat = new Material(ballColor, roughness, 0.5f);
+            IShape shape = new Sphere(pos, radius);
+            scene.AddObject(new Object($"sphere_{i}", Transform.Identity(), mat, shape));
         }
     }
 
@@ -74,7 +77,7 @@ if (dumpScene)
 {
     Console.WriteLine("> Scene");
     InfoWriter sceneInfoWriter = new InfoWriter(1);
-    scene.Describe(sceneInfoWriter);
+    scene.Describe(ref sceneInfoWriter);
     Console.WriteLine(sceneInfoWriter.ToString());
 }
 

@@ -40,7 +40,7 @@ class Mesh : IShape
         }
     }
 
-    public void Describe(InfoWriter w)
+    public void Describe(ref InfoWriter w)
     {
         BvhStats bvhStats = _bvh.GetStats();
         w.WriteLine($"tris={_triangles.Length}");

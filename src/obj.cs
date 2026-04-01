@@ -151,7 +151,9 @@ static class ObjLoader
         var triangles = new List<Triangle>();
         var faceEntries = new List<(int Pos, int Norm)>();
         var materials = new Dictionary<string, Material>();
+        string fileName = Path.GetFileNameWithoutExtension(path);
         string? currentMaterialName = null;
+        string? currentObjectName = null;
         int objectCount = 0;
 
         void BuildObject()
@@ -159,6 +161,7 @@ static class ObjLoader
             if (triangles.Count == 0)
                 return;
 
+            string name = currentObjectName is string n ? $"{fileName}_{n}" : $"{fileName}_{objectCount}";
             Transform objTrans = transform ?? Transform.Identity();
             Material objMat;
             if (currentMaterialName == null || !materials.TryGetValue(currentMaterialName, out objMat))
@@ -167,7 +170,7 @@ static class ObjLoader
             }
             Mesh mesh = new Mesh(triangles.ToArray(), counters);
 
-            scene.AddObject(new Object(objTrans, objMat, mesh));
+            scene.AddObject(new Object(name, objTrans, objMat, mesh));
 
             triangles.Clear();
             objectCount++;
@@ -202,6 +205,11 @@ static class ObjLoader
             else if (word.SequenceEqual("o") || word.SequenceEqual("g"))
             {
                 BuildObject();
+                if (lexer.Peek() == ObjToken.Word)
+                {
+                    lexer.Next(wordBuf, out int nameLen);
+                    currentObjectName = wordBuf[..nameLen].ToString();
+                }
                 lexer.SkipLine();
             }
             else if (word.SequenceEqual("mtllib"))

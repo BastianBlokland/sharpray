@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 
-struct InfoWriter
+ref struct InfoWriter
 {
     private StringBuilder _sb;
     private int _indent;
