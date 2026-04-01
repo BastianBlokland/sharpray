@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -17,9 +18,34 @@ ref struct InfoWriter
         }
 
         public void AppendLiteral(string s) => _sb.Append(s);
-        public void AppendFormatted<T>(T value) => _sb.Append(value);
-        public void AppendFormatted<T>(T value, string format) where T : IFormattable =>
-            _sb.Append(value?.ToString(format, null));
+
+        public void AppendFormatted<T>(T value)
+        {
+            if (value is ISpanFormattable spanFormattable)
+            {
+                Span<char> buffer = stackalloc char[64];
+                spanFormattable.TryFormat(buffer, out int written, default, CultureInfo.InvariantCulture);
+                _sb.Append(buffer[..written]);
+            }
+            else
+            {
+                _sb.Append(value);
+            }
+        }
+
+        public void AppendFormatted<T>(T value, string format) where T : IFormattable
+        {
+            if (value is ISpanFormattable spanFormattable)
+            {
+                Span<char> buffer = stackalloc char[64];
+                spanFormattable.TryFormat(buffer, out int written, format, CultureInfo.InvariantCulture);
+                _sb.Append(buffer[..written]);
+            }
+            else
+            {
+                _sb.Append(value.ToString(format, CultureInfo.InvariantCulture));
+            }
+        }
     }
 
     public int Indent { get; private set; }
