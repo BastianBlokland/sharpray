@@ -66,6 +66,31 @@ struct FormatWriter
                 _sb.Append(value.ToString(format, CultureInfo.InvariantCulture));
             }
         }
+
+        public void AppendFormatted<T>(T value, int alignment)
+        {
+            Span<char> buffer = stackalloc char[64];
+            int length = 0;
+            if (value is ISpanFormattable spanFormattable)
+            {
+                spanFormattable.TryFormat(buffer, out length, default, CultureInfo.InvariantCulture);
+            }
+            else if (value != null)
+            {
+                string? valueStr = value.ToString();
+                if (valueStr is string str)
+                {
+                    str.CopyTo(buffer);
+                    length = str.Length;
+                }
+            }
+            int pad = Math.Abs(alignment) - length;
+            if (alignment > 0)
+                _sb.Append(' ', Math.Max(0, pad));
+            _sb.Append(buffer[..length]);
+            if (alignment < 0)
+                _sb.Append(' ', Math.Max(0, pad));
+        }
     }
 
     public int Indent { get; private set; }
@@ -102,6 +127,8 @@ struct FormatWriter
 
     public void WriteLine(string text) => _sb.AppendLine(new string(' ', Indent * 2) + text);
     public void WriteLine([InterpolatedStringHandlerArgument("")] ref Formatter f) => _sb.AppendLine();
+
+    public void EndLine() => _sb.AppendLine();
 
     public void Separate(int lines = 1)
     {
