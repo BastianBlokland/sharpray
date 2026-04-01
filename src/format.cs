@@ -72,7 +72,13 @@ struct FormatWriter
 
     private StringBuilder _sb;
 
-    public FormatWriter(int indent = 0)
+    public FormatWriter()
+    {
+        Indent = 0;
+        _sb = new StringBuilder();
+    }
+
+    public FormatWriter(int indent)
     {
         Indent = indent;
         _sb = new StringBuilder();
