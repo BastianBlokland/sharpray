@@ -106,7 +106,7 @@ using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
         {
             estTotal = timerRender.Elapsed * progress.Total / progress.Step;
         }
-        Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total}] {timerRender.Elapsed.Format(),8} / {(estTotal?.Format() ?? "?"),-8}");
+        Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total}] {timerRender.Elapsed,8} / {(estTotal?.ToString() ?? "?"),-8}");
     } while (progress.Step != progress.Total);
 }
 

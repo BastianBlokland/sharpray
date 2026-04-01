@@ -116,7 +116,7 @@ class Counters
             sb.Append(GetCategory((Type)i) switch
             {
                 Category.Memory => FormatUtils.FormatMem(value),
-                Category.Time => Timestamp.FromMicros(value).Format(),
+                Category.Time => Timestamp.FromMicros(value).ToString(),
                 _ => FormatUtils.FormatNum(value),
             });
         }
