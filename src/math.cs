@@ -1379,24 +1379,7 @@ struct Timestamp
     public double Millis => (double)_ticks * 1_000.0 / Stopwatch.Frequency;
     public double Seconds => (double)_ticks / Stopwatch.Frequency;
 
-    public string Format()
-    {
-        const double usPerMin = 60_000_000.0;
-        const double usPerHour = 3_600_000_000.0;
-
-        double us = Micros;
-        if (us < usPerMin)
-            return string.Create(CultureInfo.InvariantCulture, $"{us / 1_000_000.0:F2}s");
-        if (us < usPerHour)
-        {
-            long mins = (long)(us / usPerMin);
-            double remSecs = (us % usPerMin) / 1_000_000.0;
-            return string.Create(CultureInfo.InvariantCulture, $"{mins}m {remSecs:F0}s");
-        }
-        long hours = (long)(us / usPerHour);
-        long remMins = (long)((us % usPerHour) / usPerMin);
-        return string.Create(CultureInfo.InvariantCulture, $"{hours}h {remMins}m");
-    }
+    public string Format() => FormatUtils.FormatTime(Micros);
 
     public static Timestamp operator -(Timestamp a, Timestamp b) => new Timestamp(a._ticks - b._ticks);
     public static Timestamp operator *(Timestamp t, long n) => new Timestamp(t._ticks * n);
@@ -1429,6 +1412,24 @@ static class FormatUtils
         if (n < 1_024L * 1_024L * 1_024L)
             return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0):F1}MiB");
         return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB");
+    }
+
+    public static string FormatTime(double micros)
+    {
+        const double usPerMin = 60_000_000.0;
+        const double usPerHour = 3_600_000_000.0;
+
+        if (micros < usPerMin)
+            return string.Create(CultureInfo.InvariantCulture, $"{micros / 1_000_000.0:F2}s");
+        if (micros < usPerHour)
+        {
+            long mins = (long)(micros / usPerMin);
+            double remSecs = (micros % usPerMin) / 1_000_000.0;
+            return string.Create(CultureInfo.InvariantCulture, $"{mins}m {remSecs:F0}s");
+        }
+        long hours = (long)(micros / usPerHour);
+        long remMins = (long)((micros % usPerHour) / usPerMin);
+        return string.Create(CultureInfo.InvariantCulture, $"{hours}h {remMins}m");
     }
 
     public static bool FormatSet<T>(Span<char> dest, out int written, Span<T> values, ReadOnlySpan<char> format = default)
