@@ -60,6 +60,12 @@ struct Object : IShape
             Material.Describe(ref w);
             w.Outdent();
 
+            w.WriteLine("bounds");
+            w.Indent();
+            w.WriteLine($"min={_bounds.Min}");
+            w.WriteLine($"max={_bounds.Max}");
+            w.Outdent();
+
             if (Shape is Mesh mesh)
             {
                 w.WriteLine("mesh");
