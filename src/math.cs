@@ -96,7 +96,7 @@ struct Color : ISpanFormattable
     public override string ToString() => $"({R:G3}, {G:G3}, {B:G3})";
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
-        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { R, G, B }, "G3");
+        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { R, G, B }, format.IsEmpty ? "G3" : format);
 
     public static Color operator +(Color a, Color b) => new Color(a.R + b.R, a.G + b.G, a.B + b.B);
     public static Color operator -(Color a, Color b) => new Color(a.R - b.R, a.G - b.G, a.B - b.B);
@@ -207,7 +207,7 @@ struct Vec2 : ISpanFormattable
     public override string ToString() => $"({X:G3}, {Y:G3})";
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
-        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y }, "G3");
+        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y }, format.IsEmpty ? "G3" : format);
 
     public static Vec2 operator -(Vec2 v) => new Vec2(-v.X, -v.Y);
     public static Vec2 operator +(Vec2 a, Vec2 b) => new Vec2(a.X + b.X, a.Y + b.Y);
@@ -248,7 +248,7 @@ struct Vec2i : ISpanFormattable
     public override string ToString() => $"({X}, {Y})";
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
-        => FormatUtils.FormatSet(dest, out written, stackalloc int[] { X, Y });
+        => FormatUtils.FormatSet(dest, out written, stackalloc int[] { X, Y }, format);
 
     public static Vec2i operator -(Vec2i v) => new Vec2i(-v.X, -v.Y);
     public static Vec2i operator +(Vec2i a, Vec2i b) => new Vec2i(a.X + b.X, a.Y + b.Y);
@@ -307,7 +307,7 @@ struct Vec3 : ISpanFormattable
     public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3})";
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
-        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z }, "G3");
+        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z }, format.IsEmpty ? "G3" : format);
 
     public static Vec3 operator -(Vec3 v) => new Vec3(-v.X, -v.Y, -v.Z);
     public static Vec3 operator +(Vec3 a, Vec3 b) => new Vec3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
@@ -428,7 +428,7 @@ struct Vec4 : ISpanFormattable
     public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})";
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
-        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, "G3");
+        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, format.IsEmpty ? "G3" : format);
 
     public static Vec4 operator -(Vec4 v) => new Vec4(-v.X, -v.Y, -v.Z, -v.W);
     public static Vec4 operator +(Vec4 a, Vec4 b) => new Vec4(a.X + b.X, a.Y + b.Y, a.Z + b.Z, a.W + b.W);
@@ -481,7 +481,7 @@ struct Quat : ISpanFormattable
     public override string ToString() => $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})";
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
-        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, "G3");
+        => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, format.IsEmpty ? "G3" : format);
 
     public static Quat operator *(Quat a, Quat b) => new Quat(
         a.W * b.X + a.X * b.W + a.Y * b.Z - a.Z * b.Y,
