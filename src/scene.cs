@@ -8,7 +8,7 @@ record struct Fragment(Color Radiance, Vec3? Normal, float? Depth);
 
 record struct Material(Color Color, float Roughness, float Metallic = 0f, Color Radiance = default)
 {
-    public void Describe(ref InfoWriter w)
+    public void Describe(ref FormatWriter w)
     {
         w.WriteLine($"color={Color}");
         w.WriteLine($"roughness={Roughness:G3}");
@@ -41,7 +41,7 @@ struct Object : IShape
     public bool Overlaps(AABox box) => _boundsRotated.Overlaps(box);
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
 
-    public void Describe(ref InfoWriter w)
+    public void Describe(ref FormatWriter w)
     {
         w.WriteLine(Name);
         w.IndentPush();
@@ -289,7 +289,7 @@ class Scene
         return new Fragment(radiance, normal, depth);
     }
 
-    public void Describe(ref InfoWriter w)
+    public void Describe(ref FormatWriter w)
     {
         foreach (Object obj in _objects)
         {

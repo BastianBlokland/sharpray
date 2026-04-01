@@ -76,7 +76,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
 if (dumpScene)
 {
     Console.WriteLine("> Scene");
-    InfoWriter sceneInfoWriter = new InfoWriter(1);
+    FormatWriter sceneInfoWriter = new FormatWriter(1);
     scene.Describe(ref sceneInfoWriter);
     Console.WriteLine(sceneInfoWriter.ToString());
 }
