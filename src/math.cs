@@ -1409,6 +1409,28 @@ struct Timestamp
 
 static class FormatUtils
 {
+    public static string FormatNum(long n)
+    {
+        if (n < 1_000L)
+            return n.ToString(CultureInfo.InvariantCulture);
+        if (n < 1_000_000L)
+            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000.0:F1}K");
+        if (n < 1_000_000_000L)
+            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000.0:F1}M");
+        return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000_000.0:F2}B");
+    }
+
+    public static string FormatMem(long n)
+    {
+        if (n < 1_024L)
+            return string.Create(CultureInfo.InvariantCulture, $"{n}B");
+        if (n < 1_024L * 1_024L)
+            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_024.0:F1}KiB");
+        if (n < 1_024L * 1_024L * 1_024L)
+            return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0):F1}MiB");
+        return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB");
+    }
+
     public static bool FormatSet<T>(Span<char> dest, out int written, Span<T> values, ReadOnlySpan<char> format = default)
         where T : ISpanFormattable
     {
@@ -1434,27 +1456,5 @@ static class FormatUtils
             return false;
         dest[written++] = ')';
         return true;
-    }
-
-    public static string FormatNum(long n)
-    {
-        if (n < 1_000L)
-            return n.ToString(CultureInfo.InvariantCulture);
-        if (n < 1_000_000L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000.0:F1}K");
-        if (n < 1_000_000_000L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000.0:F1}M");
-        return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000_000.0:F2}B");
-    }
-
-    public static string FormatMem(long n)
-    {
-        if (n < 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n}B");
-        if (n < 1_024L * 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_024.0:F1}KiB");
-        if (n < 1_024L * 1_024L * 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0):F1}MiB");
-        return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB");
     }
 }
