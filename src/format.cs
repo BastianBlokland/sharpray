@@ -39,16 +39,6 @@ struct FormatWriter
 
         public void AppendLiteral(string s) => _sb.Append(s);
 
-        public void AppendFormatted(string value, int alignment)
-        {
-            int pad = Math.Abs(alignment) - value.Length;
-            if (alignment > 0)
-                _sb.Append(' ', Math.Max(0, pad));
-            _sb.Append(value);
-            if (alignment < 0)
-                _sb.Append(' ', Math.Max(0, pad));
-        }
-
         public void AppendFormatted<T>(T value)
         {
             if (value is ISpanFormattable spanFormattable)
