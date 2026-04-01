@@ -27,5 +27,11 @@ struct InfoWriter
 
     public void WriteLine(string text) => _sb.AppendLine(new string(' ', _indent * 2) + text);
 
+    public void Separate()
+    {
+        if (_sb.Length > 0 && _sb[_sb.Length - 1] != '\n')
+            _sb.AppendLine();
+    }
+
     public override string ToString() => _sb.ToString();
 }
