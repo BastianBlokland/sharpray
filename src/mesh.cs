@@ -40,12 +40,12 @@ class Mesh : IShape
         }
     }
 
-    public void Describe(ref FormatWriter w)
+    public void Describe(ref FormatWriter fmt)
     {
         BvhStats bvhStats = _bvh.GetStats();
-        w.WriteLine($"tris={_triangles.Length}");
-        w.WriteLine($"nodes={bvhStats.Nodes}");
-        w.WriteLine($"leaves={bvhStats.Leaves}");
-        w.WriteLine($"depth={bvhStats.MaxDepth}");
+        fmt.WriteLine($"tris={_triangles.Length}");
+        fmt.WriteLine($"nodes={bvhStats.Nodes}");
+        fmt.WriteLine($"leaves={bvhStats.Leaves}");
+        fmt.WriteLine($"depth={bvhStats.MaxDepth}");
     }
 }

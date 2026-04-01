@@ -1,11 +1,26 @@
 using System;
 using System.IO;
 
-Console.WriteLine("[SharpRay]");
-Console.WriteLine("> Performing setup");
+void FlushToConsole(ref FormatWriter fmt)
+{
+    Console.Write(fmt.ToString());
+    fmt.Clear();
+}
 
-const uint width = 1024;
-const uint height = 1024;
+void FlushToOverlay(ref FormatWriter fmt, Overlay overlay, Vec2i screenPos)
+{
+    overlay.AddText(fmt.ToString(), screenPos, Color.White);
+    fmt.Clear();
+}
+
+FormatWriter fmt = new FormatWriter();
+
+fmt.WriteLine("[SharpRay]");
+fmt.WriteLine("> Performing setup");
+FlushToConsole(ref fmt);
+
+const uint width = 512;
+const uint height = 512;
 const uint blockSize = 32;
 const uint samples = 64;
 const uint bounces = 8;
@@ -32,6 +47,12 @@ Sky sky = new Sky(
     new Vec3(0.4f, 0.3f, 1f).Normalize(),
     new Color(4f, 3.5f, 2.5f),
     float.DegreesToRadians(2.6f));
+
+View view = new View(
+    new Transform(
+        new Vec3(0.5f, 3f, -2f),
+        Quat.AngleAxis(float.DegreesToRadians(20f), Vec3.Right)),
+    float.DegreesToRadians(75f));
 
 Scene scene = new Scene(sky);
 using (counters.TimeScope(Counters.Type.TimeSetup))
@@ -75,22 +96,22 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
 
 if (dumpScene)
 {
-    Console.WriteLine("> Scene");
-    FormatWriter sceneInfoWriter = new FormatWriter(1);
-    scene.Describe(ref sceneInfoWriter);
-    Console.WriteLine(sceneInfoWriter.ToString());
+    fmt.WriteLine("> Scene");
+    fmt.IndentPush();
+    scene.Describe(ref fmt);
+    fmt.Separate();
+    FlushToConsole(ref fmt);
 }
 
-View view = new View(new Transform(new Vec3(0.5f, 3f, -2f), Quat.AngleAxis(float.DegreesToRadians(20f), Vec3.Right)), float.DegreesToRadians(75f));
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
 
-Console.WriteLine("> Starting render");
-
-(uint Step, uint Total) progress;
+fmt.WriteLine("> Starting render");
+FlushToConsole(ref fmt);
 
 using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
 {
+    (uint Step, uint Total) progress;
     do
     {
         progress = renderer.Tick();
@@ -106,7 +127,11 @@ using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
         {
             estTotal = timerRender.Elapsed * progress.Total / progress.Step;
         }
-        Console.WriteLine($"> Rendering [{progress.Step,4} / {progress.Total}] {timerRender.Elapsed,8} / {(estTotal?.ToString() ?? "?"),-8}");
+
+        fmt.Write($"> Rendering [{progress.Step,4} / {progress.Total}]");
+        fmt.Write($" {timerRender.Elapsed,8} / {(estTotal?.ToString() ?? "?"),-8}");
+        fmt.EndLine();
+        FlushToConsole(ref fmt);
     } while (progress.Step != progress.Total);
 }
 
@@ -143,11 +168,13 @@ if (outputDepth)
     depthImage.Save(Path.Combine(outputPath, "depth.bmp"));
 }
 
-overlay.AddText(counters.Dump(), new Vec2i(8, 8), Color.White);
+counters.Dump(ref fmt);
+FlushToOverlay(ref fmt, overlay, new Vec2i(8, 8));
 
 if (outputImage)
 {
-    Console.WriteLine("> Compositing");
+    fmt.WriteLine("> Compositing");
+    FlushToConsole(ref fmt);
     using (counters.TimeScope(Counters.Type.TimeCompose))
     {
         compositor.Compose(renderer, overlay).Save(Path.Combine(outputPath, "final.bmp"));
@@ -156,7 +183,11 @@ if (outputImage)
 
 timerTotal.Dispose();
 
-Console.WriteLine(string.Empty);
-Console.WriteLine(counters.Dump());
-Console.WriteLine(string.Empty);
-Console.WriteLine($"Finished: {outputPath}");
+fmt.WriteLine("> Counters");
+fmt.Separate();
+fmt.IndentPush();
+counters.Dump(ref fmt);
+fmt.IndentPop();
+fmt.Separate();
+fmt.WriteLine($"> Finished: {outputPath}");
+FlushToConsole(ref fmt);

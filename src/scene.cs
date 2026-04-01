@@ -8,11 +8,11 @@ record struct Fragment(Color Radiance, Vec3? Normal, float? Depth);
 
 record struct Material(Color Color, float Roughness, float Metallic = 0f, Color Radiance = default)
 {
-    public void Describe(ref FormatWriter w)
+    public void Describe(ref FormatWriter fmt)
     {
-        w.WriteLine($"color={Color}");
-        w.WriteLine($"roughness={Roughness:G3}");
-        w.WriteLine($"metallic={Metallic:G3}");
+        fmt.WriteLine($"color={Color}");
+        fmt.WriteLine($"roughness={Roughness:G3}");
+        fmt.WriteLine($"metallic={Metallic:G3}");
     }
 }
 
@@ -41,40 +41,40 @@ struct Object : IShape
     public bool Overlaps(AABox box) => _boundsRotated.Overlaps(box);
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
 
-    public void Describe(ref FormatWriter w)
+    public void Describe(ref FormatWriter fmt)
     {
-        w.WriteLine(Name);
-        w.IndentPush();
+        fmt.WriteLine(Name);
+        fmt.IndentPush();
         {
-            w.WriteLine("transform");
-            w.IndentPush();
+            fmt.WriteLine("transform");
+            fmt.IndentPush();
             {
-                w.WriteLine($"pos={Trans.Pos}");
-                w.WriteLine($"rot={Trans.Rot}");
-                w.WriteLine($"scale={Trans.Scale}");
+                fmt.WriteLine($"pos={Trans.Pos}");
+                fmt.WriteLine($"rot={Trans.Rot}");
+                fmt.WriteLine($"scale={Trans.Scale}");
             }
-            w.IndentPop();
+            fmt.IndentPop();
 
-            w.WriteLine("material");
-            w.IndentPush();
-            Material.Describe(ref w);
-            w.IndentPop();
+            fmt.WriteLine("material");
+            fmt.IndentPush();
+            Material.Describe(ref fmt);
+            fmt.IndentPop();
 
-            w.WriteLine("bounds");
-            w.IndentPush();
-            w.WriteLine($"min={_bounds.Min}");
-            w.WriteLine($"max={_bounds.Max}");
-            w.IndentPop();
+            fmt.WriteLine("bounds");
+            fmt.IndentPush();
+            fmt.WriteLine($"min={_bounds.Min}");
+            fmt.WriteLine($"max={_bounds.Max}");
+            fmt.IndentPop();
 
             if (Shape is Mesh mesh)
             {
-                w.WriteLine("mesh");
-                w.IndentPush();
-                mesh.Describe(ref w);
-                w.IndentPop();
+                fmt.WriteLine("mesh");
+                fmt.IndentPush();
+                mesh.Describe(ref fmt);
+                fmt.IndentPop();
             }
         }
-        w.IndentPop();
+        fmt.IndentPop();
     }
 
     public void OverlayBounds(Overlay overlay, Color color) =>
@@ -289,12 +289,12 @@ class Scene
         return new Fragment(radiance, normal, depth);
     }
 
-    public void Describe(ref FormatWriter w)
+    public void Describe(ref FormatWriter fmt)
     {
         foreach (Object obj in _objects)
         {
-            w.Separate();
-            obj.Describe(ref w);
+            fmt.Separate();
+            obj.Describe(ref fmt);
         }
     }
 

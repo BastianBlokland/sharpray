@@ -31,10 +31,10 @@ struct FormatWriter
     {
         private StringBuilder _sb;
 
-        public Formatter(int literalLength, int formattedCount, FormatWriter writer)
+        public Formatter(int literalLength, int formattedCount, FormatWriter fmt)
         {
-            _sb = writer._sb;
-            _sb.Append(' ', writer.Indent * 2);
+            _sb = fmt._sb;
+            _sb.Append(' ', fmt.Indent * 2);
         }
 
         public void AppendLiteral(string s) => _sb.Append(s);

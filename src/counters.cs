@@ -86,33 +86,33 @@ class Counters
         }
     }
 
-    public string Dump()
+    public void Dump(ref FormatWriter fmt)
     {
         Flush();
         FetchRuntimeValues();
 
         int nameLenMax = 0;
-        foreach (string name in _typeNames)
-            nameLenMax = Math.Max(nameLenMax, name.Length);
+        for (int i = 0; i != (int)Type._Count; ++i)
+        {
+            if (GetFlushed((Type)i) != 0)
+                nameLenMax = Math.Max(nameLenMax, _typeNames[i].Length);
+        }
 
-        FormatWriter w = new FormatWriter();
         for (int i = 0; i != (int)Type._Count; ++i)
         {
             long value = GetFlushed((Type)i);
             if (value == 0)
                 continue;
 
-            w.Separate(0);
+            fmt.Separate(0);
             string name = _typeNames[i].PadRight(nameLenMax);
             switch (GetCategory((Type)i))
             {
-                case Category.Memory: w.WriteLine($"{name}: {new FormatMem(value)}"); break;
-                case Category.Time: w.WriteLine($"{name}: {Timestamp.FromMicros(value)}"); break;
-                default: w.WriteLine($"{name}: {new FormatNum(value)}"); break;
+                case Category.Memory: fmt.WriteLine($"{name}: {new FormatMem(value)}"); break;
+                case Category.Time: fmt.WriteLine($"{name}: {Timestamp.FromMicros(value)}"); break;
+                default: fmt.WriteLine($"{name}: {new FormatNum(value)}"); break;
             }
         }
-
-        return w.ToString();
     }
 
     private long GetFlushed(Type c) => Interlocked.Read(ref _data[(int)c]);
