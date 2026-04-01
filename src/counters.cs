@@ -1,6 +1,4 @@
 using System;
-using System.Globalization;
-using System.Text;
 using System.Threading;
 
 struct TimeScope : IDisposable
@@ -64,6 +62,8 @@ class Counters
     private readonly long[] _data = new long[(int)Type._Count];
     private readonly ThreadLocal<long[]> _dataLocal = new ThreadLocal<long[]>(() => new long[(int)Type._Count]);
 
+    private static readonly string[] _typeNames = Enum.GetNames<Type>();
+
     public TimeScope TimeScope(Type c) => new TimeScope(this, c);
 
     public void Bump(Type c) => _dataLocal.Value![(int)c]++;
@@ -91,38 +91,31 @@ class Counters
         Flush();
         FetchRuntimeValues();
 
-        int maxNameLen = 0;
-        for (int i = 0; i != (int)Type._Count; ++i)
-        {
-            if (GetFlushed((Type)i) == 0)
-                continue;
-            maxNameLen = Math.Max(maxNameLen, ((Type)i).ToString().Length);
-        }
+        int nameLenMax = 0;
+        foreach (string name in _typeNames)
+            nameLenMax = Math.Max(nameLenMax, name.Length);
 
-        var sb = new StringBuilder();
+        FormatWriter w = new FormatWriter();
         for (int i = 0; i != (int)Type._Count; ++i)
         {
             long value = GetFlushed((Type)i);
             if (value == 0)
                 continue;
 
-            if (sb.Length > 0)
-                sb.Append('\n');
-
-            string name = ((Type)i).ToString();
-            sb.Append(name);
-            sb.Append(' ', maxNameLen - name.Length);
-            sb.Append(": ");
-            sb.Append(GetCategory((Type)i) switch
+            w.Separate(0);
+            string name = _typeNames[i].PadRight(nameLenMax);
+            switch (GetCategory((Type)i))
             {
-                Category.Memory => FormatUtils.FormatMem(value),
-                Category.Time => Timestamp.FromMicros(value).ToString(),
-                _ => FormatUtils.FormatNum(value),
-            });
+                case Category.Memory: w.WriteLine($"{name}: {new FormatMem(value)}"); break;
+                case Category.Time: w.WriteLine($"{name}: {Timestamp.FromMicros(value)}"); break;
+                default: w.WriteLine($"{name}: {new FormatNum(value)}"); break;
+            }
         }
 
-        return sb.ToString();
+        return w.ToString();
     }
+
+    private long GetFlushed(Type c) => Interlocked.Read(ref _data[(int)c]);
 
     private void FetchRuntimeValues()
     {
@@ -133,8 +126,6 @@ class Counters
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen1], GC.CollectionCount(1));
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen2], GC.CollectionCount(2));
     }
-
-    private long GetFlushed(Type c) => Interlocked.Read(ref _data[(int)c]);
 
     private static Category GetCategory(Type c) => c switch
     {
