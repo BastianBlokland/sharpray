@@ -115,9 +115,9 @@ class Counters
             sb.Append(": ");
             sb.Append(GetCategory((Type)i) switch
             {
-                Category.Memory => FormatMem(value),
-                Category.Time => FormatTime(value),
-                _ => FormatNum(value),
+                Category.Memory => FormatUtils.FormatMem(value),
+                Category.Time => Timestamp.FromMicros(value).Format(),
+                _ => FormatUtils.FormatNum(value),
             });
         }
 
@@ -142,28 +142,4 @@ class Counters
         Type.TimeSetup or Type.TimeRender or Type.TimeCompose or Type.TimeTotal => Category.Time,
         _ => Category.Raw
     };
-
-    private static string FormatNum(long n)
-    {
-        if (n < 1_000L)
-            return n.ToString(CultureInfo.InvariantCulture);
-        if (n < 1_000_000L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000.0:F1}K");
-        if (n < 1_000_000_000L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000.0:F1}M");
-        return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000_000.0:F2}B");
-    }
-
-    private static string FormatMem(long n)
-    {
-        if (n < 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n}B");
-        if (n < 1_024L * 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_024.0:F1}KiB");
-        if (n < 1_024L * 1_024L * 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0):F1}MiB");
-        return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB");
-    }
-
-    private static string FormatTime(long micros) => Timestamp.FromMicros(micros).Format();
 }
