@@ -64,7 +64,7 @@ struct Color : ISpanFormattable
         return new Pixel((byte)(r * 255f + 0.5f), (byte)(g * 255f + 0.5f), (byte)(b * 255f + 0.5f));
     }
 
-    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({R:G3}, {G:G3}, {B:G3})");
+    public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { R, G, B }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { R, G, B }, format.IsEmpty ? "G3" : format);
@@ -175,7 +175,7 @@ struct Vec2 : ISpanFormattable
 
     public Vec2i ToInt() => new Vec2i((int)MathF.Round(X), (int)MathF.Round(Y));
 
-    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X:G3}, {Y:G3})");
+    public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y }, format.IsEmpty ? "G3" : format);
@@ -216,7 +216,7 @@ struct Vec2i : ISpanFormattable
 
     public Vec2 ToFloat() => new Vec2(X, Y);
 
-    public override string ToString() => $"({X}, {Y})";
+    public override string ToString() => FormatUtils.FormatSet(stackalloc int[] { X, Y });
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc int[] { X, Y }, format);
@@ -275,7 +275,7 @@ struct Vec3 : ISpanFormattable
         return mSqr >= 1e-12f ? this / MathF.Sqrt(mSqr) : fallback;
     }
 
-    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X:G3}, {Y:G3}, {Z:G3})");
+    public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y, Z }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z }, format.IsEmpty ? "G3" : format);
@@ -396,7 +396,7 @@ struct Vec4 : ISpanFormattable
         }
     }
 
-    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})");
+    public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y, Z, W }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, format.IsEmpty ? "G3" : format);
@@ -449,7 +449,7 @@ struct Quat : ISpanFormattable
         return new Quat(X * magInv, Y * magInv, Z * magInv, W * magInv);
     }
 
-    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"({X:G3}, {Y:G3}, {Z:G3}, {W:G3})");
+    public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y, Z, W }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
         => FormatUtils.FormatSet(dest, out written, stackalloc float[] { X, Y, Z, W }, format.IsEmpty ? "G3" : format);
@@ -1368,7 +1368,7 @@ struct Rng
     }
 }
 
-struct Timestamp
+struct Timestamp : ISpanFormattable
 {
     private long _ticks;
 
@@ -1379,7 +1379,10 @@ struct Timestamp
     public double Millis => (double)_ticks * 1_000.0 / Stopwatch.Frequency;
     public double Seconds => (double)_ticks / Stopwatch.Frequency;
 
-    public string Format() => FormatUtils.FormatTime(Micros);
+    public override string ToString() => FormatUtils.FormatTime(Micros);
+    public string ToString(string? format, IFormatProvider? provider) => ToString();
+    public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
+        => FormatUtils.FormatTime(dest, out written, Micros);
 
     public static Timestamp operator -(Timestamp a, Timestamp b) => new Timestamp(a._ticks - b._ticks);
     public static Timestamp operator *(Timestamp t, long n) => new Timestamp(t._ticks * n);
@@ -1388,74 +1391,4 @@ struct Timestamp
     public static Timestamp FromNanos(long nanos) => new Timestamp(nanos * Stopwatch.Frequency / 1_000_000_000);
     public static Timestamp FromMicros(long micros) => new Timestamp(micros * Stopwatch.Frequency / 1_000_000);
     public static Timestamp Now() => new Timestamp(Stopwatch.GetTimestamp());
-}
-
-static class FormatUtils
-{
-    public static string FormatNum(long n)
-    {
-        if (n < 1_000L)
-            return n.ToString(CultureInfo.InvariantCulture);
-        if (n < 1_000_000L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000.0:F1}K");
-        if (n < 1_000_000_000L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000.0:F1}M");
-        return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000_000.0:F2}B");
-    }
-
-    public static string FormatMem(long n)
-    {
-        if (n < 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n}B");
-        if (n < 1_024L * 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_024.0:F1}KiB");
-        if (n < 1_024L * 1_024L * 1_024L)
-            return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0):F1}MiB");
-        return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB");
-    }
-
-    public static string FormatTime(double micros)
-    {
-        const double usPerMin = 60_000_000.0;
-        const double usPerHour = 3_600_000_000.0;
-
-        if (micros < usPerMin)
-            return string.Create(CultureInfo.InvariantCulture, $"{micros / 1_000_000.0:F2}s");
-        if (micros < usPerHour)
-        {
-            long mins = (long)(micros / usPerMin);
-            double remSecs = (micros % usPerMin) / 1_000_000.0;
-            return string.Create(CultureInfo.InvariantCulture, $"{mins}m {remSecs:F0}s");
-        }
-        long hours = (long)(micros / usPerHour);
-        long remMins = (long)((micros % usPerHour) / usPerMin);
-        return string.Create(CultureInfo.InvariantCulture, $"{hours}h {remMins}m");
-    }
-
-    public static bool FormatSet<T>(Span<char> dest, out int written, Span<T> values, ReadOnlySpan<char> format = default)
-        where T : ISpanFormattable
-    {
-        written = 0;
-        if (dest.IsEmpty)
-            return false;
-
-        dest[written++] = '(';
-        for (int i = 0; i != values.Length; ++i)
-        {
-            if (i > 0)
-            {
-                if (written + 2 > dest.Length)
-                    return false;
-                dest[written++] = ',';
-                dest[written++] = ' ';
-            }
-            if (!values[i].TryFormat(dest[written..], out int len, format, CultureInfo.InvariantCulture))
-                return false;
-            written += len;
-        }
-        if (written >= dest.Length)
-            return false;
-        dest[written++] = ')';
-        return true;
-    }
 }
