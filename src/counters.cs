@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text;
 using System.Threading;
 
@@ -145,23 +146,23 @@ class Counters
     private static string FormatNum(long n)
     {
         if (n < 1_000L)
-            return n.ToString();
+            return n.ToString(CultureInfo.InvariantCulture);
         if (n < 1_000_000L)
-            return $"{n / 1_000.0:F1}K";
+            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000.0:F1}K");
         if (n < 1_000_000_000L)
-            return $"{n / 1_000_000.0:F1}M";
-        return $"{n / 1_000_000_000.0:F2}B";
+            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000.0:F1}M");
+        return string.Create(CultureInfo.InvariantCulture, $"{n / 1_000_000_000.0:F2}B");
     }
 
     private static string FormatMem(long n)
     {
         if (n < 1_024L)
-            return $"{n}B";
+            return string.Create(CultureInfo.InvariantCulture, $"{n}B");
         if (n < 1_024L * 1_024L)
-            return $"{n / 1_024.0:F1}KiB";
+            return string.Create(CultureInfo.InvariantCulture, $"{n / 1_024.0:F1}KiB");
         if (n < 1_024L * 1_024L * 1_024L)
-            return $"{n / (1_024.0 * 1_024.0):F1}MiB";
-        return $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB";
+            return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0):F1}MiB");
+        return string.Create(CultureInfo.InvariantCulture, $"{n / (1_024.0 * 1_024.0 * 1_024.0):F2}GiB");
     }
 
     private static string FormatTime(long micros) => Timestamp.FromMicros(micros).Format();
