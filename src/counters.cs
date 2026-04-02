@@ -40,6 +40,7 @@ class Counters
         SceneOcclude,
         MeshTriangle,
         MeshIntersect,
+        MeshIntersectAny,
         BvhIntersectNode,
         BvhIntersectShape,
         BvhOverlapNode,

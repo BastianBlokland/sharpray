@@ -27,7 +27,11 @@ class Mesh : IShape
         return _bvh.Intersect(ray, _counters)?.Hit;
     }
 
-    public bool IntersectAny(Ray ray) => _bvh.IntersectAny(ray, _counters);
+    public bool IntersectAny(Ray ray)
+    {
+        _counters?.Bump(Counters.Type.MeshIntersectAny);
+        return _bvh.IntersectAny(ray, _counters);
+    }
 
     public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue) =>
         _bvh.OverlayBounds(overlay, trans, maxDepth);
