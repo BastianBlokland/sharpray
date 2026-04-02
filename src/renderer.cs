@@ -65,7 +65,7 @@ class Renderer
         // Start the worker threads.
         for (int i = 0; i < Environment.ProcessorCount; ++i)
         {
-            Thread thread = new Thread(Worker)
+            Thread thread = new Thread(RenderWorker)
             {
                 IsBackground = true
             };
@@ -82,7 +82,7 @@ class Renderer
         return ((uint)_blockCompleted, _blockCountTotal);
     }
 
-    private void Worker()
+    private void RenderWorker()
     {
         _counters.Bump(Counters.Type.Worker);
         while (true)
