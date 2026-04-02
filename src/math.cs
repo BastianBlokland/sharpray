@@ -701,13 +701,14 @@ struct Transform
 
 struct Ray
 {
-    public Vec3 Origin, Dir;
+    public Vec3 Origin, Dir, DirInv;
 
     public Ray(Vec3 origin, Vec3 dir)
     {
         Debug.Assert(dir.IsUnit, "Ray direction must be normalized");
         Origin = origin;
         Dir = dir;
+        DirInv = new Vec3(1f / dir.X, 1f / dir.Y, 1f / dir.Z);
     }
 
     public Vec3 this[float t] => Origin + Dir * t;
@@ -834,16 +835,12 @@ struct AABox : IShape
     {
         // Cyrus-Beck slab clipping, returns entry distance (0 if ray starts inside).
         // https://izzofinal.wordpress.com/2012/11/09/ray-vs-box-round-1/
-        float dirXInv = 1f / ray.Dir.X;
-        float dirYInv = 1f / ray.Dir.Y;
-        float dirZInv = 1f / ray.Dir.Z;
-
-        float t1 = (Min.X - ray.Origin.X) * dirXInv;
-        float t2 = (Max.X - ray.Origin.X) * dirXInv;
-        float t3 = (Min.Y - ray.Origin.Y) * dirYInv;
-        float t4 = (Max.Y - ray.Origin.Y) * dirYInv;
-        float t5 = (Min.Z - ray.Origin.Z) * dirZInv;
-        float t6 = (Max.Z - ray.Origin.Z) * dirZInv;
+        float t1 = (Min.X - ray.Origin.X) * ray.DirInv.X;
+        float t2 = (Max.X - ray.Origin.X) * ray.DirInv.X;
+        float t3 = (Min.Y - ray.Origin.Y) * ray.DirInv.Y;
+        float t4 = (Max.Y - ray.Origin.Y) * ray.DirInv.Y;
+        float t5 = (Min.Z - ray.Origin.Z) * ray.DirInv.Z;
+        float t6 = (Max.Z - ray.Origin.Z) * ray.DirInv.Z;
 
         float minA = MathF.Min(t1, t2), minB = MathF.Min(t3, t4), minC = MathF.Min(t5, t6);
         float maxA = MathF.Max(t1, t2), maxB = MathF.Max(t3, t4), maxC = MathF.Max(t5, t6);
@@ -861,16 +858,12 @@ struct AABox : IShape
     {
         // Cyrus-Beck slab clipping.
         // https://izzofinal.wordpress.com/2012/11/09/ray-vs-box-round-1/
-        float dirXInv = 1f / ray.Dir.X;
-        float dirYInv = 1f / ray.Dir.Y;
-        float dirZInv = 1f / ray.Dir.Z;
-
-        float t1 = (Min.X - ray.Origin.X) * dirXInv;
-        float t2 = (Max.X - ray.Origin.X) * dirXInv;
-        float t3 = (Min.Y - ray.Origin.Y) * dirYInv;
-        float t4 = (Max.Y - ray.Origin.Y) * dirYInv;
-        float t5 = (Min.Z - ray.Origin.Z) * dirZInv;
-        float t6 = (Max.Z - ray.Origin.Z) * dirZInv;
+        float t1 = (Min.X - ray.Origin.X) * ray.DirInv.X;
+        float t2 = (Max.X - ray.Origin.X) * ray.DirInv.X;
+        float t3 = (Min.Y - ray.Origin.Y) * ray.DirInv.Y;
+        float t4 = (Max.Y - ray.Origin.Y) * ray.DirInv.Y;
+        float t5 = (Min.Z - ray.Origin.Z) * ray.DirInv.Z;
+        float t6 = (Max.Z - ray.Origin.Z) * ray.DirInv.Z;
 
         float minA = MathF.Min(t1, t2), minB = MathF.Min(t3, t4), minC = MathF.Min(t5, t6);
         float maxA = MathF.Max(t1, t2), maxB = MathF.Max(t3, t4), maxC = MathF.Max(t5, t6);
