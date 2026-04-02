@@ -30,12 +30,12 @@ class Bvh<T> where T : IShape
         public int ShapeCount;
     }
 
-    private struct StatsData
+    private struct NodeStats
     {
         public int NodeCount, DepthMax, LeafCount, LeafSizeMin, LeafSizeMax, ShapeCount, DepthWeighted;
         public float SahCost;
 
-        public static StatsData Merge(StatsData a, StatsData b) => new StatsData
+        public static NodeStats Merge(NodeStats a, NodeStats b) => new NodeStats
         {
             NodeCount = a.NodeCount + b.NodeCount,
             LeafCount = a.LeafCount + b.LeafCount,
@@ -81,7 +81,7 @@ class Bvh<T> where T : IShape
             return default;
 
         float rootSa = _nodes[0].Bounds.SurfaceArea;
-        StatsData acc = GetStatsNode(0, 0, rootSa);
+        NodeStats acc = GetStatsNode(0, 0, rootSa);
         return new BvhStats(
             acc.NodeCount,
             acc.DepthMax,
@@ -93,7 +93,7 @@ class Bvh<T> where T : IShape
             acc.SahCost);
     }
 
-    private StatsData GetStatsNode(int nodeIdx, int depth, float rootSA)
+    private NodeStats GetStatsNode(int nodeIdx, int depth, float rootSA)
     {
         ref Node node = ref _nodes[nodeIdx];
         float sa = node.Bounds.SurfaceArea;
@@ -101,7 +101,7 @@ class Bvh<T> where T : IShape
 
         if (node.ShapeCount > 0)
         {
-            return new StatsData
+            return new NodeStats
             {
                 NodeCount = 1,
                 DepthMax = depth,
@@ -114,7 +114,7 @@ class Bvh<T> where T : IShape
             };
         }
 
-        StatsData result = StatsData.Merge(
+        NodeStats result = NodeStats.Merge(
             GetStatsNode(node.Child, depth + 1, rootSA),
             GetStatsNode(node.Child + 1, depth + 1, rootSA));
 
