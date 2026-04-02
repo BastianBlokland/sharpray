@@ -7,6 +7,7 @@ interface IShape
     AABox Bounds();
     bool Overlaps(AABox box);
     RayHit? Intersect(Ray ray);
+    bool IntersectAny(Ray ray) => Intersect(ray) is not null;
 }
 
 static class ShapeExtensions
@@ -20,6 +21,12 @@ static class ShapeExtensions
             return new RayHit(hit.Dist / localRayScale, worldNorm);
         }
         return null;
+    }
+
+    public static bool IntersectAny(this IShape shape, Ray ray, Transform trans)
+    {
+        var (localRay, _) = trans.TransformRayInv(ray);
+        return shape.IntersectAny(localRay);
     }
 }
 
