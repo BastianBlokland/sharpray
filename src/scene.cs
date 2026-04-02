@@ -77,8 +77,14 @@ struct Object : IShape
         fmt.IndentPop();
     }
 
-    public void OverlayBounds(Overlay overlay, Color color) =>
+    public void OverlayBounds(Overlay overlay, Color color, int maxDepth = int.MaxValue)
+    {
+        if (Shape is Mesh mesh)
+        {
+            mesh.OverlayBounds(overlay, Trans, maxDepth);
+        }
         overlay.AddLineBox(_boundsRotated, color);
+    }
 }
 
 struct Sky
@@ -293,6 +299,9 @@ class Scene
 
     public void Describe(ref FormatWriter fmt)
     {
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
+
         foreach (Object obj in _objects)
         {
             fmt.Separate();
@@ -300,13 +309,31 @@ class Scene
         }
     }
 
-    public void OverlayBounds(Overlay overlay)
+    public void OverlayInfo(Overlay overlay)
     {
-        _bvh?.OverlayBounds(overlay, Transform.Identity());
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
+
+        FormatWriter fmt = new FormatWriter();
+        for (int i = 0; i != _objects.Count; ++i)
+        {
+            Object obj = _objects[i];
+            fmt.Clear();
+            obj.Describe(ref fmt);
+            overlay.AddText(fmt.ToString(), obj.Bounds().Center, Color.ForIndex(i));
+        }
+    }
+
+    public void OverlayBounds(Overlay overlay, int maxDepth = int.MaxValue)
+    {
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
+
+        _bvh?.OverlayBounds(overlay, Transform.Identity(), maxDepth);
 
         for (int i = 0; i != _objects.Count; ++i)
         {
-            _objects[i].OverlayBounds(overlay, Color.ForIndex(i));
+            _objects[i].OverlayBounds(overlay, Color.ForIndex(i), maxDepth);
         }
     }
 }

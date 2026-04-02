@@ -94,6 +94,10 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     scene.Build(counters);
 }
 
+
+// scene.OverlayInfo(overlay);
+// scene.OverlayBounds(overlay, 4);
+
 if (dumpScene)
 {
     fmt.WriteLine("> Scene");
