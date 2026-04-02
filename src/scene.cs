@@ -40,6 +40,7 @@ struct Object : IShape
     public AABox Bounds() => _bounds;
     public bool Overlaps(AABox box) => _boundsRotated.Overlaps(box);
     public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
+    public bool IntersectAny(Ray ray) => Shape.IntersectAny(ray, Trans);
 
     public void Describe(ref FormatWriter fmt)
     {
