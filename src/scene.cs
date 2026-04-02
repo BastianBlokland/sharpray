@@ -153,8 +153,10 @@ class Scene
                 return;
             _built = true;
         }
-        _bvh = new Bvh<Object>(_objects);
-
+        using (counters?.TimeScope(Counters.Type.TimeSceneBvhBuild))
+        {
+            _bvh = new Bvh<Object>(_objects);
+        }
         if (counters != null)
         {
             BvhStats stats = _bvh.GetStats();

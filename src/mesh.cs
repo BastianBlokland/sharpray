@@ -9,7 +9,10 @@ class Mesh : IShape
     public Mesh(Triangle[] triangles, Counters? counters = null)
     {
         _triangles = triangles;
-        _bvh = new Bvh<Triangle>(_triangles);
+        using (counters?.TimeScope(Counters.Type.TimeMeshBvhBuild))
+        {
+            _bvh = new Bvh<Triangle>(_triangles);
+        }
         _counters = counters;
 
         counters?.Bump(Counters.Type.MeshTriangle, triangles.Length);

@@ -49,6 +49,8 @@ class Counters
         RtGcGen0,
         RtGcGen1,
         RtGcGen2,
+        TimeMeshBvhBuild,
+        TimeSceneBvhBuild,
         TimeSetup,
         TimeRender,
         TimeCompose,
@@ -130,7 +132,7 @@ class Counters
     private static Category GetCategory(Type c) => c switch
     {
         Type.RtPeakWorkingSet or Type.RtGcAllocatedBytes or Type.RtGcCurrentBytes => Category.Memory,
-        Type.TimeSetup or Type.TimeRender or Type.TimeCompose or Type.TimeTotal => Category.Time,
+        Type.TimeMeshBvhBuild or Type.TimeSceneBvhBuild or Type.TimeSetup or Type.TimeRender or Type.TimeCompose or Type.TimeTotal => Category.Time,
         _ => Category.Raw
     };
 }
