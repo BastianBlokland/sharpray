@@ -167,8 +167,8 @@ class Scene
         {
             BvhStats stats = _bvh.GetStats();
             counters.Bump(Counters.Type.SceneObject, _objects.Count);
-            counters.Bump(Counters.Type.SceneBvhNodes, stats.Nodes);
-            counters.Bump(Counters.Type.SceneBvhDepth, stats.MaxDepth);
+            counters.Bump(Counters.Type.SceneBvhNodes, stats.NodeCount);
+            counters.Bump(Counters.Type.SceneBvhDepth, stats.DepthMax);
         }
     }
 

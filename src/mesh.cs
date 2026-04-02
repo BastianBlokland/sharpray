@@ -47,8 +47,11 @@ class Mesh : IShape
     {
         BvhStats bvhStats = _bvh.GetStats();
         fmt.WriteLine($"tris={new FormatNum(_triangles.Length)}");
-        fmt.WriteLine($"nodes={new FormatNum(bvhStats.Nodes)}");
-        fmt.WriteLine($"leaves={new FormatNum(bvhStats.Leaves)}");
-        fmt.WriteLine($"depth={bvhStats.MaxDepth}");
+        fmt.WriteLine($"nodes={new FormatNum(bvhStats.NodeCount)}");
+        fmt.WriteLine($"depth={bvhStats.DepthMax}");
+        fmt.WriteLine($"leafCount={new FormatNum(bvhStats.LeafCount)}");
+        fmt.WriteLine($"leafSize=({bvhStats.LeafSizeMin}/{bvhStats.LeafSizeAvg:F1}/{bvhStats.LeafSizeMax})");
+        fmt.WriteLine($"leafDepth={bvhStats.LeafDepthAvg:F1}");
+        fmt.WriteLine($"sah={bvhStats.SahCost:F1}"); // Surface area heuristic, how many things to test (boxes and shapes) for a random ray.
     }
 }

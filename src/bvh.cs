@@ -2,7 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-record struct BvhStats(int Nodes, int Leaves, int MaxDepth);
+record struct BvhStats(
+    int NodeCount,
+    int DepthMax,
+    int LeafCount,
+    int LeafSizeMin,
+    int LeafSizeMax,
+    float LeafSizeAvg,
+    float LeafDepthAvg,
+    float SahCost // Surface area heuristic, how many things to test (boxes and shapes) for a random ray.
+);
 
 class Bvh<T> where T : IShape
 {
@@ -19,6 +28,24 @@ class Bvh<T> where T : IShape
         public AABox Bounds;
         public int Child;
         public int ShapeCount;
+    }
+
+    private struct StatsData
+    {
+        public int NodeCount, DepthMax, LeafCount, LeafSizeMin, LeafSizeMax, ShapeCount, DepthWeighted;
+        public float SahCost;
+
+        public static StatsData Merge(StatsData a, StatsData b) => new StatsData
+        {
+            NodeCount = a.NodeCount + b.NodeCount,
+            LeafCount = a.LeafCount + b.LeafCount,
+            LeafSizeMin = Math.Min(a.LeafSizeMin, b.LeafSizeMin),
+            LeafSizeMax = Math.Max(a.LeafSizeMax, b.LeafSizeMax),
+            ShapeCount = a.ShapeCount + b.ShapeCount,
+            DepthMax = Math.Max(a.DepthMax, b.DepthMax),
+            DepthWeighted = a.DepthWeighted + b.DepthWeighted,
+            SahCost = a.SahCost + b.SahCost,
+        };
     }
 
     private readonly IReadOnlyList<T> _shapes;
@@ -46,17 +73,52 @@ class Bvh<T> where T : IShape
 
     public AABox Bounds => _nodeCount > 0 ? _nodes[0].Bounds : AABox.Inverted();
 
-    public BvhStats GetStats() => _nodeCount > 0 ? GetStatsNode(0, 0) : new BvhStats(0, 0, 0);
-
-    private BvhStats GetStatsNode(int nodeIdx, int depth)
+    public BvhStats GetStats()
     {
-        Node node = _nodes[nodeIdx];
-        if (node.ShapeCount > 0)
-            return new BvhStats(1, 1, depth);
+        if (_nodeCount == 0)
+            return default;
 
-        BvhStats a = GetStatsNode(node.Child, depth + 1);
-        BvhStats b = GetStatsNode(node.Child + 1, depth + 1);
-        return new BvhStats(1 + a.Nodes + b.Nodes, a.Leaves + b.Leaves, Math.Max(a.MaxDepth, b.MaxDepth));
+        float rootSa = _nodes[0].Bounds.SurfaceArea;
+        StatsData acc = GetStatsNode(0, 0, rootSa);
+        return new BvhStats(
+            acc.NodeCount,
+            acc.DepthMax,
+            acc.LeafCount,
+            acc.LeafSizeMin,
+            acc.LeafSizeMax,
+            acc.LeafCount > 0 ? (float)acc.ShapeCount / acc.LeafCount : 0f,
+            acc.ShapeCount > 0 ? (float)acc.DepthWeighted / acc.ShapeCount : 0f,
+            acc.SahCost);
+    }
+
+    private StatsData GetStatsNode(int nodeIdx, int depth, float rootSA)
+    {
+        ref Node node = ref _nodes[nodeIdx];
+        float sa = node.Bounds.SurfaceArea;
+        float saRatio = rootSA > 0f ? sa / rootSA : 0f;
+
+        if (node.ShapeCount > 0)
+        {
+            return new StatsData
+            {
+                NodeCount = 1,
+                DepthMax = depth,
+                LeafCount = 1,
+                LeafSizeMin = node.ShapeCount,
+                LeafSizeMax = node.ShapeCount,
+                ShapeCount = node.ShapeCount,
+                DepthWeighted = depth * node.ShapeCount,
+                SahCost = saRatio * node.ShapeCount,
+            };
+        }
+
+        StatsData result = StatsData.Merge(
+            GetStatsNode(node.Child, depth + 1, rootSA),
+            GetStatsNode(node.Child + 1, depth + 1, rootSA));
+
+        result.NodeCount += 1;
+        result.SahCost += saRatio;
+        return result;
     }
 
     public bool Overlaps(AABox box)
