@@ -795,6 +795,7 @@ struct AABox : IShape
 
     public Vec3 Center => (Min + Max) * 0.5f;
     public Vec3 Size => Max - Min;
+    public float SurfaceArea => 2f * (Size.X * Size.Y + Size.X * Size.Z + Size.Y * Size.Z);
     public bool IsInverted => Min.X > Max.X || Min.Y > Max.Y || Min.Z > Max.Z;
 
     public bool Contains(Vec3 p) =>
