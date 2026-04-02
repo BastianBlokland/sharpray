@@ -1218,6 +1218,30 @@ struct Triangle : IShape
         Vec3 normal = (det > 0f ? interp : -interp).NormalizeOr(det > 0f ? Normal : -Normal);
         return new RayHit(t, normal);
     }
+
+    public bool IntersectAny(Ray ray)
+    {
+        // Möller–Trumbore intersection.
+        // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+        Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
+        float det = Vec3.Dot(PosAToB, h);
+
+        if (MathF.Abs(det) <= 1e-9f)
+            return false; // Parallel.
+
+        float invDet = 1f / det;
+        Vec3 ao = ray.Origin - PosA;
+        float u = Vec3.Dot(ao, h) * invDet;
+        if (u < 0f || u > 1f)
+            return false;
+
+        Vec3 q = Vec3.Cross(ao, PosAToB);
+        float v = Vec3.Dot(ray.Dir, q) * invDet;
+        if (v < 0f || u + v > 1f)
+            return false;
+
+        return Vec3.Dot(PosAToC, q) * invDet >= 0f;
+    }
 }
 
 struct View
