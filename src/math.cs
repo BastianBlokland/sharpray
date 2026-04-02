@@ -1145,34 +1145,40 @@ struct Plane : IShape
 
 struct Triangle : IShape
 {
-    public Vec3 PosA, PosB, PosC;
+    public Vec3 PosA, PosAToB, PosAToC;
     public Vec3 NormalA, NormalB, NormalC;
 
     public Triangle(Vec3 posA, Vec3 posB, Vec3 posC)
     {
         PosA = posA;
-        PosB = posB;
-        PosC = posC;
+        PosAToB = posB - posA;
+        PosAToC = posC - posA;
         NormalA = NormalB = NormalC = Normal;
     }
 
     public Triangle(Vec3 posA, Vec3 posB, Vec3 posC, Vec3 normalA, Vec3 normalB, Vec3 normalC)
     {
         PosA = posA;
-        PosB = posB;
-        PosC = posC;
+        PosAToB = posB - posA;
+        PosAToC = posC - posA;
         NormalA = normalA;
         NormalB = normalB;
         NormalC = normalC;
     }
 
-    public Vec3 Normal => Vec3.Cross(PosB - PosA, PosC - PosA).Normalize();
+    public Vec3 PosB => PosA + PosAToB;
+    public Vec3 PosC => PosA + PosAToC;
+    public Vec3 Normal => Vec3.Cross(PosAToB, PosAToC).Normalize();
     public Vec3 Center => (PosA + PosB + PosC) / 3f;
     public Plane Plane => Plane.AtTriangle(PosA, PosB, PosC);
 
-    public AABox Bounds() => new AABox(
-        new Vec3(MathF.Min(PosA.X, MathF.Min(PosB.X, PosC.X)), MathF.Min(PosA.Y, MathF.Min(PosB.Y, PosC.Y)), MathF.Min(PosA.Z, MathF.Min(PosB.Z, PosC.Z))),
-        new Vec3(MathF.Max(PosA.X, MathF.Max(PosB.X, PosC.X)), MathF.Max(PosA.Y, MathF.Max(PosB.Y, PosC.Y)), MathF.Max(PosA.Z, MathF.Max(PosB.Z, PosC.Z))));
+    public AABox Bounds()
+    {
+        Vec3 posB = PosB, posC = PosC;
+        return new AABox(
+            new Vec3(MathF.Min(PosA.X, MathF.Min(posB.X, posC.X)), MathF.Min(PosA.Y, MathF.Min(posB.Y, posC.Y)), MathF.Min(PosA.Z, MathF.Min(posB.Z, posC.Z))),
+            new Vec3(MathF.Max(PosA.X, MathF.Max(posB.X, posC.X)), MathF.Max(PosA.Y, MathF.Max(posB.Y, posC.Y)), MathF.Max(PosA.Z, MathF.Max(posB.Z, posC.Z))));
+    }
 
     public bool Overlaps(AABox box) => Bounds().Overlaps(box);
 
@@ -1180,11 +1186,8 @@ struct Triangle : IShape
     {
         // Möller–Trumbore intersection.
         // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-
-        Vec3 ab = PosB - PosA;
-        Vec3 ac = PosC - PosA;
-        Vec3 h = Vec3.Cross(ray.Dir, ac);
-        float det = Vec3.Dot(ab, h);
+        Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
+        float det = Vec3.Dot(PosAToB, h);
 
         if (MathF.Abs(det) <= 1e-9f)
             return null; // Parallel.
@@ -1195,12 +1198,12 @@ struct Triangle : IShape
         if (u < 0f || u > 1f)
             return null;
 
-        Vec3 q = Vec3.Cross(ao, ab);
+        Vec3 q = Vec3.Cross(ao, PosAToB);
         float v = Vec3.Dot(ray.Dir, q) * invDet;
         if (v < 0f || u + v > 1f)
             return null;
 
-        float t = Vec3.Dot(ac, q) * invDet;
+        float t = Vec3.Dot(PosAToC, q) * invDet;
         if (t < 0f)
             return null;
 
