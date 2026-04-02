@@ -135,7 +135,10 @@ static class ObjLoader
     {
         using var stream = File.OpenRead(path);
         using var reader = new StreamReader(stream, bufferSize: 65536);
-        Parse(new ObjLexer(reader), path, scene, transform, material, counters);
+        using (counters?.TimeScope(Counters.Type.TimeObjLoad))
+        {
+            Parse(new ObjLexer(reader), path, scene, transform, material, counters);
+        }
     }
 
     private static void Parse(

@@ -49,6 +49,7 @@ class Counters
         RtGcGen0,
         RtGcGen1,
         RtGcGen2,
+        TimeObjLoad,
         TimeMeshBvhBuild,
         TimeSceneBvhBuild,
         TimeSetup,
@@ -129,10 +130,24 @@ class Counters
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen2], GC.CollectionCount(2));
     }
 
-    private static Category GetCategory(Type c) => c switch
+    private static Category GetCategory(Type c)
     {
-        Type.RtPeakWorkingSet or Type.RtGcAllocatedBytes or Type.RtGcCurrentBytes => Category.Memory,
-        Type.TimeMeshBvhBuild or Type.TimeSceneBvhBuild or Type.TimeSetup or Type.TimeRender or Type.TimeCompose or Type.TimeTotal => Category.Time,
-        _ => Category.Raw
-    };
+        switch (c)
+        {
+            case Type.RtPeakWorkingSet:
+            case Type.RtGcAllocatedBytes:
+            case Type.RtGcCurrentBytes:
+                return Category.Memory;
+            case Type.TimeObjLoad:
+            case Type.TimeMeshBvhBuild:
+            case Type.TimeSceneBvhBuild:
+            case Type.TimeSetup:
+            case Type.TimeRender:
+            case Type.TimeCompose:
+            case Type.TimeTotal:
+                return Category.Time;
+            default:
+                return Category.Raw;
+        }
+    }
 }
