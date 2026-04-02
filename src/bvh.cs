@@ -15,7 +15,9 @@ record struct BvhStats(
 
 class Bvh<T> where T : IShape
 {
-    private const int DivideThreshold = 8;
+    private const int SplitBinCount = 8;
+    private const float SahCostTraverse = 1f; // Cost of traversing an internal node.
+    private const float SahCostIntersect = 1f; // Cost of intersecting a shape.
 
     /**
      * There are two types of BVH nodes:
@@ -65,9 +67,7 @@ class Bvh<T> where T : IShape
 
         if (shapes.Count > 0)
         {
-            int root = InsertRoot();
-            if (_nodes[root].ShapeCount >= DivideThreshold)
-                Subdivide(root, 0);
+            Subdivide(InsertRoot(), 0);
         }
     }
 
@@ -108,7 +108,7 @@ class Bvh<T> where T : IShape
                 LeafSizeMax = node.ShapeCount,
                 ShapeCount = node.ShapeCount,
                 DepthWeighted = depth * node.ShapeCount,
-                SahCost = saRatio * node.ShapeCount,
+                SahCost = SahLeaf(saRatio, node.ShapeCount),
             };
         }
 
@@ -117,7 +117,7 @@ class Bvh<T> where T : IShape
             GetStatsNode(node.Child + 1, depth + 1, rootSA));
 
         result.NodeCount += 1;
-        result.SahCost += saRatio;
+        result.SahCost += SahCostTraverse * saRatio;
         return result;
     }
 
@@ -280,7 +280,7 @@ class Bvh<T> where T : IShape
         node.Child = 0;
         node.ShapeCount = _shapes.Count;
         for (int i = 0; i != _shapes.Count; ++i)
-            node.Bounds.Encapsulate(_shapes[i].Bounds());
+            node.Bounds.Encapsulate(_shapes[_items[i]].Bounds());
         return index;
     }
 
@@ -302,20 +302,85 @@ class Bvh<T> where T : IShape
     }
 
     /**
-     * Pick a plane to split the leaf-node on.
-     * At the moment we just use the center of the longest axis of the node.
+     * Pick a split plane using the Surface Area Heuristic (SAH) with binned evaluation.
+     * Divides centroid space into SplitBinCount bins per axis, evaluates all SplitBinCount-1 split
+     * positions on all 3 axes, and returns the one with the lowest SAH cost.
+     * Returns null if keeping the node as a leaf is cheaper than any split.
      */
-    private (int Axis, float Pos) SplitPick(int nodeIdx)
+    private (int Axis, float Pos)? SplitPick(int nodeIdx)
     {
-        AABox bounds = _nodes[nodeIdx].Bounds;
-        Vec3 size = bounds.Size;
-        int axis = 0;
-        if (size.Y > size[axis])
-            axis = 1;
-        if (size.Z > size[axis])
-            axis = 2;
-        float pos = bounds.Min[axis] + size[axis] * 0.5f;
-        return (axis, pos);
+        ref readonly Node node = ref _nodes[nodeIdx];
+        Debug.Assert(node.ShapeCount > 0); // Needs to be a leaf node.
+
+        int shapeBegin = node.Child;
+        int shapeCount = node.ShapeCount;
+
+        AABox centroidBounds = CentroidBounds(shapeBegin, shapeCount);
+
+        float parentSa = node.Bounds.SurfaceArea;
+        float bestCost = SahLeaf(parentSa, shapeCount);
+        int bestAxis = -1;
+        float bestPos = 0f;
+
+        Span<AABox> binBounds = stackalloc AABox[SplitBinCount];
+        Span<int> binCount = stackalloc int[SplitBinCount];
+        Span<float> leftSa = stackalloc float[SplitBinCount - 1];
+        Span<int> leftCount = stackalloc int[SplitBinCount - 1];
+
+        for (int axis = 0; axis != 3; ++axis)
+        {
+            float axisCenterMin = centroidBounds.Min[axis];
+            float axisCenterMax = centroidBounds.Max[axis];
+            if (axisCenterMax - axisCenterMin < 1e-6f)
+                continue; // All centroids are equal on this axis; skip.
+
+            // Assign each shape to a bin by its centroid position.
+            for (int b = 0; b != SplitBinCount; ++b)
+            {
+                binBounds[b] = AABox.Inverted();
+                binCount[b] = 0;
+            }
+            float scale = SplitBinCount / (axisCenterMax - axisCenterMin);
+            for (int i = 0; i != shapeCount; ++i)
+            {
+                AABox shapeBounds = _shapes[_items[shapeBegin + i]].Bounds();
+                int bin = Math.Min((int)((shapeBounds.Center[axis] - axisCenterMin) * scale), SplitBinCount - 1);
+                binBounds[bin].Encapsulate(shapeBounds);
+                ++binCount[bin];
+            }
+
+            // Left-to-right prefix sweep: accumulate bounds and counts for the left partition.
+            AABox binLeftBounds = AABox.Inverted();
+            int binLeftCount = 0;
+            for (int b = 0; b != (SplitBinCount - 1); ++b)
+            {
+                binLeftBounds.Encapsulate(binBounds[b]);
+                binLeftCount += binCount[b];
+                leftSa[b] = binLeftBounds.IsInverted ? 0f : binLeftBounds.SurfaceArea;
+                leftCount[b] = binLeftCount;
+            }
+
+            // Right-to-left suffix sweep: accumulate bounds/counts for the right partition.
+            // Pick the best split based on the combined left and right SAH cost.
+            AABox binRightBounds = AABox.Inverted();
+            int binRightCount = 0;
+            for (int b = SplitBinCount - 1; b != 0; --b)
+            {
+                binRightBounds.Encapsulate(binBounds[b]);
+                binRightCount += binCount[b];
+                float rightSa = binRightBounds.IsInverted ? 0f : binRightBounds.SurfaceArea;
+
+                float cost = SahSplit(parentSa, leftSa[b - 1], leftCount[b - 1], rightSa, binRightCount);
+                if (cost < bestCost)
+                {
+                    bestCost = cost;
+                    bestAxis = axis;
+                    bestPos = axisCenterMin + b * (axisCenterMax - axisCenterMin) / SplitBinCount;
+                }
+            }
+        }
+
+        return bestAxis >= 0 ? (bestAxis, bestPos) : null;
     }
 
     /**
@@ -360,14 +425,16 @@ class Bvh<T> where T : IShape
         if (depth >= 64)
             return; // Depth limit reached; keep node as a leaf.
 
-        var (axis, splitPos) = SplitPick(nodeIdx);
-        int partitionIdx = Partition(nodeIdx, axis, splitPos);
+        (int Axis, float Pos)? split = SplitPick(nodeIdx);
+        if (split is null)
+            return; // SAH says keeping this node as a leaf is cheaper than any split.
+
+        int partitionIdx = Partition(nodeIdx, split.Value.Axis, split.Value.Pos);
 
         ref Node node = ref _nodes[nodeIdx];
         int countA = partitionIdx - node.Child;
         int countB = node.ShapeCount - countA;
-        if (countA == 0 || countB == 0)
-            return; // One of the partitions is empty; abort the subdivide.
+        Debug.Assert(countA > 0 && countB > 0); // Guaranteed by SAH centroid-space binning.
 
         int childA = Insert(node.Child, countA);
         int childB = Insert(partitionIdx, countB);
@@ -376,10 +443,24 @@ class Bvh<T> where T : IShape
         node.Child = childA;
         node.ShapeCount = 0; // Node is no longer a leaf-node.
 
-        const int maxDepth = 64;
-        if (countA >= DivideThreshold && depth < maxDepth)
-            Subdivide(childA, depth + 1);
-        if (countB >= DivideThreshold && depth < maxDepth)
-            Subdivide(childB, depth + 1);
+        Subdivide(childA, depth + 1);
+        Subdivide(childB, depth + 1);
     }
+
+    private AABox CentroidBounds(int shapeBegin, int shapeCount)
+    {
+        AABox bounds = AABox.Inverted();
+        for (int i = 0; i != shapeCount; ++i)
+        {
+            Vec3 center = _shapes[_items[shapeBegin + i]].Bounds().Center;
+            bounds.Encapsulate(center);
+        }
+        return bounds;
+    }
+
+    private static float SahLeaf(float sa, int count) =>
+        SahCostIntersect * sa * count;
+
+    private static float SahSplit(float parentSa, float leftSa, int leftCount, float rightSa, int rightCount) =>
+        SahCostTraverse * parentSa + SahLeaf(leftSa, leftCount) + SahLeaf(rightSa, rightCount);
 }
