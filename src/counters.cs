@@ -73,6 +73,10 @@ class Counters
     public void Bump(Type c, long n) => _dataLocal.Value![(int)c] += n;
     public void Bump(Type c, Timestamp duration) => _dataLocal.Value![(int)c] += (long)duration.Micros;
 
+    // Directly retrieve the thread-local data array for direct access in hot loops.
+    // Caller must not cache this across threads.
+    public long[] GetLocalData() => _dataLocal.Value!;
+
     public void Flush()
     {
         if (!_dataLocal.IsValueCreated)
