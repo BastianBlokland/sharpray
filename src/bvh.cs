@@ -242,7 +242,7 @@ class Bvh<T> where T : IShape
                     counterData[(int)Counters.Type.BvhIntersectShape] += node.ShapeCount;
                 for (int i = 0; i != node.ShapeCount; ++i)
                 {
-                    if (_shapes[_items[node.Child + i]].Intersect(ray) is not null)
+                    if (_shapes[_items[node.Child + i]].IntersectAny(ray))
                         return true;
                 }
             }
