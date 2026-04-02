@@ -75,6 +75,8 @@ class Compositor
         float weightSum = 0f;
         Color radianceSum = Color.Black;
 
+        long[] counterData = _counters.GetLocalData();
+
         for (int kernelY = -_radius; kernelY <= _radius; ++kernelY)
         {
             for (int kernelX = -_radius; kernelX <= _radius; ++kernelX)
@@ -110,7 +112,7 @@ class Compositor
                 weightSum += weight;
                 radianceSum += refRadiance * weight;
 
-                _counters.Bump(Counters.Type.ComposeFilterSample);
+                ++counterData[(int)Counters.Type.ComposeFilterSample];
             }
         }
 
