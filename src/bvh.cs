@@ -10,7 +10,7 @@ record struct BvhStats(
     int LeafSizeMax,
     float LeafSizeAvg,
     float LeafDepthAvg,
-    float SahCost // Surface area heuristic, how many things to test (boxes and shapes) for a random ray.
+    float SahCost // Surface area heuristic, estimate cost of things to test (boxes and shapes) for a random ray.
 );
 
 class Bvh<T> where T : IShape
