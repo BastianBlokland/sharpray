@@ -166,7 +166,7 @@ class Bvh<T> where T : IShape
 
         long[]? counterData = counters?.GetLocalData();
 
-        Span<int> queue = stackalloc int[128];
+        Span<(int Idx, float T)> queue = stackalloc (int, float)[128];
         int queueCount = 1; // Insert root node (index is already zero).
 
         (RayHit Hit, int Index)? best = null;
@@ -174,7 +174,11 @@ class Bvh<T> where T : IShape
 
         while (queueCount > 0)
         {
-            ref Node node = ref _nodes[queue[--queueCount]];
+            var (nodeIdx, tNode) = queue[--queueCount];
+            if (tNode >= bestDist)
+                continue; // Prune: a closer hit was already found.
+
+            ref Node node = ref _nodes[nodeIdx];
             if (node.ShapeCount == 0)
             {
                 // Parent node: Test both child nodes (enqueue the closest first).
@@ -183,9 +187,9 @@ class Bvh<T> where T : IShape
                 float? tA = _nodes[node.Child].Bounds.IntersectDist(ray);
                 float? tB = _nodes[node.Child + 1].Bounds.IntersectDist(ray);
                 if (tA <= bestDist)
-                    queue[queueCount++] = node.Child;
+                    queue[queueCount++] = (node.Child, tA!.Value);
                 if (tB <= bestDist)
-                    queue[queueCount++] = node.Child + 1;
+                    queue[queueCount++] = (node.Child + 1, tB!.Value);
                 if (tA <= bestDist && tB <= bestDist && tA < tB)
                     (queue[queueCount - 2], queue[queueCount - 1]) = (queue[queueCount - 1], queue[queueCount - 2]);
             }
