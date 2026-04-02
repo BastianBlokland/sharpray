@@ -189,7 +189,7 @@ class Scene
         if (!_built)
             throw new InvalidOperationException("Scene not built");
         counters.Bump(Counters.Type.SceneOcclude);
-        return _bvh!.IntersectAny(ray);
+        return _bvh!.IntersectAny(ray, counters);
     }
 
     public Surface Trace(Ray ray, Counters counters)
@@ -198,7 +198,7 @@ class Scene
             throw new InvalidOperationException("Scene not built");
         counters.Bump(Counters.Type.SceneTrace);
 
-        if (_bvh!.Intersect(ray) is (RayHit hit, int idx))
+        if (_bvh!.Intersect(ray, counters) is (RayHit hit, int idx))
         {
             Material mat = _objects[idx].Material;
             return new Surface(mat.Radiance, hit, mat);

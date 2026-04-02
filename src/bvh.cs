@@ -121,10 +121,12 @@ class Bvh<T> where T : IShape
         return result;
     }
 
-    public bool Overlaps(AABox box)
+    public bool Overlaps(AABox box, Counters? counters = null)
     {
         if (_nodeCount == 0)
             return false;
+
+        long[]? counterData = counters?.GetLocalData();
 
         Span<int> queue = stackalloc int[128];
         int queueCount = 1; // Insert root node (index is already zero).
@@ -135,6 +137,8 @@ class Bvh<T> where T : IShape
             if (node.ShapeCount == 0)
             {
                 // Parent node: enqueue children whose bounds overlap.
+                if (counterData != null)
+                    counterData[(int)Counters.Type.BvhOverlapNode] += 2;
                 if (_nodes[node.Child].Bounds.Overlaps(box))
                     queue[queueCount++] = node.Child;
                 if (_nodes[node.Child + 1].Bounds.Overlaps(box))
@@ -143,6 +147,8 @@ class Bvh<T> where T : IShape
             else
             {
                 // Leaf node: test all shapes.
+                if (counterData != null)
+                    counterData[(int)Counters.Type.BvhOverlapShape] += node.ShapeCount;
                 for (int i = 0; i != node.ShapeCount; ++i)
                 {
                     if (_shapes[_items[node.Child + i]].Overlaps(box))
@@ -153,10 +159,12 @@ class Bvh<T> where T : IShape
         return false;
     }
 
-    public (RayHit Hit, int Index)? Intersect(Ray ray)
+    public (RayHit Hit, int Index)? Intersect(Ray ray, Counters? counters = null)
     {
         if (_nodeCount == 0)
             return null;
+
+        long[]? counterData = counters?.GetLocalData();
 
         Span<int> queue = stackalloc int[128];
         int queueCount = 1; // Insert root node (index is already zero).
@@ -170,6 +178,8 @@ class Bvh<T> where T : IShape
             if (node.ShapeCount == 0)
             {
                 // Parent node: Test both child nodes (enqueue the closest first).
+                if (counterData != null)
+                    counterData[(int)Counters.Type.BvhIntersectNode] += 2;
                 float? tA = _nodes[node.Child].Bounds.IntersectDist(ray);
                 float? tB = _nodes[node.Child + 1].Bounds.IntersectDist(ray);
                 if (tA <= bestDist)
@@ -182,6 +192,8 @@ class Bvh<T> where T : IShape
             else
             {
                 // Leaf node: Test all shapes in the node.
+                if (counterData != null)
+                    counterData[(int)Counters.Type.BvhIntersectShape] += node.ShapeCount;
                 for (int i = 0; i != node.ShapeCount; ++i)
                 {
                     int idx = _items[node.Child + i];
@@ -196,10 +208,12 @@ class Bvh<T> where T : IShape
         return best;
     }
 
-    public bool IntersectAny(Ray ray)
+    public bool IntersectAny(Ray ray, Counters? counters = null)
     {
         if (_nodeCount == 0)
             return false;
+
+        long[]? counterData = counters?.GetLocalData();
 
         Span<int> queue = stackalloc int[128];
         int queueCount = 1; // Insert root node (index is already zero).
@@ -210,6 +224,8 @@ class Bvh<T> where T : IShape
             if (node.ShapeCount == 0)
             {
                 // Parent node: enqueue children whose bounds are hit.
+                if (counterData != null)
+                    counterData[(int)Counters.Type.BvhIntersectNode] += 2;
                 if (_nodes[node.Child].Bounds.IntersectDist(ray) is not null)
                     queue[queueCount++] = node.Child;
                 if (_nodes[node.Child + 1].Bounds.IntersectDist(ray) is not null)
@@ -218,6 +234,8 @@ class Bvh<T> where T : IShape
             else
             {
                 // Leaf node: return true on the first shape hit.
+                if (counterData != null)
+                    counterData[(int)Counters.Type.BvhIntersectShape] += node.ShapeCount;
                 for (int i = 0; i != node.ShapeCount; ++i)
                 {
                     if (_shapes[_items[node.Child + i]].Intersect(ray) is not null)

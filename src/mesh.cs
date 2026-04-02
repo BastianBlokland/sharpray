@@ -19,11 +19,11 @@ class Mesh : IShape
     }
 
     public AABox Bounds() => _bvh.Bounds;
-    public bool Overlaps(AABox box) => _bvh.Overlaps(box);
+    public bool Overlaps(AABox box) => _bvh.Overlaps(box, _counters);
     public RayHit? Intersect(Ray ray)
     {
         _counters?.Bump(Counters.Type.MeshIntersect);
-        return _bvh.Intersect(ray)?.Hit;
+        return _bvh.Intersect(ray, _counters)?.Hit;
     }
 
     public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue) =>
