@@ -227,13 +227,17 @@ class Bvh<T> where T : IShape
             ref Node node = ref _nodes[queue[--queueCount]];
             if (node.ShapeCount == 0)
             {
-                // Parent node: enqueue children whose bounds are hit.
+                // Parent node: enqueue children whose bounds are hit (closest first).
                 if (counterData != null)
                     counterData[(int)Counters.Type.BvhIntersectNode] += 2;
-                if (_nodes[node.Child].Bounds.IntersectDist(ray) is not null)
+                float? tA = _nodes[node.Child].Bounds.IntersectDist(ray);
+                float? tB = _nodes[node.Child + 1].Bounds.IntersectDist(ray);
+                if (tA is not null)
                     queue[queueCount++] = node.Child;
-                if (_nodes[node.Child + 1].Bounds.IntersectDist(ray) is not null)
+                if (tB is not null)
                     queue[queueCount++] = node.Child + 1;
+                if (tA is not null && tB is not null && tA < tB)
+                    (queue[queueCount - 2], queue[queueCount - 1]) = (queue[queueCount - 1], queue[queueCount - 2]);
             }
             else
             {
