@@ -16,8 +16,6 @@ record struct BvhStats(
 class Bvh<T> where T : IShape
 {
     private const int SplitBinCount = 8;
-    private const float SahCostTraverse = 1f; // Cost of traversing an internal node.
-    private const float SahCostIntersect = 1f; // Cost of intersecting a shape.
 
     /**
      * There are two types of BVH nodes:
@@ -54,9 +52,13 @@ class Bvh<T> where T : IShape
     private readonly Node[] _nodes;
     private readonly int[] _items; // Indices into the shapes collection.
     private int _nodeCount;
+    private readonly float _sahCostTraverse;
+    private readonly float _sahCostIntersect;
 
-    public Bvh(IReadOnlyList<T> shapes)
+    public Bvh(IReadOnlyList<T> shapes, float sahCostTraverse = 1f, float sahCostIntersect = 1f)
     {
+        _sahCostTraverse = sahCostTraverse;
+        _sahCostIntersect = sahCostIntersect;
         _shapes = shapes;
         _nodes = new Node[Math.Max(shapes.Count * 2, 1)];
         _items = new int[shapes.Count];
@@ -117,7 +119,7 @@ class Bvh<T> where T : IShape
             GetStatsNode(node.Child + 1, depth + 1, rootSA));
 
         result.NodeCount += 1;
-        result.SahCost += SahCostTraverse * saRatio;
+        result.SahCost += _sahCostTraverse * saRatio;
         return result;
     }
 
@@ -466,9 +468,9 @@ class Bvh<T> where T : IShape
         return bounds;
     }
 
-    private static float SahLeaf(float sa, int count) =>
-        SahCostIntersect * sa * count;
+    private float SahLeaf(float sa, int count) =>
+        _sahCostIntersect * sa * count;
 
-    private static float SahSplit(float parentSa, float leftSa, int leftCount, float rightSa, int rightCount) =>
-        SahCostTraverse * parentSa + SahLeaf(leftSa, leftCount) + SahLeaf(rightSa, rightCount);
+    private float SahSplit(float parentSa, float leftSa, int leftCount, float rightSa, int rightCount) =>
+        _sahCostTraverse * parentSa + SahLeaf(leftSa, leftCount) + SahLeaf(rightSa, rightCount);
 }

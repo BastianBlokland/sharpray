@@ -11,7 +11,7 @@ class Mesh : IShape
         _triangles = triangles;
         using (counters?.TimeScope(Counters.Type.TimeMeshBvhBuild))
         {
-            _bvh = new Bvh<Triangle>(_triangles);
+            _bvh = new Bvh<Triangle>(_triangles, sahCostIntersect: 0.5f); // sahCostIntersect low as the triangle test is cheap.
         }
         _counters = counters;
 

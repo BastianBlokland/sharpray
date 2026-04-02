@@ -162,7 +162,7 @@ class Scene
         }
         using (counters?.TimeScope(Counters.Type.TimeSceneBvhBuild))
         {
-            _bvh = new Bvh<Object>(_objects);
+            _bvh = new Bvh<Object>(_objects, sahCostIntersect: 10f); // sahCostIntersect high as object tests are expensive.
         }
         if (counters != null)
         {
