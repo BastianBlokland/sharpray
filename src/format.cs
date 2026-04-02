@@ -253,7 +253,11 @@ static class FormatUtils
                 && PushFormatted(dst, ref written, secs, "F0")
                 && Push(dst, ref written, "s");
         }
-        return PushFormatted(dst, ref written, micros / 1_000_000.0, "F2") && Push(dst, ref written, "s");
+        if (micros >= 1_000_000.0)
+            return PushFormatted(dst, ref written, micros / 1_000_000.0, "F2") && Push(dst, ref written, "s");
+        if (micros >= 1_000.0)
+            return PushFormatted(dst, ref written, micros / 1_000.0, "F2") && Push(dst, ref written, "ms");
+        return PushFormatted(dst, ref written, micros, "F0") && Push(dst, ref written, "us");
     }
 
     public static string FormatSet<T>(Span<T> values, ReadOnlySpan<char> format = default)
