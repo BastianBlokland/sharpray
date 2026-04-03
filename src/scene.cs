@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 record struct Surface(Color Radiance, ShapeHit? Hit = null, Material? Material = null);
 
-record struct Fragment(Color Radiance, Vec3? Normal, float? Depth);
+record struct Fragment(Color Radiance, Vec3? Normal, Vec2? Surface, float? Depth);
 
 record struct Material(Color Color, float Roughness, float Metallic = 0f, Color Radiance = default)
 {
@@ -219,6 +219,7 @@ class Scene
 
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
+        Vec2? surface = null;
         float? depth = null;
 
         for (uint i = 0; i != (bounces + 1); ++i)
@@ -247,6 +248,7 @@ class Scene
                 if (isPrimary)
                 {
                     normal = hit.Norm;
+                    surface = hit.Surface;
                     depth = hit.Dist;
                 }
                 // Invert the normal for backface hits.
@@ -298,7 +300,7 @@ class Scene
                 break;
             }
         }
-        return new Fragment(radiance, normal, depth);
+        return new Fragment(radiance, normal, surface, depth);
     }
 
     public void Describe(ref FormatWriter fmt)

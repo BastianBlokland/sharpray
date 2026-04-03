@@ -29,7 +29,7 @@ const float denoiseSigmaColor = 0.15f;
 const float denoiseSigmaNormal = 0.25f;
 const float denoiseSigmaDepth = 1.0f;
 const bool dumpScene = true;
-const bool outputImage = true, outputPreview = true, outputNormal = true, outputDepth = true;
+const bool outputImage = true, outputPreview = true, outputNormal = true, outputSurface = true, outputDepth = true;
 const uint previewInterval = 100;
 
 Counters counters = new Counters();
@@ -170,6 +170,20 @@ if (outputDepth)
             : new Pixel((byte)(Math.Clamp(depth * depthMaxInv, 0f, 1f) * 255f));
     }
     depthImage.Save(Path.Combine(outputPath, "depth.bmp"));
+}
+
+if (outputSurface)
+{
+    Image surfaceImage = new Image(width, height);
+    for (uint i = 0; i < width * height; ++i)
+    {
+        Vec2 surface = renderer.Surface[i];
+        surfaceImage.Pixels[i] = new Pixel(
+            (byte)(MathF.Abs(surface.X % 1f) * 255f),
+            (byte)(MathF.Abs(surface.Y % 1f) * 255f),
+            0);
+    }
+    surfaceImage.Save(Path.Combine(outputPath, "surface.bmp"));
 }
 
 counters.Dump(ref fmt);

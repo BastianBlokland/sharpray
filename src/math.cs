@@ -14,14 +14,14 @@ struct ShapeHit
 {
     public float Dist;
     public Vec3 Norm;
-    public Vec2 SurfaceCoord;
+    public Vec2 Surface; // aka, UV or TextureCoord.
 
     public ShapeHit(float dist, Vec3 norm, Vec2 surfaceCoord)
     {
         Debug.Assert(norm.IsUnit, "RayHit normal must be normalized");
         Dist = dist;
         Norm = norm;
-        SurfaceCoord = surfaceCoord;
+        Surface = surfaceCoord;
     }
 }
 
@@ -33,7 +33,7 @@ static class ShapeExtensions
         if (shape.Intersect(localRay) is ShapeHit hit)
         {
             Vec3 worldNorm = (trans.Rot * (hit.Norm / trans.Scale)).Normalize();
-            return new ShapeHit(hit.Dist / localRayScale, worldNorm, hit.SurfaceCoord);
+            return new ShapeHit(hit.Dist / localRayScale, worldNorm, hit.Surface);
         }
         return null;
     }
@@ -1023,7 +1023,7 @@ struct Box : IShape
     {
         ShapeHit? hit = Local.Intersect(LocalRay(ray));
         if (hit is ShapeHit h)
-            return new ShapeHit(h.Dist, Rot * h.Norm, h.SurfaceCoord);
+            return new ShapeHit(h.Dist, Rot * h.Norm, h.Surface);
         return null;
     }
 
