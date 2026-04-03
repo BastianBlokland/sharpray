@@ -145,6 +145,7 @@ class Scene
 {
     private List<Object> _objects = new List<Object>();
     private readonly object _lock = new object();
+    public Sky Sky => _sky;
     private Sky _sky;
     private bool _built;
     private Bvh<Object, ShapeHit>? _bvh;
@@ -232,7 +233,7 @@ class Scene
         {
             if (hits[i] is (ShapeHit hit, int idx))
             {
-                results[i] = new Surface(mat.Radiance, hit, _objects[idx].Material);
+                results[i] = new Surface(_objects[idx].Material.Radiance, hit, _objects[idx].Material);
             }
             else
             {
