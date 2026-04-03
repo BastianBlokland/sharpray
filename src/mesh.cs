@@ -1,30 +1,53 @@
 using System;
+using System.Collections.Generic;
 
 class Mesh : IShape
 {
-    private Triangle[] _triangles;
-    private Bvh<Triangle> _bvh;
+    private struct TriangleAttributes { public Vec3 NormalA, NormalB, NormalC; }
+
+    private TriangleLean[] _triangles;
+    private TriangleAttributes[] _attributes;
+    private Bvh<TriangleLean, ShapeHitLean> _bvh;
     private Counters? _counters;
 
-    public Mesh(Triangle[] triangles, Counters? counters = null)
+    public Mesh(IReadOnlyList<Triangle> triangles, Counters? counters = null)
     {
-        _triangles = triangles;
+        _triangles = new TriangleLean[triangles.Count];
+        _attributes = new TriangleAttributes[triangles.Count];
+        for (int i = 0; i < triangles.Count; i++)
+        {
+            _triangles[i] = triangles[i].Lean;
+            _attributes[i] = new TriangleAttributes
+            {
+                NormalA = triangles[i].NormalA,
+                NormalB = triangles[i].NormalB,
+                NormalC = triangles[i].NormalC,
+            };
+        }
         using (counters?.TimeScope(Counters.Type.TimeMeshBvhBuild))
         {
-            _bvh = new Bvh<Triangle>(_triangles, sahCostIntersect: 0.5f); // sahCostIntersect low as the triangle test is cheap.
+            const float sahCostIntersect = 0.5f; // sahCostIntersect low as the triangle test is cheap.
+            _bvh = new Bvh<TriangleLean, ShapeHitLean>(_triangles, sahCostIntersect: sahCostIntersect);
         }
         _counters = counters;
 
-        counters?.Bump(Counters.Type.MeshTriangle, triangles.Length);
+        counters?.Bump(Counters.Type.MeshTriangle, triangles.Count);
     }
 
     public AABox Bounds() => _bvh.Bounds;
     public bool Overlaps(AABox box) => _bvh.Overlaps(box, _counters);
 
-    public RayHit? Intersect(Ray ray)
+    public ShapeHit? Intersect(Ray ray)
     {
         _counters?.Bump(Counters.Type.MeshIntersect);
-        return _bvh.Intersect(ray, _counters)?.Hit;
+        if (_bvh.Intersect(ray, _counters) is not (ShapeHitLean leanHit, int idx))
+            return null;
+
+        return _triangles[idx].Inflate(
+            leanHit,
+            _attributes[idx].NormalA,
+            _attributes[idx].NormalB,
+            _attributes[idx].NormalC);
     }
 
     public bool IntersectAny(Ray ray)
@@ -38,7 +61,7 @@ class Mesh : IShape
 
     public void OverlayWireframe(Overlay overlay, Transform trans, Color color)
     {
-        foreach (Triangle tri in _triangles)
+        foreach (TriangleLean tri in _triangles)
         {
             Vec3 a = trans.TransformPoint(tri.PosA);
             Vec3 b = trans.TransformPoint(tri.PosB);

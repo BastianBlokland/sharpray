@@ -2,23 +2,58 @@ using System;
 using System.Diagnostics;
 using System.Numerics;
 
-interface IShape
+interface IShapeHit
+{
+    float Dist { get; }
+}
+
+interface IShape<THit> where THit : struct, IShapeHit
 {
     AABox Bounds();
     bool Overlaps(AABox box);
-    RayHit? Intersect(Ray ray);
+    THit? Intersect(Ray ray);
     bool IntersectAny(Ray ray) => Intersect(ray) is not null;
+}
+
+interface IShape : IShape<ShapeHit> { }
+interface IShapeLean : IShape<ShapeHitLean> { }
+
+struct ShapeHit : IShapeHit
+{
+    public float Dist { get; }
+    public Vec3 Norm;
+    public Vec2 Surface; // aka, UV or TextureCoord.
+
+    public ShapeHit(float dist, Vec3 norm, Vec2 surfaceCoord)
+    {
+        Debug.Assert(norm.IsUnit, "RayHit normal must be normalized");
+        Dist = dist;
+        Norm = norm;
+        Surface = surfaceCoord;
+    }
+}
+
+struct ShapeHitLean : IShapeHit
+{
+    public float Dist { get; }
+    public Vec2 Surface; // aka, UV or TextureCoord.
+
+    public ShapeHitLean(float dist, Vec2 surface)
+    {
+        Dist = dist;
+        Surface = surface;
+    }
 }
 
 static class ShapeExtensions
 {
-    public static RayHit? Intersect(this IShape shape, Ray ray, Transform trans)
+    public static ShapeHit? Intersect(this IShape shape, Ray ray, Transform trans)
     {
         var (localRay, localRayScale) = trans.TransformRayInv(ray);
-        if (shape.Intersect(localRay) is RayHit hit)
+        if (shape.Intersect(localRay) is ShapeHit hit)
         {
             Vec3 worldNorm = (trans.Rot * (hit.Norm / trans.Scale)).Normalize();
-            return new RayHit(hit.Dist / localRayScale, worldNorm);
+            return new ShapeHit(hit.Dist / localRayScale, worldNorm, hit.Surface);
         }
         return null;
     }
@@ -279,6 +314,13 @@ struct Vec3 : ISpanFormattable
     {
         float mSqr = MagnitudeSqr();
         return mSqr >= 1e-12f ? this / MathF.Sqrt(mSqr) : fallback;
+    }
+
+    public Vec3 Perp()
+    {
+        Debug.Assert(IsUnit, "Perp requires a unit vector");
+        Vec3 up = MathF.Abs(Y) < 0.9f ? Up : Right;
+        return Cross(up, this).Normalize();
     }
 
     public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y, Z }, "G3");
@@ -715,25 +757,17 @@ struct Ray
         Debug.Assert(dir.IsUnit, "Ray direction must be normalized");
         Origin = origin;
         Dir = dir;
-        DirInv = new Vec3(1f / dir.X, 1f / dir.Y, 1f / dir.Z);
+
+        const float minComp = 1e-8f; // Minimal component value to avoid NaNs.
+        DirInv = new Vec3(
+            1f / (MathF.Abs(dir.X) >= minComp ? dir.X : MathF.CopySign(minComp, dir.X)),
+            1f / (MathF.Abs(dir.Y) >= minComp ? dir.Y : MathF.CopySign(minComp, dir.Y)),
+            1f / (MathF.Abs(dir.Z) >= minComp ? dir.Z : MathF.CopySign(minComp, dir.Z)));
     }
 
     public Vec3 this[float t] => Origin + Dir * t;
 
     public float Distance(Vec3 p) => Vec3.Dot(p - Origin, Dir);
-}
-
-struct RayHit
-{
-    public float Dist;
-    public Vec3 Norm;
-
-    public RayHit(float dist, Vec3 norm)
-    {
-        Debug.Assert(norm.IsUnit, "RayHit normal must be normalized");
-        Dist = dist;
-        Norm = norm;
-    }
 }
 
 struct Line
@@ -861,7 +895,7 @@ struct AABox : IShape
         return MathF.Max(0f, tMin); // 0 if ray starts inside.
     }
 
-    public RayHit? Intersect(Ray ray)
+    public ShapeHit? Intersect(Ray ray)
     {
         // Cyrus-Beck slab clipping.
         // https://izzofinal.wordpress.com/2012/11/09/ray-vs-box-round-1/
@@ -883,16 +917,27 @@ struct AABox : IShape
 
         bool inside = tMin < 0f;
         float t = inside ? tMax : tMin;
+        Vec3 hit = ray[t];
 
         Vec3 norm;
+        Vec2 surfaceCoord;
         if (minA >= minB && minA >= minC)
+        {
             norm = t1 <= t2 ? new Vec3(-1, 0, 0) : new Vec3(1, 0, 0);
+            surfaceCoord = new Vec2((hit.Y - Min.Y) / (Max.Y - Min.Y), (hit.Z - Min.Z) / (Max.Z - Min.Z));
+        }
         else if (minB >= minA && minB >= minC)
+        {
             norm = t3 <= t4 ? new Vec3(0, -1, 0) : new Vec3(0, 1, 0);
+            surfaceCoord = new Vec2((hit.X - Min.X) / (Max.X - Min.X), (hit.Z - Min.Z) / (Max.Z - Min.Z));
+        }
         else
+        {
             norm = t5 <= t6 ? new Vec3(0, 0, -1) : new Vec3(0, 0, 1);
+            surfaceCoord = new Vec2((hit.X - Min.X) / (Max.X - Min.X), (hit.Y - Min.Y) / (Max.Y - Min.Y));
+        }
 
-        return new RayHit(t, inside ? -norm : norm);
+        return new ShapeHit(t, inside ? -norm : norm, surfaceCoord);
     }
 
     public static AABox FromCenter(Vec3 center, Vec3 size) => new AABox(center - size * 0.5f, center + size * 0.5f);
@@ -994,11 +1039,11 @@ struct Box : IShape
         return true;
     }
 
-    public RayHit? Intersect(Ray ray)
+    public ShapeHit? Intersect(Ray ray)
     {
-        RayHit? hit = Local.Intersect(LocalRay(ray));
-        if (hit is RayHit h)
-            return new RayHit(h.Dist, Rot * h.Norm);
+        ShapeHit? hit = Local.Intersect(LocalRay(ray));
+        if (hit is ShapeHit h)
+            return new ShapeHit(h.Dist, Rot * h.Norm, h.Surface);
         return null;
     }
 
@@ -1040,7 +1085,7 @@ struct Sphere : IShape
         return (closest - Center).MagnitudeSqr() <= Radius * Radius;
     }
 
-    public RayHit? Intersect(Ray ray)
+    public ShapeHit? Intersect(Ray ray)
     {
         // https://gdbooks.gitbooks.io/3dcollisions/content/Chapter3/raycast_sphere.html
         Vec3 toCenter = Center - ray.Origin;
@@ -1048,15 +1093,20 @@ struct Sphere : IShape
         float a = Vec3.Dot(toCenter, ray.Dir);
         float discriminant = Radius * Radius - toCenterDistSqr + a * a;
 
-        if (discriminant < 0f) return null;
+        if (discriminant < 0f)
+            return null;
 
         float f = MathF.Sqrt(discriminant);
         float t = toCenterDistSqr < Radius * Radius ? a + f : a - f;
 
-        if (t < 0f) return null;
+        if (t < 0f)
+            return null;
 
         Vec3 norm = (ray[t] - Center).Normalize();
-        return new RayHit(t, norm);
+
+        float texU = 0.5f + MathF.Atan2(norm.Z, norm.X) / (2f * MathF.PI);
+        float texV = 0.5f - MathF.Asin(Math.Clamp(norm.Y, -1f, 1f)) / MathF.PI;
+        return new ShapeHit(t, norm, new Vec2(texU, texV));
     }
 }
 
@@ -1097,7 +1147,7 @@ struct Capsule : IShape
         return (spinePoint - boxPoint).MagnitudeSqr() <= Radius * Radius;
     }
 
-    public RayHit? Intersect(Ray ray)
+    public ShapeHit? Intersect(Ray ray)
     {
         Vec3 spinePoint = Spine.ClosestPoint(ray);
         Sphere sphere = new Sphere(spinePoint, Radius);
@@ -1131,13 +1181,22 @@ struct Plane : IShape
         return c - r <= Distance && Distance <= c + r;
     }
 
-    public RayHit? Intersect(Ray ray)
+    public ShapeHit? Intersect(Ray ray)
     {
         float dirDot = Vec3.Dot(ray.Dir, Normal);
-        if (dirDot >= 0f) return null; // Parallel or back-facing.
+        if (dirDot >= 0f)
+            return null; // Parallel or back-facing.
         float t = (Distance - Vec3.Dot(ray.Origin, Normal)) / dirDot;
-        if (t < 0f) return null; // Plane behind ray origin.
-        return new RayHit(t, Normal);
+        if (t < 0f)
+            return null; // Plane behind ray origin.
+
+        // Compute texture-coords based on the tangent frame.
+        Vec3 tangentU = Normal.Perp();
+        Vec3 tangentV = Vec3.Cross(Normal, tangentU);
+        Vec3 hit = ray[t];
+        Vec2 surfaceCoords = new Vec2(Vec3.Dot(hit, tangentU), Vec3.Dot(hit, tangentV));
+
+        return new ShapeHit(t, Normal, surfaceCoords);
     }
 
     public static Plane AtPosition(Vec3 normal, Vec3 position) =>
@@ -1150,34 +1209,21 @@ struct Plane : IShape
     }
 }
 
-struct Triangle : IShape
+struct TriangleLean : IShapeLean
 {
     public Vec3 PosA, PosAToB, PosAToC;
-    public Vec3 NormalA, NormalB, NormalC;
 
-    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC)
+    public TriangleLean(Vec3 posA, Vec3 posB, Vec3 posC)
     {
         PosA = posA;
         PosAToB = posB - posA;
         PosAToC = posC - posA;
-        NormalA = NormalB = NormalC = Normal;
-    }
-
-    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC, Vec3 normalA, Vec3 normalB, Vec3 normalC)
-    {
-        PosA = posA;
-        PosAToB = posB - posA;
-        PosAToC = posC - posA;
-        NormalA = normalA;
-        NormalB = normalB;
-        NormalC = normalC;
     }
 
     public Vec3 PosB => PosA + PosAToB;
     public Vec3 PosC => PosA + PosAToC;
     public Vec3 Normal => Vec3.Cross(PosAToB, PosAToC).Normalize();
     public Vec3 Center => (PosA + PosB + PosC) / 3f;
-    public Plane Plane => Plane.AtTriangle(PosA, PosB, PosC);
 
     public AABox Bounds()
     {
@@ -1187,61 +1233,166 @@ struct Triangle : IShape
             new Vec3(MathF.Max(PosA.X, MathF.Max(posB.X, posC.X)), MathF.Max(PosA.Y, MathF.Max(posB.Y, posC.Y)), MathF.Max(PosA.Z, MathF.Max(posB.Z, posC.Z))));
     }
 
-    public bool Overlaps(AABox box) => Bounds().Overlaps(box);
+    public bool Overlaps(AABox box)
+    {
+        // Fast rejection: AABB vs AABB.
+        if (!Bounds().Overlaps(box))
+            return false;
 
-    public RayHit? Intersect(Ray ray)
+        // Separating Axis Theorem: triangle vs AABB.
+        // https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/code/tribox3.txt
+        Vec3 h = box.Size * 0.5f;
+
+        // Translate triangle vertices into box-centered space.
+        Vec3 v0 = PosA - box.Center;
+        Vec3 v1 = v0 + PosAToB;
+        Vec3 v2 = v0 + PosAToC;
+        Vec3 e2 = PosAToC - PosAToB; // Edge C→B in local space (PosC - PosB).
+
+        // Tests one of the 9 edge cross-product axes.
+        bool Separated(Vec3 axis)
+        {
+            float p0 = Vec3.Dot(v0, axis);
+            float p1 = Vec3.Dot(v1, axis);
+            float p2 = Vec3.Dot(v2, axis);
+            float r = h.X * MathF.Abs(axis.X) + h.Y * MathF.Abs(axis.Y) + h.Z * MathF.Abs(axis.Z);
+            return MathF.Max(MathF.Max(p0, p1), p2) < -r || MathF.Min(MathF.Min(p0, p1), p2) > r;
+        }
+
+        // 9 axes: each triangle edge crossed with each AABB edge (X, Y, Z).
+        if (Separated(new Vec3(0f, -PosAToB.Z, PosAToB.Y))) return false;
+        if (Separated(new Vec3(PosAToB.Z, 0f, -PosAToB.X))) return false;
+        if (Separated(new Vec3(-PosAToB.Y, PosAToB.X, 0f))) return false;
+        if (Separated(new Vec3(0f, -PosAToC.Z, PosAToC.Y))) return false;
+        if (Separated(new Vec3(PosAToC.Z, 0f, -PosAToC.X))) return false;
+        if (Separated(new Vec3(-PosAToC.Y, PosAToC.X, 0f))) return false;
+        if (Separated(new Vec3(0f, -e2.Z, e2.Y))) return false;
+        if (Separated(new Vec3(e2.Z, 0f, -e2.X))) return false;
+        if (Separated(new Vec3(-e2.Y, e2.X, 0f))) return false;
+
+        // Triangle face normal axis.
+        Vec3 normal = Vec3.Cross(PosAToB, PosAToC);
+        float d = Vec3.Dot(normal, v0);
+        float rn = h.X * MathF.Abs(normal.X) + h.Y * MathF.Abs(normal.Y) + h.Z * MathF.Abs(normal.Z);
+        if (d > rn || d < -rn)
+            return false;
+
+        return true;
+    }
+
+    public ShapeHitLean? Intersect(Ray ray)
     {
         // Möller–Trumbore intersection.
         // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
         Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
         float det = Vec3.Dot(PosAToB, h);
 
-        if (MathF.Abs(det) <= 1e-9f)
+        bool backface = det < 0f;
+        if (backface)
+        {
+            h = -h;
+            det = -det;
+        }
+        if (det <= 1e-7f)
             return null; // Parallel.
 
-        float invDet = 1f / det;
+        const float edgeEps = 1e-6f;
+
         Vec3 ao = ray.Origin - PosA;
-        float u = Vec3.Dot(ao, h) * invDet;
-        if (u < 0f || u > 1f)
+        float u = Vec3.Dot(ao, h);
+        if (u < -edgeEps || u > det + edgeEps)
             return null;
 
-        Vec3 q = Vec3.Cross(ao, PosAToB);
-        float v = Vec3.Dot(ray.Dir, q) * invDet;
-        if (v < 0f || u + v > 1f)
+        Vec3 q = backface ? Vec3.Cross(PosAToB, ao) : Vec3.Cross(ao, PosAToB);
+        float v = Vec3.Dot(ray.Dir, q);
+        if (v < -edgeEps || u + v > det + edgeEps)
             return null;
 
-        float t = Vec3.Dot(PosAToC, q) * invDet;
-        if (t < 0f)
+        float tScaled = Vec3.Dot(PosAToC, q);
+        if (tScaled < 0f)
             return null;
 
-        Vec3 interp = NormalA * (1f - u - v) + NormalB * u + NormalC * v;
-        Vec3 normal = (det > 0f ? interp : -interp).NormalizeOr(det > 0f ? Normal : -Normal);
-        return new RayHit(t, normal);
+        float invDet = 1f / det;
+        return new ShapeHitLean(tScaled * invDet, new Vec2(u * invDet, v * invDet));
+    }
+
+    public ShapeHit Inflate(ShapeHitLean leanHit, Vec3 normalA, Vec3 normalB, Vec3 normalC)
+    {
+        float uBary = leanHit.Surface.X, vBary = leanHit.Surface.Y;
+        Vec3 interp = normalA * (1f - uBary - vBary) + normalB * uBary + normalC * vBary;
+        Vec3 norm = interp.MagnitudeSqr() >= 1e-12f ? interp.Normalize() : Normal;
+        return new ShapeHit(leanHit.Dist, norm, leanHit.Surface);
     }
 
     public bool IntersectAny(Ray ray)
     {
-        // Möller–Trumbore intersection.
-        // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
         Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
         float det = Vec3.Dot(PosAToB, h);
 
-        if (MathF.Abs(det) <= 1e-9f)
+        bool backface = det < 0f;
+        if (backface)
+        {
+            h = -h;
+            det = -det;
+        }
+        if (det <= 1e-7f)
             return false; // Parallel.
 
-        float invDet = 1f / det;
+        const float edgeEps = 1e-6f;
+
         Vec3 ao = ray.Origin - PosA;
-        float u = Vec3.Dot(ao, h) * invDet;
-        if (u < 0f || u > 1f)
+        float u = Vec3.Dot(ao, h);
+        if (u < -edgeEps || u > det + edgeEps)
             return false;
 
-        Vec3 q = Vec3.Cross(ao, PosAToB);
-        float v = Vec3.Dot(ray.Dir, q) * invDet;
-        if (v < 0f || u + v > 1f)
+        Vec3 q = backface ? Vec3.Cross(PosAToB, ao) : Vec3.Cross(ao, PosAToB);
+        float v = Vec3.Dot(ray.Dir, q);
+        if (v < -edgeEps || u + v > det + edgeEps)
             return false;
 
-        return Vec3.Dot(PosAToC, q) * invDet >= 0f;
+        return Vec3.Dot(PosAToC, q) >= 0f;
     }
+}
+
+struct Triangle : IShape
+{
+    public TriangleLean Lean;
+    public Vec3 NormalA, NormalB, NormalC;
+
+    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC)
+    {
+        Lean = new TriangleLean(posA, posB, posC);
+        NormalA = NormalB = NormalC = Lean.Normal;
+    }
+
+    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC, Vec3 normalA, Vec3 normalB, Vec3 normalC)
+    {
+        Lean = new TriangleLean(posA, posB, posC);
+        NormalA = normalA;
+        NormalB = normalB;
+        NormalC = normalC;
+    }
+
+    public Vec3 PosA => Lean.PosA;
+    public Vec3 PosB => Lean.PosB;
+    public Vec3 PosC => Lean.PosC;
+    public Vec3 Normal => Lean.Normal;
+    public Vec3 Center => Lean.Center;
+    public Plane Plane => Plane.AtTriangle(PosA, PosB, PosC);
+
+    public AABox Bounds() => Lean.Bounds();
+    public bool Overlaps(AABox box) => Lean.Overlaps(box);
+
+    public ShapeHit Inflate(ShapeHitLean leanHit) => Lean.Inflate(leanHit, NormalA, NormalB, NormalC);
+
+    public ShapeHit? Intersect(Ray ray)
+    {
+        if (Lean.Intersect(ray) is not ShapeHitLean leanHit)
+            return null;
+        return Inflate(leanHit);
+    }
+
+    public bool IntersectAny(Ray ray) => Lean.IntersectAny(ray);
 }
 
 struct View
