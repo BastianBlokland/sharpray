@@ -83,15 +83,33 @@ static class ShapeExtensions
     public static void Intersect(this IShape shape, ReadOnlySpan<Ray> rays, Span<ShapeHit?> hits, Transform trans)
     {
         Debug.Assert(rays.Length == hits.Length);
+
+        Span<Ray> localRays = stackalloc Ray[rays.Length];
+        Span<float> localRayScales = stackalloc float[rays.Length];
         for (int i = 0; i < rays.Length; ++i)
-            hits[i] = shape.Intersect(rays[i], trans);
+            (localRays[i], localRayScales[i]) = trans.TransformRayInv(rays[i]);
+
+        shape.Intersect(localRays, hits);
+
+        for (int i = 0; i < rays.Length; ++i)
+        {
+            if (hits[i] is ShapeHit hit)
+            {
+                Vec3 worldNorm = (trans.Rot * (hit.Norm / trans.Scale)).Normalize();
+                hits[i] = new ShapeHit(hit.Dist / localRayScales[i], worldNorm, hit.Surface);
+            }
+        }
     }
 
     public static void IntersectAny(this IShape shape, ReadOnlySpan<Ray> rays, Span<bool> hits, Transform trans)
     {
         Debug.Assert(rays.Length == hits.Length);
+
+        Span<Ray> localRays = stackalloc Ray[rays.Length];
         for (int i = 0; i < rays.Length; ++i)
-            hits[i] = shape.IntersectAny(rays[i], trans);
+            (localRays[i], _) = trans.TransformRayInv(rays[i]);
+
+        shape.IntersectAny(localRays, hits);
     }
 }
 
