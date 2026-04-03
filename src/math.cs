@@ -158,6 +158,9 @@ struct Color : ISpanFormattable
         return new Color(r, g, b);
     }
 
+    public static Color FromPixelLinear(Pixel pixel) =>
+        new Color(pixel.R / 255f, pixel.G / 255f, pixel.B / 255f);
+
     public static Color ForIndex(int index)
     {
         const float goldenRatioConj = 0.618033988f;

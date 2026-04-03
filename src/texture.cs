@@ -13,11 +13,11 @@ class Texture
         _texels = pixels;
     }
 
-    public Color Sample(Vec2 coords)
+    public Color Sample(Vec2 coord)
     {
         // Repeat wrap.
-        float u = coords.X - MathF.Floor(coords.X);
-        float v = coords.Y - MathF.Floor(coords.Y);
+        float u = coord.X - MathF.Floor(coord.X);
+        float v = coord.Y - MathF.Floor(coord.Y);
 
         // Bilinear filtering.
         float fx = u * (Width - 1);
@@ -37,11 +37,25 @@ class Texture
             tx, ty);
     }
 
+    public Vec3 SampleNormal(Vec2 coord)
+    {
+        Color c = Sample(coord);
+        return new Vec3(c.R * 2f - 1f, c.G * 2f - 1f, c.B * 2f - 1f).NormalizeOr(Vec3.Up);
+    }
+
     public static Texture FromSrgb(Image image)
     {
         Color[] texels = new Color[image.Pixels.Length];
         for (int i = 0; i != texels.Length; ++i)
             texels[i] = Color.FromPixel(image.Pixels[i]);
+        return new Texture(texels, image.Width, image.Height);
+    }
+
+    public static Texture FromNormal(Image image)
+    {
+        Color[] texels = new Color[image.Pixels.Length];
+        for (int i = 0; i != texels.Length; ++i)
+            texels[i] = Color.FromPixelLinear(image.Pixels[i]);
         return new Texture(texels, image.Width, image.Height);
     }
 }
