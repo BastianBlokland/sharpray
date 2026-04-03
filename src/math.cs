@@ -1303,7 +1303,7 @@ struct TriangleLean : IShapeLean
         if (u < -edgeEps || u > det + edgeEps)
             return null;
 
-        Vec3 q = Vec3.Cross(ao, PosAToB) * (backface ? -1f : 1f);
+        Vec3 q = backface ? Vec3.Cross(PosAToB, ao) : Vec3.Cross(ao, PosAToB);
         float v = Vec3.Dot(ray.Dir, q);
         if (v < -edgeEps || u + v > det + edgeEps)
             return null;
@@ -1313,9 +1313,15 @@ struct TriangleLean : IShapeLean
             return null;
 
         float invDet = 1f / det;
-        float uBary = Math.Clamp(u * invDet, 0f, 1f);
-        float vBary = Math.Clamp(v * invDet, 0f, 1f - uBary);
-        return new ShapeHitLean(tScaled * invDet, new Vec2(uBary, vBary));
+        return new ShapeHitLean(tScaled * invDet, new Vec2(u * invDet, v * invDet));
+    }
+
+    public ShapeHit Inflate(ShapeHitLean leanHit, Vec3 normalA, Vec3 normalB, Vec3 normalC)
+    {
+        float uBary = leanHit.Surface.X, vBary = leanHit.Surface.Y;
+        Vec3 interp = normalA * (1f - uBary - vBary) + normalB * uBary + normalC * vBary;
+        Vec3 norm = interp.MagnitudeSqr() >= 1e-12f ? interp.Normalize() : Normal;
+        return new ShapeHit(leanHit.Dist, norm, leanHit.Surface);
     }
 
     public bool IntersectAny(Ray ray)
@@ -1339,7 +1345,7 @@ struct TriangleLean : IShapeLean
         if (u < -edgeEps || u > det + edgeEps)
             return false;
 
-        Vec3 q = Vec3.Cross(ao, PosAToB) * (backface ? -1f : 1f);
+        Vec3 q = backface ? Vec3.Cross(PosAToB, ao) : Vec3.Cross(ao, PosAToB);
         float v = Vec3.Dot(ray.Dir, q);
         if (v < -edgeEps || u + v > det + edgeEps)
             return false;
@@ -1377,13 +1383,7 @@ struct Triangle : IShape
     public AABox Bounds() => Lean.Bounds();
     public bool Overlaps(AABox box) => Lean.Overlaps(box);
 
-    public ShapeHit Inflate(ShapeHitLean leanHit)
-    {
-        float uBary = leanHit.Surface.X, vBary = leanHit.Surface.Y;
-        Vec3 interp = NormalA * (1f - uBary - vBary) + NormalB * uBary + NormalC * vBary;
-        Vec3 norm = interp.MagnitudeSqr() >= 1e-12f ? interp.Normalize() : Lean.Normal;
-        return new ShapeHit(leanHit.Dist, norm, leanHit.Surface);
-    }
+    public ShapeHit Inflate(ShapeHitLean leanHit) => Lean.Inflate(leanHit, NormalA, NormalB, NormalC);
 
     public ShapeHit? Intersect(Ray ray)
     {
