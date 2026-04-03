@@ -715,7 +715,12 @@ struct Ray
         Debug.Assert(dir.IsUnit, "Ray direction must be normalized");
         Origin = origin;
         Dir = dir;
-        DirInv = new Vec3(1f / dir.X, 1f / dir.Y, 1f / dir.Z);
+
+        const float minComp = 1e-8f; // Minimal component value to avoid NaNs.
+        DirInv = new Vec3(
+            1f / (MathF.Abs(dir.X) >= minComp ? dir.X : MathF.CopySign(minComp, dir.X)),
+            1f / (MathF.Abs(dir.Y) >= minComp ? dir.Y : MathF.CopySign(minComp, dir.Y)),
+            1f / (MathF.Abs(dir.Z) >= minComp ? dir.Z : MathF.CopySign(minComp, dir.Z)));
     }
 
     public Vec3 this[float t] => Origin + Dir * t;
