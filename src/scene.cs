@@ -247,12 +247,13 @@ class Scene
                     normal = hit.Norm;
                     depth = hit.Dist;
                 }
-
-                Vec3 hitPos = ray[hit.Dist] + hit.Norm * 1e-4f;
+                // Invert the normal for backface hits.
+                Vec3 shadingNorm = Vec3.Dot(hit.Norm, ray.Dir) > 0f ? -hit.Norm : hit.Norm;
+                Vec3 hitPos = ray[hit.Dist] + shadingNorm * 1e-4f;
 
                 // Direct sun contribution.
                 Vec3 sunDir = _sky.SunSampleDir(ref rng);
-                float sunCosTheta = Vec3.Dot(hit.Norm, sunDir);
+                float sunCosTheta = Vec3.Dot(shadingNorm, sunDir);
                 if (sunCosTheta > 0f && roughness > 0.05f)
                 {
                     Ray shadowRay = new Ray(hitPos, sunDir);
@@ -277,9 +278,9 @@ class Scene
                 }
 
                 // Compute scatter ray.
-                Vec3 scatterDirDiffuse = (hit.Norm + Vec3.RandOnSphere(ref rng)).NormalizeOr(hit.Norm); // Cosine-weighted distribution.
-                Vec3 scatterDirSpecular = Vec3.Reflect(ray.Dir, hit.Norm);
-                Vec3 scatterDir = Vec3.Lerp(scatterDirSpecular, scatterDirDiffuse, roughness).NormalizeOr(hit.Norm);
+                Vec3 scatterDirDiffuse = (shadingNorm + Vec3.RandOnSphere(ref rng)).NormalizeOr(shadingNorm); // Cosine-weighted distribution.
+                Vec3 scatterDirSpecular = Vec3.Reflect(ray.Dir, shadingNorm);
+                Vec3 scatterDir = Vec3.Lerp(scatterDirSpecular, scatterDirDiffuse, roughness).NormalizeOr(shadingNorm);
 
                 ray = new Ray(hitPos, scatterDir);
             }
