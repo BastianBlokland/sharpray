@@ -26,3 +26,10 @@
 - **License:** GNU General Public License v2 or later (GPLv2+)
 
 > Suzanne is Blender's mascot mesh, included as a primitive since Blender 2.25.
+
+## Cobblestone Floor 09 (`cobblestone/`)
+
+- **Source:** Poly Haven
+- **URL:** https://polyhaven.com/a/cobblestone_floor_09
+- **Authors:** Charlotte Baglioni
+- **License:** CC0 (public domain)
