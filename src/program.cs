@@ -25,7 +25,7 @@ const uint blockSize = 32;
 const uint samples = 64;
 const uint bounces = 8;
 const float denoiseSigmaSpace = 4.0f;
-const float denoiseSigmaColor = 0.15f;
+const float denoiseSigmaColor = 0.1f;
 const float denoiseSigmaNormal = 0.25f;
 const float denoiseSigmaDepth = 1.0f;
 const bool dumpScene = true;
@@ -58,7 +58,7 @@ Scene scene = new Scene(sky);
 using (counters.TimeScope(Counters.Type.TimeSetup))
 {
     // Floor.
-    Texture floorTexture = Texture.Checker(new Color(0.05f), new Color(0.4f));
+    Texture floorTexture = Texture.Checker(new Color(0.05f), new Color(0.4f), 16);
     scene.AddObject(new Object(
         "floor",
         Transform.Identity(),
