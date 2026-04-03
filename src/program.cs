@@ -22,8 +22,8 @@ FlushToConsole(ref fmt);
 const uint width = 512;
 const uint height = 512;
 const uint blockSize = 32;
-const uint samples = 64;
-const uint bounces = 8;
+const uint samples = 128;
+const uint bounces = 16;
 const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.025f;
 const float denoiseSigmaNormal = 0.05f;
@@ -50,8 +50,8 @@ Sky sky = new Sky(
 
 View view = new View(
     new Transform(
-        new Vec3(0.5f, 5f, -2f),
-        Quat.AngleAxis(float.DegreesToRadians(40f), Vec3.Right)),
+        new Vec3(1f, 5f, -2f),
+        Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
     float.DegreesToRadians(75f));
 
 Scene scene = new Scene(sky);
@@ -61,16 +61,16 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
     Texture floorRough = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_rough.tga"));
     Texture floorNormal = Texture.FromNormal(Image.Load("assets/cobblestone/cobblestone_nor.tga"));
-    floorColor.Tiling = floorRough.Tiling = floorNormal.Tiling = new Vec2(6f, 3f);
+    floorColor.Tiling = floorRough.Tiling = floorNormal.Tiling = new Vec2(6f, 1.5f);
     scene.AddObject(new Object(
         "floor",
         Transform.Identity(),
         new Material(Color.White, 1.0f, ColorTexture: floorColor, RoughnessTexture: floorRough, NormalTexture: floorNormal),
-        new AABox(new Vec3(-30f, -0.2f, -2f), new Vec3(30f, 0f, 30f))));
+        new AABox(new Vec3(-30f, -0.2f, -2f), new Vec3(30f, 0f, 15f))));
 
     // Dragon.
     {
-        Quat rot = Quat.AngleAxis(float.DegreesToRadians(60f), Vec3.Up);
+        Quat rot = Quat.AngleAxis(float.DegreesToRadians(40f), Vec3.Up);
         Vec3 scale = new Vec3(6f, 6f, 6f);
         Transform trans = new Transform(new Vec3(1f, 1.7f, 4f), rot, scale);
         Material mat = new Material(new Color(0.2f, 0.7f, 0.2f), 0.5f, 0.0f);
@@ -185,7 +185,7 @@ if (outputUv)
         imageOut.Pixels[i] = new Pixel(
             (byte)(MathF.Abs(uv.X % 1f) * 255f),
             (byte)(MathF.Abs(uv.Y % 1f) * 255f),
-            0);
+        0);
     }
     imageOut.Save(Path.Combine(outputPath, "uv.bmp"));
 }
