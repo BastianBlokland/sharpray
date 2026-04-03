@@ -281,6 +281,13 @@ struct Vec3 : ISpanFormattable
         return mSqr >= 1e-12f ? this / MathF.Sqrt(mSqr) : fallback;
     }
 
+    public Vec3 Perp()
+    {
+        Debug.Assert(IsUnit, "Perp requires a unit vector");
+        Vec3 up = MathF.Abs(Y) < 0.9f ? Up : Right;
+        return Cross(up, this).Normalize();
+    }
+
     public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y, Z }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
