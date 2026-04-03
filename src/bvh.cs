@@ -48,7 +48,7 @@ class Bvh<T> where T : IShape
         };
     }
 
-    private readonly IReadOnlyList<T> _shapes;
+    private readonly T[] _shapes;
     private readonly Node[] _nodes;
     private readonly int[] _items; // Indices into the shapes collection.
     private int _nodeCount;
@@ -60,7 +60,7 @@ class Bvh<T> where T : IShape
         _sahCostTraverse = sahCostTraverse;
         _sahCostIntersect = sahCostIntersect;
         _splitBinCount = splitBinCount;
-        _shapes = shapes;
+        _shapes = shapes is T[] arr ? arr : [.. shapes];
         _nodes = new Node[Math.Max(shapes.Count * 2, 1)];
         _items = new int[shapes.Count];
 
@@ -289,8 +289,8 @@ class Bvh<T> where T : IShape
         ref Node node = ref _nodes[index];
         node.Bounds = AABox.Inverted();
         node.Child = 0;
-        node.ShapeCount = _shapes.Count;
-        for (int i = 0; i != _shapes.Count; ++i)
+        node.ShapeCount = _shapes.Length;
+        for (int i = 0; i != _shapes.Length; ++i)
             node.Bounds.Encapsulate(_shapes[_items[i]].Bounds());
         return index;
     }
