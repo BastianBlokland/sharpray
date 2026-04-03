@@ -304,6 +304,15 @@ class Scene
         if (!_built)
             throw new InvalidOperationException("Scene not built");
 
+        BvhStats bvhStats = _bvh!.GetStats();
+        fmt.WriteLine($"objects={new FormatNum(_objects.Count)}");
+        fmt.WriteLine($"nodes={new FormatNum(bvhStats.NodeCount)}");
+        fmt.WriteLine($"depth={bvhStats.DepthMax}");
+        fmt.WriteLine($"leafCount={new FormatNum(bvhStats.LeafCount)}");
+        fmt.WriteLine($"leafSize=({bvhStats.LeafSizeMin}/{bvhStats.LeafSizeAvg:F1}/{bvhStats.LeafSizeMax})");
+        fmt.WriteLine($"leafDepth={bvhStats.LeafDepthAvg:F1}");
+        fmt.WriteLine($"sah={bvhStats.SahCost:F1}");
+
         foreach (Object obj in _objects)
         {
             fmt.Separate();
