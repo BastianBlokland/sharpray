@@ -58,10 +58,11 @@ Scene scene = new Scene(sky);
 using (counters.TimeScope(Counters.Type.TimeSetup))
 {
     // Floor.
+    Texture floorTexture = Texture.Checker(new Color(0.05f), new Color(0.4f));
     scene.AddObject(new Object(
         "floor",
         Transform.Identity(),
-        new Material(new Color(0.1f, 0.1f, 0.1f), 1.0f),
+        new Material(Color.White, 1.0f, ColorTexture: floorTexture),
         new AABox(new Vec3(-10f, -0.2f, -2f), new Vec3(10f, 0f, 20f))));
 
     // Dragon.

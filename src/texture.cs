@@ -58,4 +58,17 @@ class Texture
             texels[i] = Color.FromPixelLinear(image.Pixels[i]);
         return new Texture(texels, image.Width, image.Height);
     }
+
+    public static Texture Checker(Color a, Color b, uint size = 8)
+    {
+        Color[] texels = new Color[size * size];
+        for (uint y = 0; y != size; ++y)
+        {
+            for (uint x = 0; x != size; ++x)
+            {
+                texels[y * size + x] = ((x + y) % 2 == 0) ? a : b;
+            }
+        }
+        return new Texture(texels, size, size);
+    }
 }

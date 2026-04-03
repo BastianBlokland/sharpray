@@ -6,8 +6,18 @@ record struct Surface(Color Radiance, ShapeHit? Hit = null, Material? Material =
 
 record struct Fragment(Color Radiance, Vec3? Normal, Vec2? Surface, float? Depth);
 
-record struct Material(Color Color, float Roughness, float Metallic = 0f, Color Radiance = default)
+record struct Material(
+    Color Color,
+    float Roughness,
+    float Metallic = 0f,
+    Color Radiance = default,
+    Texture? ColorTexture = null)
 {
+    public Color SampleColor(Vec2 surface)
+    {
+        return (ColorTexture?.Sample(surface) ?? Color.White) * Color;
+    }
+
     public void Describe(ref FormatWriter fmt)
     {
         fmt.WriteLine($"color={Color}");
@@ -236,8 +246,9 @@ class Scene
             float roughness = 1.0f;
             if (surf.Material is Material material)
             {
-                Color specularColor = Color.Lerp(Color.White, material.Color, material.Metallic);
-                energy *= Color.Lerp(material.Color, specularColor, 1f - roughness);
+                Color materialColor = surf.Hit is ShapeHit h ? material.SampleColor(h.Surface) : material.Color;
+                Color specularColor = Color.Lerp(Color.White, materialColor, material.Metallic);
+                energy *= Color.Lerp(materialColor, specularColor, 1f - roughness);
                 roughness = material.Roughness;
             }
 
