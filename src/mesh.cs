@@ -7,7 +7,7 @@ class Mesh : IShape
     {
         public Vec3 NormalA, NormalB, NormalC;
         public Vec4 TangentA, TangentB, TangentC; // xyz = tangent direction, w = bitangent handedness (+1/-1).
-        public Vec2 SurfaceA, SurfaceB, SurfaceC; // aka, UV or TextureCoord.
+        public Vec2 UvA, UvB, UvC;
     }
 
     private TriangleLean[] _triangles;
@@ -30,9 +30,9 @@ class Mesh : IShape
                 TangentA = triangles[i].TanA,
                 TangentB = triangles[i].TanB,
                 TangentC = triangles[i].TanC,
-                SurfaceA = triangles[i].SurfA,
-                SurfaceB = triangles[i].SurfB,
-                SurfaceC = triangles[i].SurfC,
+                UvA = triangles[i].UvA,
+                UvB = triangles[i].UvB,
+                UvC = triangles[i].UvC,
             };
         }
         using (counters?.TimeScope(Counters.Type.TimeMeshBvhBuild))
@@ -58,7 +58,7 @@ class Mesh : IShape
             leanHit,
             _attributes[idx].NormalA, _attributes[idx].NormalB, _attributes[idx].NormalC,
             _attributes[idx].TangentA, _attributes[idx].TangentB, _attributes[idx].TangentC,
-            _attributes[idx].SurfaceA, _attributes[idx].SurfaceB, _attributes[idx].SurfaceC);
+            _attributes[idx].UvA, _attributes[idx].UvB, _attributes[idx].UvC);
     }
 
     public bool IntersectAny(Ray ray)

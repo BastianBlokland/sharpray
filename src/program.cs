@@ -29,7 +29,7 @@ const float denoiseSigmaColor = 0.025f;
 const float denoiseSigmaNormal = 0.05f;
 const float denoiseSigmaDepth = 1.0f;
 const bool dumpScene = true;
-const bool outputImage = true, outputPreview = true, outputNormal = true, outputSurface = true, outputDepth = true;
+const bool outputImage = true, outputPreview = true, outputNormal = true, outputUv = true, outputDepth = true;
 const uint previewInterval = 100;
 
 Counters counters = new Counters();
@@ -50,8 +50,8 @@ Sky sky = new Sky(
 
 View view = new View(
     new Transform(
-        new Vec3(0.5f, 3f, -2f),
-        Quat.AngleAxis(float.DegreesToRadians(20f), Vec3.Right)),
+        new Vec3(0.5f, 5f, -2f),
+        Quat.AngleAxis(float.DegreesToRadians(40f), Vec3.Right)),
     float.DegreesToRadians(75f));
 
 Scene scene = new Scene(sky);
@@ -177,17 +177,17 @@ if (outputDepth)
     imageOut.Save(Path.Combine(outputPath, "depth.bmp"));
 }
 
-if (outputSurface)
+if (outputUv)
 {
     for (uint i = 0; i < width * height; ++i)
     {
-        Vec2 surface = renderer.Surface[i];
+        Vec2 uv = renderer.Uv[i];
         imageOut.Pixels[i] = new Pixel(
-            (byte)(MathF.Abs(surface.X % 1f) * 255f),
-            (byte)(MathF.Abs(surface.Y % 1f) * 255f),
+            (byte)(MathF.Abs(uv.X % 1f) * 255f),
+            (byte)(MathF.Abs(uv.Y % 1f) * 255f),
             0);
     }
-    imageOut.Save(Path.Combine(outputPath, "surface.bmp"));
+    imageOut.Save(Path.Combine(outputPath, "uv.bmp"));
 }
 
 counters.Dump(ref fmt);

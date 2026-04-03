@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 record struct Surface(Color Radiance, ShapeHit? Hit = null, Material? Material = null);
 
-record struct Fragment(Color Radiance, Vec3? Normal, Vec2? Surface, float? Depth);
+record struct Fragment(Color Radiance, Vec3? Normal, Vec2? Uv, float? Depth);
 
 record struct Material(
     Color Color,
@@ -15,23 +15,23 @@ record struct Material(
     Texture? RoughnessTexture = null,
     Texture? NormalTexture = null)
 {
-    public Color SampleColor(Vec2 surface)
+    public Color SampleColor(Vec2 uv)
     {
-        return (ColorTexture?.Sample(surface) ?? Color.White) * Color;
+        return (ColorTexture?.Sample(uv) ?? Color.White) * Color;
     }
 
-    public float SampleRoughness(Vec2 surface)
+    public float SampleRoughness(Vec2 uv)
     {
-        return (RoughnessTexture?.Sample(surface).R ?? 1.0f) * Roughness;
+        return (RoughnessTexture?.Sample(uv).R ?? 1.0f) * Roughness;
     }
 
-    public Vec3 SampleNormal(Vec2 surface, Vec3 geoNorm, Vec4 geoTan)
+    public Vec3 SampleNormal(Vec2 uv, Vec3 geoNorm, Vec4 geoTan)
     {
         if (NormalTexture == null)
             return geoNorm;
         Vec3 tan = geoTan.Xyz;
         Vec3 bitan = geoTan.W * Vec3.Cross(geoNorm, tan);
-        Vec3 norm = NormalTexture.SampleNormal(surface);
+        Vec3 norm = NormalTexture.SampleNormal(uv);
         return (norm.X * tan + norm.Y * bitan + norm.Z * geoNorm).NormalizeOr(geoNorm);
     }
 
@@ -246,7 +246,7 @@ class Scene
 
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
-        Vec2? surface = null;
+        Vec2? uv = null;
         float? depth = null;
 
         for (uint i = 0; i != (bounces + 1); ++i)
@@ -263,11 +263,11 @@ class Scene
             float roughness = 1.0f;
             if (surf.Material is Material material)
             {
-                Vec2 hitSurf = surf.Hit is ShapeHit h ? h.Surface : Vec2.Zero;
-                Color materialColor = material.SampleColor(hitSurf);
+                Vec2 hitUv = surf.Hit is ShapeHit h ? h.Uv : Vec2.Zero;
+                Color materialColor = material.SampleColor(hitUv);
                 Color specularColor = Color.Lerp(Color.White, materialColor, material.Metallic);
                 energy *= Color.Lerp(materialColor, specularColor, 1f - roughness);
-                roughness = material.SampleRoughness(hitSurf);
+                roughness = material.SampleRoughness(hitUv);
             }
 
             if (surf.Hit is ShapeHit hit)
@@ -276,12 +276,12 @@ class Scene
 
                 // Invert the normal for backface hits.
                 Vec3 normHit = Vec3.Dot(hit.Norm, ray.Dir) > 0f ? -hit.Norm : hit.Norm;
-                Vec3 normShading = surf.Material is Material mat ? mat.SampleNormal(hit.Surface, normHit, hit.Tan) : normHit;
+                Vec3 normShading = surf.Material is Material mat ? mat.SampleNormal(hit.Uv, normHit, hit.Tan) : normHit;
 
                 if (isPrimary)
                 {
                     normal = normShading;
-                    surface = hit.Surface;
+                    uv = hit.Uv;
                     depth = hit.Dist;
                 }
                 Vec3 hitPos = ray[hit.Dist] + normHit * 1e-4f;
@@ -331,7 +331,7 @@ class Scene
                 break;
             }
         }
-        return new Fragment(radiance, normal, surface, depth);
+        return new Fragment(radiance, normal, uv, depth);
     }
 
     public void Describe(ref FormatWriter fmt)

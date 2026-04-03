@@ -23,28 +23,28 @@ struct ShapeHit : IShapeHit
     public float Dist { get; }
     public Vec3 Norm;
     public Vec4 Tan; // xyz = tangent direction, w = bitangent handedness (+1/-1).
-    public Vec2 Surface; // aka, UV or TextureCoord.
+    public Vec2 Uv;
 
-    public ShapeHit(float dist, Vec3 norm, Vec4 tan, Vec2 surface)
+    public ShapeHit(float dist, Vec3 norm, Vec4 tan, Vec2 uv)
     {
         Debug.Assert(norm.IsUnit, "ShapeHit normal must be normalized");
         Debug.Assert(tan.Xyz.IsUnit, "ShapeHit tangent must be normalized");
         Dist = dist;
         Norm = norm;
         Tan = tan;
-        Surface = surface;
+        Uv = uv;
     }
 }
 
 struct ShapeHitLean : IShapeHit
 {
     public float Dist { get; }
-    public Vec2 Surface; // aka, UV or TextureCoord.
+    public Vec2 Uv;
 
-    public ShapeHitLean(float dist, Vec2 surface)
+    public ShapeHitLean(float dist, Vec2 uv)
     {
         Dist = dist;
-        Surface = surface;
+        Uv = uv;
     }
 }
 
@@ -58,7 +58,7 @@ static class ShapeExtensions
             Vec3 worldNorm = (trans.Rot * (hit.Norm / trans.Scale)).Normalize();
             Vec3 worldTan = (trans.Rot * hit.Tan.Xyz).Normalize();
             Vec4 hitTan = new Vec4(worldTan, hit.Tan.W);
-            return new ShapeHit(hit.Dist / localRayScale, worldNorm, hitTan, hit.Surface);
+            return new ShapeHit(hit.Dist / localRayScale, worldNorm, hitTan, hit.Uv);
         }
         return null;
     }
@@ -1067,7 +1067,7 @@ struct Box : IShape
         {
             Vec3 norm = Rot * h.Norm;
             Vec4 tan = new Vec4(Rot * h.Tan.Xyz, h.Tan.W);
-            return new ShapeHit(h.Dist, norm, tan, h.Surface);
+            return new ShapeHit(h.Dist, norm, tan, h.Uv);
         }
         return null;
     }
@@ -1221,9 +1221,9 @@ struct Plane : IShape
         Vec3 tangentU = Normal.Perp();
         Vec3 tangentV = Vec3.Cross(Normal, tangentU);
         Vec3 hit = ray[t];
-        Vec2 surface = new Vec2(Vec3.Dot(hit, tangentU), Vec3.Dot(hit, tangentV));
+        Vec2 uv = new Vec2(Vec3.Dot(hit, tangentU), Vec3.Dot(hit, tangentV));
 
-        return new ShapeHit(t, Normal, new Vec4(tangentU, 1f), surface);
+        return new ShapeHit(t, Normal, new Vec4(tangentU, 1f), uv);
     }
 
     public static Plane AtPosition(Vec3 normal, Vec3 position) =>
@@ -1347,10 +1347,10 @@ struct TriangleLean : IShapeLean
         ShapeHitLean leanHit,
         Vec3 normA, Vec3 normB, Vec3 normC,
         Vec4 tanA, Vec4 tanB, Vec4 tanC,
-        Vec2 surfA, Vec2 surfB, Vec2 surfC)
+        Vec2 uvA, Vec2 uvB, Vec2 uvC)
     {
-        float u = leanHit.Surface.X;
-        float v = leanHit.Surface.Y;
+        float u = leanHit.Uv.X;
+        float v = leanHit.Uv.Y;
         float w = 1f - u - v;
 
         Vec3 normInterp = normA * w + normB * u + normC * v;
@@ -1361,9 +1361,9 @@ struct TriangleLean : IShapeLean
         Vec3 tanXyz = (tanInterp.Xyz - Vec3.Dot(tanInterp.Xyz, norm) * norm).NormalizeOr(Vec3.Right);
         Vec4 tan = new Vec4(tanXyz, tanInterp.W >= 0f ? 1f : -1f);
 
-        Vec2 surface = surfA * w + surfB * u + surfC * v;
+        Vec2 uv = uvA * w + uvB * u + uvC * v;
 
-        return new ShapeHit(leanHit.Dist, norm, tan, surface);
+        return new ShapeHit(leanHit.Dist, norm, tan, uv);
     }
 
     public bool IntersectAny(Ray ray)
@@ -1401,7 +1401,7 @@ struct Triangle : IShape
     public TriangleLean Lean;
     public Vec3 NormA, NormB, NormC;
     public Vec4 TanA, TanB, TanC;
-    public Vec2 SurfA, SurfB, SurfC;
+    public Vec2 UvA, UvB, UvC;
 
     public Triangle(Vec3 posA, Vec3 posB, Vec3 posC)
         : this(posA, posB, posC, Vec2.Zero, new Vec2(1, 0), new Vec2(0, 1)) { }
@@ -1413,25 +1413,25 @@ struct Triangle : IShape
 
     public Triangle(
         Vec3 posA, Vec3 posB, Vec3 posC,
-        Vec2 surfA, Vec2 surfB, Vec2 surfC)
+        Vec2 uvA, Vec2 uvB, Vec2 uvC)
     {
         Lean = new TriangleLean(posA, posB, posC);
         NormA = NormB = NormC = Lean.Normal;
-        TanA = TanB = TanC = ComputeTangent(posA, posB, posC, surfA, surfB, surfC, Lean.Normal);
-        SurfA = surfA; SurfB = surfB; SurfC = surfC;
+        TanA = TanB = TanC = ComputeTangent(posA, posB, posC, uvA, uvB, uvC, Lean.Normal);
+        UvA = uvA; UvB = uvB; UvC = uvC;
     }
 
     public Triangle(
         Vec3 posA, Vec3 posB, Vec3 posC,
         Vec3 normA, Vec3 normB, Vec3 normC,
-        Vec2 surfA, Vec2 surfB, Vec2 surfC)
+        Vec2 uvA, Vec2 uvB, Vec2 uvC)
     {
         Lean = new TriangleLean(posA, posB, posC);
         NormA = normA; NormB = normB; NormC = normC;
-        SurfA = surfA; SurfB = surfB; SurfC = surfC;
+        UvA = uvA; UvB = uvB; UvC = uvC;
 
         Vec3 avgNorm = ((normA + normB + normC) / 3f).NormalizeOr(Lean.Normal);
-        TanA = TanB = TanC = ComputeTangent(posA, posB, posC, surfA, surfB, surfC, avgNorm);
+        TanA = TanB = TanC = ComputeTangent(posA, posB, posC, uvA, uvB, uvC, avgNorm);
     }
 
     public Vec3 PosA => Lean.PosA;
@@ -1445,7 +1445,7 @@ struct Triangle : IShape
     public bool Overlaps(AABox box) => Lean.Overlaps(box);
 
     public ShapeHit Inflate(ShapeHitLean leanHit) =>
-        Lean.Inflate(leanHit, NormA, NormB, NormC, TanA, TanB, TanC, SurfA, SurfB, SurfC);
+        Lean.Inflate(leanHit, NormA, NormB, NormC, TanA, TanB, TanC, UvA, UvB, UvC);
 
     public ShapeHit? Intersect(Ray ray)
     {
@@ -1458,14 +1458,14 @@ struct Triangle : IShape
 
     public static Vec4 ComputeTangent(
         Vec3 posA, Vec3 posB, Vec3 posC,
-        Vec2 surfA, Vec2 surfB, Vec2 surfC,
+        Vec2 uvA, Vec2 uvB, Vec2 uvC,
         Vec3 norm)
     {
         Vec3 posDelta1 = posB - posA;
         Vec3 posDelta2 = posC - posA;
-        Vec2 surfDelta1 = surfB - surfA;
-        Vec2 surfDelta2 = surfC - surfA;
-        float f = surfDelta1.X * surfDelta2.Y - surfDelta2.X * surfDelta1.Y;
+        Vec2 uvDelta1 = uvB - uvA;
+        Vec2 uvDelta2 = uvC - uvA;
+        float f = uvDelta1.X * uvDelta2.Y - uvDelta2.X * uvDelta1.Y;
 
         Vec3 tangent;
         Vec3 bitangent;
@@ -1476,8 +1476,8 @@ struct Triangle : IShape
         }
 
         float invF = 1f / f;
-        tangent = (surfDelta2.Y * posDelta1 - surfDelta1.Y * posDelta2) * invF;
-        bitangent = (-surfDelta2.X * posDelta1 + surfDelta1.X * posDelta2) * invF;
+        tangent = (uvDelta2.Y * posDelta1 - uvDelta1.Y * posDelta2) * invF;
+        bitangent = (-uvDelta2.X * posDelta1 + uvDelta1.X * posDelta2) * invF;
 
         tangent = (tangent - Vec3.Dot(tangent, norm) * norm).NormalizeOr(Vec3.Right);
         float w = Vec3.Dot(Vec3.Cross(norm, tangent), bitangent) < 0f ? -1f : 1f;

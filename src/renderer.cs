@@ -9,7 +9,7 @@ class Renderer
     public View View { get; }
     public Color[] Radiance { get; }
     public Vec3[] Normals { get; }
-    public Vec2[] Surface { get; }
+    public Vec2[] Uv { get; }
     public float[] Depth { get; }
 
     private Scene _scene;
@@ -61,7 +61,7 @@ class Renderer
 
         Radiance = new Color[Width * Height];
         Normals = new Vec3[Width * Height];
-        Surface = new Vec2[Width * Height];
+        Uv = new Vec2[Width * Height];
         Depth = new float[Width * Height];
 
         // Start the worker threads.
@@ -121,7 +121,7 @@ class Renderer
 
                 Radiance[y * Width + x] = frag.Radiance;
                 Normals[y * Width + x] = frag.Normal ?? Vec3.Zero;
-                Surface[y * Width + x] = frag.Surface ?? Vec2.Zero;
+                Uv[y * Width + x] = frag.Uv ?? Vec2.Zero;
                 Depth[y * Width + x] = frag.Depth ?? float.PositiveInfinity;
             }
         }
@@ -138,7 +138,7 @@ class Renderer
         Vec3 normalFallback = Vec3.Zero;
         uint normalCount = 0;
 
-        Vec2? surface = null; // aka 'texture coordinates'.
+        Vec2? uv = null;
 
         float depthSum = 0f;
         uint depthCount = 0;
@@ -163,12 +163,12 @@ class Renderer
                 depthSum += d;
                 depthCount++;
             }
-            surface ??= frag.Surface;
+            uv ??= frag.Uv;
         }
 
         Color radiance = radianceSum / _samples;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
         float? depth = depthCount > 0 ? depthSum / depthCount : null;
-        return new Fragment(radiance, normal, surface, depth);
+        return new Fragment(radiance, normal, uv, depth);
     }
 }
