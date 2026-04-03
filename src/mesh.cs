@@ -56,6 +56,32 @@ class Mesh : IShape
         return _bvh.IntersectAny(ray, _counters!);
     }
 
+    public void Intersect(ReadOnlySpan<Ray> rays, Span<ShapeHit?> hits)
+    {
+        _counters.Bump(Counters.Type.MeshIntersect, rays.Length);
+
+        Span<(ShapeHitLean Hit, int Index)?> leanHits = stackalloc (ShapeHitLean, int)?[rays.Length];
+        _bvh.Intersect(rays, leanHits, _counters!);
+
+        for (int r = 0; r != rays.Length; ++r)
+        {
+            if (leanHits[r] is (ShapeHitLean leanHit, int idx))
+            {
+                hits[r] = _triangles[idx].Inflate(leanHit, _attributes[idx].NormalA, _attributes[idx].NormalB, _attributes[idx].NormalC);
+            }
+            else
+            {
+                hits[r] = null;
+            }
+        }
+    }
+
+    public void IntersectAny(ReadOnlySpan<Ray> rays, Span<bool> hits)
+    {
+        _counters.Bump(Counters.Type.MeshIntersectAny, rays.Length);
+        _bvh.IntersectAny(rays, hits, _counters!);
+    }
+
     public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue) =>
         _bvh.OverlayBounds(overlay, trans, maxDepth);
 

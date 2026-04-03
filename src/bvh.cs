@@ -277,7 +277,7 @@ class Bvh<T, THit> where T : IShape<THit> where THit : unmanaged, IShapeHit
                 // Parent node: descend children if any ray hits their bounds.
                 counterData[(int)Counters.Type.BvhIntersectNode] += 2;
                 bool anyA = false, anyB = false;
-                for (int r = 0; r < rays.Length; ++r)
+                for (int r = 0; r != rays.Length; ++r)
                 {
                     if (!anyA)
                         anyA |= _nodes[node.Child].Bounds.IntersectDist(rays[r]) is float tA && tA < bestDists[r];
@@ -299,7 +299,7 @@ class Bvh<T, THit> where T : IShape<THit> where THit : unmanaged, IShapeHit
                 {
                     int idx = _items[node.Child + i];
                     _shapes[idx].Intersect(rays, shapeHits);
-                    for (int r = 0; r < rays.Length; ++r)
+                    for (int r = 0; r != rays.Length; ++r)
                     {
                         if (shapeHits[r] is THit hit && hit.Dist < bestDists[r])
                         {
@@ -336,7 +336,7 @@ class Bvh<T, THit> where T : IShape<THit> where THit : unmanaged, IShapeHit
                 // Parent node: descend children if any active ray hits their bounds.
                 counterData[(int)Counters.Type.BvhIntersectNode] += 2;
                 bool anyA = false, anyB = false;
-                for (int r = 0; r < rays.Length; ++r)
+                for (int r = 0; r != rays.Length; ++r)
                 {
                     if (hits[r])
                         continue;
@@ -360,7 +360,7 @@ class Bvh<T, THit> where T : IShape<THit> where THit : unmanaged, IShapeHit
                 {
                     int idx = _items[node.Child + i];
                     _shapes[idx].IntersectAny(rays, shapeHits);
-                    for (int r = 0; r < rays.Length; ++r)
+                    for (int r = 0; r != rays.Length; ++r)
                     {
                         if (!hits[r] && shapeHits[r])
                         {
