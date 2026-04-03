@@ -1199,15 +1199,18 @@ struct Triangle : IShape
         if (MathF.Abs(det) <= 1e-9f)
             return null; // Parallel.
 
+        const float thresholdMin = -1e-6f;
+        const float thresholdMax = 1f + 1e-6f;
+
         float invDet = 1f / det;
         Vec3 ao = ray.Origin - PosA;
         float u = Vec3.Dot(ao, h) * invDet;
-        if (u < 0f || u > 1f)
+        if (u < thresholdMin || u > thresholdMax)
             return null;
 
         Vec3 q = Vec3.Cross(ao, PosAToB);
         float v = Vec3.Dot(ray.Dir, q) * invDet;
-        if (v < 0f || u + v > 1f)
+        if (v < thresholdMin || u + v > thresholdMax)
             return null;
 
         float t = Vec3.Dot(PosAToC, q) * invDet;
@@ -1229,15 +1232,18 @@ struct Triangle : IShape
         if (MathF.Abs(det) <= 1e-9f)
             return false; // Parallel.
 
+        const float thresholdMin = -1e-6f;
+        const float thresholdMax = 1f + 1e-6f;
+
         float invDet = 1f / det;
         Vec3 ao = ray.Origin - PosA;
         float u = Vec3.Dot(ao, h) * invDet;
-        if (u < 0f || u > 1f)
+        if (u < thresholdMin || u > thresholdMax)
             return false;
 
         Vec3 q = Vec3.Cross(ao, PosAToB);
         float v = Vec3.Dot(ray.Dir, q) * invDet;
-        if (v < 0f || u + v > 1f)
+        if (v < thresholdMin || u + v > thresholdMax)
             return false;
 
         return Vec3.Dot(PosAToC, q) * invDet >= 0f;
