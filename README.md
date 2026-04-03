@@ -2,7 +2,7 @@
 
 Toy path-tracer written in C#.
 
-## Test Assets
+## Assets
 
 The `assets/` directory contains third-party meshes used for development and testing.
 See [assets/ATTRIBUTION.md](assets/ATTRIBUTION.md) for full attribution.
