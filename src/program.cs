@@ -25,8 +25,8 @@ const uint blockSize = 32;
 const uint samples = 64;
 const uint bounces = 8;
 const float denoiseSigmaSpace = 4.0f;
-const float denoiseSigmaColor = 0.1f;
-const float denoiseSigmaNormal = 0.25f;
+const float denoiseSigmaColor = 0.025f;
+const float denoiseSigmaNormal = 0.05f;
 const float denoiseSigmaDepth = 1.0f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true, outputSurface = true, outputDepth = true;
@@ -58,12 +58,15 @@ Scene scene = new Scene(sky);
 using (counters.TimeScope(Counters.Type.TimeSetup))
 {
     // Floor.
-    Texture floorTexture = Texture.Checker(new Color(0.05f), new Color(0.4f), 16);
+    Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
+    Texture floorRough = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_rough.tga"));
+    Texture floorNormal = Texture.FromNormal(Image.Load("assets/cobblestone/cobblestone_nor.tga"));
+    floorColor.Tiling = floorRough.Tiling = floorNormal.Tiling = new Vec2(6f, 3f);
     scene.AddObject(new Object(
         "floor",
         Transform.Identity(),
-        new Material(Color.White, 1.0f, ColorTexture: floorTexture),
-        new AABox(new Vec3(-10f, -0.2f, -2f), new Vec3(10f, 0f, 20f))));
+        new Material(Color.White, 1.0f, ColorTexture: floorColor, RoughnessTexture: floorRough, NormalTexture: floorNormal),
+        new AABox(new Vec3(-30f, -0.2f, -2f), new Vec3(30f, 0f, 30f))));
 
     // Dragon.
     {
