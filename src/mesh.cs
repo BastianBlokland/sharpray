@@ -39,8 +39,8 @@ class Mesh : IShape
 
     public ShapeHit? Intersect(Ray ray)
     {
-        _counters?.Bump(Counters.Type.MeshIntersect);
-        if (_bvh.Intersect(ray, _counters) is not (ShapeHitLean leanHit, int idx))
+        _counters.Bump(Counters.Type.MeshIntersect);
+        if (_bvh.Intersect(ray, _counters!) is not (ShapeHitLean leanHit, int idx))
             return null;
 
         return _triangles[idx].Inflate(
@@ -52,8 +52,8 @@ class Mesh : IShape
 
     public bool IntersectAny(Ray ray)
     {
-        _counters?.Bump(Counters.Type.MeshIntersectAny);
-        return _bvh.IntersectAny(ray, _counters);
+        _counters.Bump(Counters.Type.MeshIntersectAny);
+        return _bvh.IntersectAny(ray, _counters!);
     }
 
     public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue) =>
