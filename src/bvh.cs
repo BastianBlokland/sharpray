@@ -15,7 +15,7 @@ record struct BvhStats(
 
 class Bvh<T> where T : IShape
 {
-    private const int SplitBinCount = 8;
+    private readonly int _splitBinCount;
 
     /**
      * There are two types of BVH nodes:
@@ -55,10 +55,11 @@ class Bvh<T> where T : IShape
     private readonly float _sahCostTraverse;
     private readonly float _sahCostIntersect;
 
-    public Bvh(IReadOnlyList<T> shapes, float sahCostTraverse = 1f, float sahCostIntersect = 1f)
+    public Bvh(IReadOnlyList<T> shapes, float sahCostTraverse = 1f, float sahCostIntersect = 1f, int splitBinCount = 8)
     {
         _sahCostTraverse = sahCostTraverse;
         _sahCostIntersect = sahCostIntersect;
+        _splitBinCount = splitBinCount;
         _shapes = shapes;
         _nodes = new Node[Math.Max(shapes.Count * 2, 1)];
         _items = new int[shapes.Count];
@@ -313,7 +314,7 @@ class Bvh<T> where T : IShape
 
     /**
      * Pick a split plane using the Surface Area Heuristic (SAH) with binned evaluation.
-     * Divides centroid space into SplitBinCount bins per axis, evaluates all SplitBinCount-1 split
+     * Divides centroid space into _splitBinCount bins per axis, evaluates all _splitBinCount-1 split
      * positions on all 3 axes, and returns the one with the lowest SAH cost.
      * Returns null if keeping the node as a leaf is cheaper than any split.
      */
@@ -332,10 +333,10 @@ class Bvh<T> where T : IShape
         int bestAxis = -1;
         float bestPos = 0f;
 
-        Span<AABox> binBounds = stackalloc AABox[SplitBinCount];
-        Span<int> binCount = stackalloc int[SplitBinCount];
-        Span<float> leftSa = stackalloc float[SplitBinCount - 1];
-        Span<int> leftCount = stackalloc int[SplitBinCount - 1];
+        Span<AABox> binBounds = stackalloc AABox[_splitBinCount];
+        Span<int> binCount = stackalloc int[_splitBinCount];
+        Span<float> leftSa = stackalloc float[_splitBinCount - 1];
+        Span<int> leftCount = stackalloc int[_splitBinCount - 1];
 
         for (int axis = 0; axis != 3; ++axis)
         {
@@ -345,16 +346,16 @@ class Bvh<T> where T : IShape
                 continue; // All centroids are equal on this axis; skip.
 
             // Assign each shape to a bin by its centroid position.
-            for (int b = 0; b != SplitBinCount; ++b)
+            for (int b = 0; b != _splitBinCount; ++b)
             {
                 binBounds[b] = AABox.Inverted();
                 binCount[b] = 0;
             }
-            float scale = SplitBinCount / (axisCenterMax - axisCenterMin);
+            float scale = _splitBinCount / (axisCenterMax - axisCenterMin);
             for (int i = 0; i != shapeCount; ++i)
             {
                 AABox shapeBounds = _shapes[_items[shapeBegin + i]].Bounds();
-                int bin = Math.Min((int)((shapeBounds.Center[axis] - axisCenterMin) * scale), SplitBinCount - 1);
+                int bin = Math.Min((int)((shapeBounds.Center[axis] - axisCenterMin) * scale), _splitBinCount - 1);
                 binBounds[bin].Encapsulate(shapeBounds);
                 ++binCount[bin];
             }
@@ -362,7 +363,7 @@ class Bvh<T> where T : IShape
             // Left-to-right prefix sweep: accumulate bounds and counts for the left partition.
             AABox binLeftBounds = AABox.Inverted();
             int binLeftCount = 0;
-            for (int b = 0; b != (SplitBinCount - 1); ++b)
+            for (int b = 0; b != (_splitBinCount - 1); ++b)
             {
                 binLeftBounds.Encapsulate(binBounds[b]);
                 binLeftCount += binCount[b];
@@ -374,7 +375,7 @@ class Bvh<T> where T : IShape
             // Pick the best split based on the combined left and right SAH cost.
             AABox binRightBounds = AABox.Inverted();
             int binRightCount = 0;
-            for (int b = SplitBinCount - 1; b != 0; --b)
+            for (int b = _splitBinCount - 1; b != 0; --b)
             {
                 binRightBounds.Encapsulate(binBounds[b]);
                 binRightCount += binCount[b];
@@ -385,7 +386,7 @@ class Bvh<T> where T : IShape
                 {
                     bestCost = cost;
                     bestAxis = axis;
-                    bestPos = axisCenterMin + b * (axisCenterMax - axisCenterMin) / SplitBinCount;
+                    bestPos = axisCenterMin + b * (axisCenterMax - axisCenterMin) / _splitBinCount;
                 }
             }
         }

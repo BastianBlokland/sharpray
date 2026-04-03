@@ -162,7 +162,9 @@ class Scene
         }
         using (counters?.TimeScope(Counters.Type.TimeSceneBvhBuild))
         {
-            _bvh = new Bvh<Object>(_objects, sahCostIntersect: 10f); // sahCostIntersect high as object tests are expensive.
+            const float sahCostIntersect = 10f; // High as object tests are expensive.
+            const int splitBinCount = 32; // Evaluate many splits for the Scene bvh.
+            _bvh = new Bvh<Object>(_objects, sahCostIntersect: sahCostIntersect, splitBinCount: splitBinCount);
         }
         if (counters != null)
         {
