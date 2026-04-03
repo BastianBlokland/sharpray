@@ -171,7 +171,7 @@ static class ObjLoader
             {
                 objMat = material ?? new Material(Color.White, 1.0f);
             }
-            Mesh mesh = new Mesh(triangles.ToArray(), counters);
+            Mesh mesh = new Mesh(triangles, counters);
 
             scene.AddObject(new Object(name, objTrans, objMat, mesh));
 

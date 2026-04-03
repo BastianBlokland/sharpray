@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 class Mesh : IShape
 {
@@ -9,11 +10,11 @@ class Mesh : IShape
     private Bvh<TriangleLean, ShapeHitLean> _bvh;
     private Counters? _counters;
 
-    public Mesh(Triangle[] triangles, Counters? counters = null)
+    public Mesh(IReadOnlyList<Triangle> triangles, Counters? counters = null)
     {
-        _triangles = new TriangleLean[triangles.Length];
-        _attributes = new TriangleAttributes[triangles.Length];
-        for (int i = 0; i < triangles.Length; i++)
+        _triangles = new TriangleLean[triangles.Count];
+        _attributes = new TriangleAttributes[triangles.Count];
+        for (int i = 0; i < triangles.Count; i++)
         {
             _triangles[i] = triangles[i].Lean;
             _attributes[i] = new TriangleAttributes
@@ -30,7 +31,7 @@ class Mesh : IShape
         }
         _counters = counters;
 
-        counters?.Bump(Counters.Type.MeshTriangle, triangles.Length);
+        counters?.Bump(Counters.Type.MeshTriangle, triangles.Count);
     }
 
     public AABox Bounds() => _bvh.Bounds;
