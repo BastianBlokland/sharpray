@@ -41,6 +41,8 @@ struct Object : IShape
     public bool Overlaps(AABox box) => _boundsRotated.Overlaps(box);
     public ShapeHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
     public bool IntersectAny(Ray ray) => Shape.IntersectAny(ray, Trans);
+    public void Intersect(ReadOnlySpan<Ray> rays, Span<ShapeHit?> hits) => Shape.Intersect(rays, hits, Trans);
+    public void IntersectAny(ReadOnlySpan<Ray> rays, Span<bool> hits) => Shape.IntersectAny(rays, hits, Trans);
 
     public void Describe(ref FormatWriter fmt)
     {

@@ -10,9 +10,25 @@ interface IShapeHit
 interface IShape<THit> where THit : struct, IShapeHit
 {
     AABox Bounds();
+
     bool Overlaps(AABox box);
+
     THit? Intersect(Ray ray);
     bool IntersectAny(Ray ray) => Intersect(ray) is not null;
+
+    void Intersect(ReadOnlySpan<Ray> rays, Span<THit?> hits)
+    {
+        Debug.Assert(rays.Length == hits.Length);
+        for (int i = 0; i < rays.Length; ++i)
+            hits[i] = Intersect(rays[i]);
+    }
+
+    void IntersectAny(ReadOnlySpan<Ray> rays, Span<bool> hits)
+    {
+        Debug.Assert(rays.Length == hits.Length);
+        for (int i = 0; i < rays.Length; ++i)
+            hits[i] = IntersectAny(rays[i]);
+    }
 }
 
 interface IShape : IShape<ShapeHit> { }
@@ -62,6 +78,20 @@ static class ShapeExtensions
     {
         var (localRay, _) = trans.TransformRayInv(ray);
         return shape.IntersectAny(localRay);
+    }
+
+    public static void Intersect(this IShape shape, ReadOnlySpan<Ray> rays, Span<ShapeHit?> hits, Transform trans)
+    {
+        Debug.Assert(rays.Length == hits.Length);
+        for (int i = 0; i < rays.Length; ++i)
+            hits[i] = shape.Intersect(rays[i], trans);
+    }
+
+    public static void IntersectAny(this IShape shape, ReadOnlySpan<Ray> rays, Span<bool> hits, Transform trans)
+    {
+        Debug.Assert(rays.Length == hits.Length);
+        for (int i = 0; i < rays.Length; ++i)
+            hits[i] = shape.IntersectAny(rays[i], trans);
     }
 }
 
