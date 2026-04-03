@@ -5,28 +5,30 @@ enum TextureFilter { Bilinear, Point }
 class Texture
 {
     public readonly uint Width, Height;
-    public readonly TextureFilter Filter;
+
+    public TextureFilter Filter;
+    public Vec2 Tiling;
 
     private readonly Color[] _texels;
 
     private Texture(
         Color[] pixels,
         uint width,
-        uint height,
-        TextureFilter filter = TextureFilter.Bilinear)
+        uint height)
     {
         Width = width;
         Height = height;
-        Filter = filter;
+        Filter = TextureFilter.Bilinear;
+        Tiling = Vec2.One;
 
         _texels = pixels;
     }
 
     public Color Sample(Vec2 coord)
     {
-        // Repeat wrap.
-        float u = coord.X - MathF.Floor(coord.X);
-        float v = coord.Y - MathF.Floor(coord.Y);
+        // Repeat wrap with tiling.
+        float u = coord.X * Tiling.X; u -= MathF.Floor(u);
+        float v = coord.Y * Tiling.Y; v -= MathF.Floor(v);
 
         switch (Filter)
         {
@@ -60,23 +62,25 @@ class Texture
         return new Vec3(c.R * 2f - 1f, c.G * 2f - 1f, c.B * 2f - 1f).NormalizeOr(Vec3.Up);
     }
 
-    public static Texture FromSrgb(Image image, TextureFilter filter = TextureFilter.Bilinear)
+    public static Texture FromSrgb(Image image)
     {
         Color[] texels = new Color[image.Pixels.Length];
         for (int i = 0; i != texels.Length; ++i)
             texels[i] = Color.FromPixel(image.Pixels[i]);
-        return new Texture(texels, image.Width, image.Height, filter);
+        return new Texture(texels, image.Width, image.Height);
     }
 
-    public static Texture FromNormal(Image image, TextureFilter filter = TextureFilter.Bilinear)
+    public static Texture FromLinear(Image image)
     {
         Color[] texels = new Color[image.Pixels.Length];
         for (int i = 0; i != texels.Length; ++i)
             texels[i] = Color.FromPixelLinear(image.Pixels[i]);
-        return new Texture(texels, image.Width, image.Height, filter);
+        return new Texture(texels, image.Width, image.Height);
     }
 
-    public static Texture Checker(Color a, Color b, uint size = 8, TextureFilter filter = TextureFilter.Point)
+    public static Texture FromNormal(Image image) => FromLinear(image);
+
+    public static Texture Checker(Color a, Color b, uint size = 8)
     {
         Color[] texels = new Color[size * size];
         for (uint y = 0; y != size; ++y)
@@ -86,6 +90,8 @@ class Texture
                 texels[y * size + x] = ((x + y) % 2 == 0) ? a : b;
             }
         }
-        return new Texture(texels, size, size, filter);
+        Texture res = new Texture(texels, size, size);
+        res.Filter = TextureFilter.Point;
+        return res;
     }
 }
