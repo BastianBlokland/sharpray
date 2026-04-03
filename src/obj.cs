@@ -197,7 +197,8 @@ static class ObjLoader
             }
             else if (word.SequenceEqual("vt"))
             {
-                surfaces.Add(ReadVec2(lexer));
+                Vec2 uv = ReadVec2(lexer);
+                surfaces.Add(new Vec2(uv.X, 1f - uv.Y)); // Flip V: OBJ is bottom-left, textures are top-left.
                 lexer.SkipLine();
             }
             else if (word.SequenceEqual("vn"))
