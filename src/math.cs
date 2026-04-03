@@ -1342,7 +1342,8 @@ struct Triangle : IShape
             return null;
         float uBary = leanHit.Surface.X, vBary = leanHit.Surface.Y;
         Vec3 interp = NormalA * (1f - uBary - vBary) + NormalB * uBary + NormalC * vBary;
-        return new ShapeHit(leanHit.Dist, interp.NormalizeOr(Lean.Normal), leanHit.Surface);
+        Vec3 norm = interp.MagnitudeSqr() >= 1e-12f ? interp.Normalize() : Lean.Normal;
+        return new ShapeHit(leanHit.Dist, norm, leanHit.Surface);
     }
 
     public bool IntersectAny(Ray ray) => Lean.IntersectAny(ray);
