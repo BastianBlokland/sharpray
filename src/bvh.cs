@@ -162,7 +162,7 @@ class Bvh<T> where T : IShape
         return false;
     }
 
-    public (RayHit Hit, int Index)? Intersect(Ray ray, Counters? counters = null)
+    public (ShapeHit Hit, int Index)? Intersect(Ray ray, Counters? counters = null)
     {
         if (_nodeCount == 0)
             return null;
@@ -172,7 +172,7 @@ class Bvh<T> where T : IShape
         Span<(int Idx, float T)> queue = stackalloc (int, float)[128];
         int queueCount = 1; // Insert root node (index is already zero).
 
-        (RayHit Hit, int Index)? best = null;
+        (ShapeHit Hit, int Index)? best = null;
         float bestDist = float.PositiveInfinity;
 
         while (queueCount > 0)
@@ -204,7 +204,7 @@ class Bvh<T> where T : IShape
                 for (int i = 0; i != node.ShapeCount; ++i)
                 {
                     int idx = _items[node.Child + i];
-                    if (_shapes[idx].Intersect(ray) is RayHit hit && hit.Dist < bestDist)
+                    if (_shapes[idx].Intersect(ray) is ShapeHit hit && hit.Dist < bestDist)
                     {
                         bestDist = hit.Dist;
                         best = (hit, idx);

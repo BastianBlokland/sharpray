@@ -21,7 +21,7 @@ class Mesh : IShape
     public AABox Bounds() => _bvh.Bounds;
     public bool Overlaps(AABox box) => _bvh.Overlaps(box, _counters);
 
-    public RayHit? Intersect(Ray ray)
+    public ShapeHit? Intersect(Ray ray)
     {
         _counters?.Bump(Counters.Type.MeshIntersect);
         return _bvh.Intersect(ray, _counters)?.Hit;

@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-record struct Surface(Color Radiance, RayHit? Hit = null, Material? Material = null);
+record struct Surface(Color Radiance, ShapeHit? Hit = null, Material? Material = null);
 
 record struct Fragment(Color Radiance, Vec3? Normal, float? Depth);
 
@@ -39,7 +39,7 @@ struct Object : IShape
 
     public AABox Bounds() => _bounds;
     public bool Overlaps(AABox box) => _boundsRotated.Overlaps(box);
-    public RayHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
+    public ShapeHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
     public bool IntersectAny(Ray ray) => Shape.IntersectAny(ray, Trans);
 
     public void Describe(ref FormatWriter fmt)
@@ -201,7 +201,7 @@ class Scene
             throw new InvalidOperationException("Scene not built");
         counters.Bump(Counters.Type.SceneTrace);
 
-        if (_bvh!.Intersect(ray, counters) is (RayHit hit, int idx))
+        if (_bvh!.Intersect(ray, counters) is (ShapeHit hit, int idx))
         {
             Material mat = _objects[idx].Material;
             return new Surface(mat.Radiance, hit, mat);
@@ -240,7 +240,7 @@ class Scene
                 roughness = material.Roughness;
             }
 
-            if (surf.Hit is RayHit hit)
+            if (surf.Hit is ShapeHit hit)
             {
                 counters.Bump(Counters.Type.SampleHit);
 
