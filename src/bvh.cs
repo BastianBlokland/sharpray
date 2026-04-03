@@ -13,7 +13,7 @@ record struct BvhStats(
     float SahCost // Surface area heuristic, estimate cost of things to test (boxes and shapes) for a random ray.
 );
 
-class Bvh<T> where T : IShape
+class Bvh<T, THit> where T : IShape<THit> where THit : struct, IShapeHit
 {
     private readonly int _splitBinCount;
 
@@ -162,7 +162,7 @@ class Bvh<T> where T : IShape
         return false;
     }
 
-    public (ShapeHit Hit, int Index)? Intersect(Ray ray, Counters? counters = null)
+    public (THit Hit, int Index)? Intersect(Ray ray, Counters? counters = null)
     {
         if (_nodeCount == 0)
             return null;
@@ -172,7 +172,7 @@ class Bvh<T> where T : IShape
         Span<(int Idx, float T)> queue = stackalloc (int, float)[128];
         int queueCount = 1; // Insert root node (index is already zero).
 
-        (ShapeHit Hit, int Index)? best = null;
+        (THit Hit, int Index)? best = null;
         float bestDist = float.PositiveInfinity;
 
         while (queueCount > 0)
@@ -204,7 +204,7 @@ class Bvh<T> where T : IShape
                 for (int i = 0; i != node.ShapeCount; ++i)
                 {
                     int idx = _items[node.Child + i];
-                    if (_shapes[idx].Intersect(ray) is ShapeHit hit && hit.Dist < bestDist)
+                    if (_shapes[idx].Intersect(ray) is THit hit && hit.Dist < bestDist)
                     {
                         bestDist = hit.Dist;
                         best = (hit, idx);

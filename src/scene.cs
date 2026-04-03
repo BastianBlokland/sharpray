@@ -145,7 +145,7 @@ class Scene
     private readonly object _lock = new object();
     private Sky _sky;
     private bool _built;
-    private Bvh<Object>? _bvh;
+    private Bvh<Object, ShapeHit>? _bvh;
 
     public Scene(Sky sky)
     {
@@ -164,7 +164,7 @@ class Scene
         {
             const float sahCostIntersect = 10f; // High as object tests are expensive.
             const int splitBinCount = 32; // Evaluate many splits for the Scene bvh.
-            _bvh = new Bvh<Object>(_objects, sahCostIntersect: sahCostIntersect, splitBinCount: splitBinCount);
+            _bvh = new Bvh<Object, ShapeHit>(_objects, sahCostIntersect: sahCostIntersect, splitBinCount: splitBinCount);
         }
         if (counters != null)
         {

@@ -3,15 +3,22 @@ using System;
 class Mesh : IShape
 {
     private Triangle[] _triangles;
-    private Bvh<Triangle> _bvh;
+    private TriangleLean[] _trianglesLean;
+    private Bvh<TriangleLean, ShapeHitLean> _bvh;
     private Counters? _counters;
 
     public Mesh(Triangle[] triangles, Counters? counters = null)
     {
         _triangles = triangles;
+        _trianglesLean = new TriangleLean[triangles.Length];
+        for (int i = 0; i < triangles.Length; i++)
+        {
+            _trianglesLean[i] = triangles[i].Lean;
+        }
         using (counters?.TimeScope(Counters.Type.TimeMeshBvhBuild))
         {
-            _bvh = new Bvh<Triangle>(_triangles, sahCostIntersect: 0.5f); // sahCostIntersect low as the triangle test is cheap.
+            const float sahCostIntersect = 0.5f; // sahCostIntersect low as the triangle test is cheap.
+            _bvh = new Bvh<TriangleLean, ShapeHitLean>(_trianglesLean, sahCostIntersect: sahCostIntersect);
         }
         _counters = counters;
 
@@ -24,7 +31,9 @@ class Mesh : IShape
     public ShapeHit? Intersect(Ray ray)
     {
         _counters?.Bump(Counters.Type.MeshIntersect);
-        return _bvh.Intersect(ray, _counters)?.Hit;
+        if (_bvh.Intersect(ray, _counters) is not (ShapeHitLean leanHit, int idx))
+            return null;
+        return _triangles[idx].Inflate(leanHit);
     }
 
     public bool IntersectAny(Ray ray)
