@@ -264,9 +264,9 @@ class Scene
             if (surf.Material is Material material)
             {
                 Vec2 hitUv = surf.Hit is ShapeHit h ? h.Uv : Vec2.Zero;
-                Color materialColor = material.SampleColor(hitUv);
-                Color specularColor = Color.Lerp(Color.White, materialColor, material.Metallic);
-                energy *= Color.Lerp(materialColor, specularColor, 1f - roughness);
+                Color matColor = material.SampleColor(hitUv);
+                Color specColor = Color.Lerp(Color.White, matColor, material.Metallic);
+                energy *= Color.Lerp(matColor, specColor, 1f - roughness);
                 roughness = material.SampleRoughness(hitUv);
             }
 
