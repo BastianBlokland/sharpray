@@ -223,19 +223,31 @@ class Image
 
         if (colorMapType != 0)
             throw new Exception("TGA: Color-mapped images not supported");
-        if (imageType != 2)
-            throw new Exception("TGA: Only uncompressed TrueColor images supported (no RLE)");
-        if (bitsPerPixel != 24)
-            throw new Exception($"TGA: Only 24-bit images supported, got {bitsPerPixel}-bit");
+        if (imageType != 2 && imageType != 3)
+            throw new Exception($"TGA: Unsupported image type {imageType} (only uncompressed TrueColor and Grayscale supported)");
+        if (imageType == 2 && bitsPerPixel != 24)
+            throw new Exception($"TGA: Only 24-bit TrueColor images supported, got {bitsPerPixel}-bit");
+        if (imageType == 3 && bitsPerPixel != 8)
+            throw new Exception($"TGA: Only 8-bit Grayscale images supported, got {bitsPerPixel}-bit");
 
         uint pixelCount = width * height;
         Pixel[] pixels = new Pixel[pixelCount];
-        for (uint i = 0; i != pixelCount; ++i)
+        if (imageType == 3)
         {
-            byte b = reader.ReadByte();
-            byte g = reader.ReadByte();
-            byte r = reader.ReadByte();
-            pixels[i] = new Pixel(r, g, b);
+            for (uint i = 0; i != pixelCount; ++i)
+            {
+                pixels[i] = new Pixel(reader.ReadByte());
+            }
+        }
+        else
+        {
+            for (uint i = 0; i != pixelCount; ++i)
+            {
+                byte b = reader.ReadByte();
+                byte g = reader.ReadByte();
+                byte r = reader.ReadByte();
+                pixels[i] = new Pixel(r, g, b);
+            }
         }
 
         Image image = new Image(width, height, pixels);
