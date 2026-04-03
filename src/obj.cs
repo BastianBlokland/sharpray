@@ -131,11 +131,11 @@ static class ObjLoader
         Scene scene,
         Transform? transform = null,
         Material? material = null,
-        Counters? counters = null)
+        Counters counters)
     {
         using var stream = File.OpenRead(path);
         using var reader = new StreamReader(stream, bufferSize: 65536);
-        using (counters?.TimeScope(Counters.Type.TimeObjLoad))
+        using (counters.TimeScope(Counters.Type.TimeObjLoad))
         {
             Parse(new ObjLexer(reader), path, scene, transform, material, counters);
         }
@@ -147,7 +147,7 @@ static class ObjLoader
         Scene scene,
         Transform? transform,
         Material? material,
-        Counters? counters)
+        Counters counters)
     {
         var positions = new List<Vec3>();
         var normals = new List<Vec3>();

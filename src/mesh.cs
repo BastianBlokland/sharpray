@@ -8,9 +8,9 @@ class Mesh : IShape
     private TriangleLean[] _triangles;
     private TriangleAttributes[] _attributes;
     private Bvh<TriangleLean, ShapeHitLean> _bvh;
-    private Counters? _counters;
+    private Counters _counters;
 
-    public Mesh(IReadOnlyList<Triangle> triangles, Counters? counters = null)
+    public Mesh(IReadOnlyList<Triangle> triangles, Counters counters)
     {
         _triangles = new TriangleLean[triangles.Count];
         _attributes = new TriangleAttributes[triangles.Count];
@@ -24,14 +24,14 @@ class Mesh : IShape
                 NormalC = triangles[i].NormalC,
             };
         }
-        using (counters?.TimeScope(Counters.Type.TimeMeshBvhBuild))
+        using (counters.TimeScope(Counters.Type.TimeMeshBvhBuild))
         {
             const float sahCostIntersect = 0.5f; // sahCostIntersect low as the triangle test is cheap.
             _bvh = new Bvh<TriangleLean, ShapeHitLean>(_triangles, sahCostIntersect: sahCostIntersect);
         }
         _counters = counters;
 
-        counters?.Bump(Counters.Type.MeshTriangle, triangles.Count);
+        counters.Bump(Counters.Type.MeshTriangle, triangles.Count);
     }
 
     public AABox Bounds() => _bvh.Bounds;
