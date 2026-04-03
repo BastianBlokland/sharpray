@@ -1227,11 +1227,10 @@ struct Triangle : IShape
             return null;
 
         float invDet = 1f / det;
-        float uBary = u * invDet;
-        float vBary = v * invDet;
+        float uBary = Math.Clamp(u * invDet, 0f, 1f);
+        float vBary = Math.Clamp(v * invDet, 0f, 1f - uBary);
         Vec3 interp = NormalA * (1f - uBary - vBary) + NormalB * uBary + NormalC * vBary;
-        Vec3 normal = (backface ? -interp : interp).NormalizeOr(backface ? -Normal : Normal);
-        return new RayHit(tScaled * invDet, normal);
+        return new RayHit(tScaled * invDet, interp.NormalizeOr(Normal));
     }
 
     public bool IntersectAny(Ray ray)
