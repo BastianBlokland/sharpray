@@ -1201,57 +1201,67 @@ struct Triangle : IShape
         Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
         float det = Vec3.Dot(PosAToB, h);
 
-        if (MathF.Abs(det) <= 1e-9f)
+        bool backface = det < 0f;
+        if (backface)
+        {
+            h = -h;
+            det = -det;
+        }
+        if (det <= 1e-7f)
             return null; // Parallel.
 
-        const float thresholdMin = -1e-6f;
-        const float thresholdMax = 1f + 1e-6f;
+        const float edgeEps = 1e-6f;
+
+        Vec3 ao = ray.Origin - PosA;
+        float u = Vec3.Dot(ao, h);
+        if (u < -edgeEps || u > det + edgeEps)
+            return null;
+
+        Vec3 q = Vec3.Cross(ao, PosAToB) * (backface ? -1f : 1f);
+        float v = Vec3.Dot(ray.Dir, q);
+        if (v < -edgeEps || u + v > det + edgeEps)
+            return null;
+
+        float tScaled = Vec3.Dot(PosAToC, q);
+        if (tScaled < 0f)
+            return null;
 
         float invDet = 1f / det;
-        Vec3 ao = ray.Origin - PosA;
-        float u = Vec3.Dot(ao, h) * invDet;
-        if (u < thresholdMin || u > thresholdMax)
-            return null;
-
-        Vec3 q = Vec3.Cross(ao, PosAToB);
-        float v = Vec3.Dot(ray.Dir, q) * invDet;
-        if (v < thresholdMin || u + v > thresholdMax)
-            return null;
-
-        float t = Vec3.Dot(PosAToC, q) * invDet;
-        if (t < 0f)
-            return null;
-
-        Vec3 interp = NormalA * (1f - u - v) + NormalB * u + NormalC * v;
-        Vec3 normal = (det > 0f ? interp : -interp).NormalizeOr(det > 0f ? Normal : -Normal);
-        return new RayHit(t, normal);
+        float uBary = u * invDet;
+        float vBary = v * invDet;
+        Vec3 interp = NormalA * (1f - uBary - vBary) + NormalB * uBary + NormalC * vBary;
+        Vec3 normal = (backface ? -interp : interp).NormalizeOr(backface ? -Normal : Normal);
+        return new RayHit(tScaled * invDet, normal);
     }
 
     public bool IntersectAny(Ray ray)
     {
         // Möller–Trumbore intersection.
-        // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
         Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
         float det = Vec3.Dot(PosAToB, h);
 
-        if (MathF.Abs(det) <= 1e-9f)
+        bool backface = det < 0f;
+        if (backface)
+        {
+            h = -h;
+            det = -det;
+        }
+        if (det <= 1e-7f)
             return false; // Parallel.
 
-        const float thresholdMin = -1e-6f;
-        const float thresholdMax = 1f + 1e-6f;
+        const float edgeEps = 1e-6f;
 
-        float invDet = 1f / det;
         Vec3 ao = ray.Origin - PosA;
-        float u = Vec3.Dot(ao, h) * invDet;
-        if (u < thresholdMin || u > thresholdMax)
+        float u = Vec3.Dot(ao, h);
+        if (u < -edgeEps || u > det + edgeEps)
             return false;
 
-        Vec3 q = Vec3.Cross(ao, PosAToB);
-        float v = Vec3.Dot(ray.Dir, q) * invDet;
-        if (v < thresholdMin || u + v > thresholdMax)
+        Vec3 q = Vec3.Cross(ao, PosAToB) * (backface ? -1f : 1f);
+        float v = Vec3.Dot(ray.Dir, q);
+        if (v < -edgeEps || u + v > det + edgeEps)
             return false;
 
-        return Vec3.Dot(PosAToC, q) * invDet >= 0f;
+        return Vec3.Dot(PosAToC, q) >= 0f;
     }
 }
 
