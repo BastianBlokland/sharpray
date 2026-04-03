@@ -2,23 +2,31 @@ using System;
 
 class Mesh : IShape
 {
-    private Triangle[] _triangles;
-    private TriangleLean[] _trianglesLean;
+    private struct TriangleAttributes { public Vec3 NormalA, NormalB, NormalC; }
+
+    private TriangleLean[] _triangles;
+    private TriangleAttributes[] _attributes;
     private Bvh<TriangleLean, ShapeHitLean> _bvh;
     private Counters? _counters;
 
     public Mesh(Triangle[] triangles, Counters? counters = null)
     {
-        _triangles = triangles;
-        _trianglesLean = new TriangleLean[triangles.Length];
+        _triangles = new TriangleLean[triangles.Length];
+        _attributes = new TriangleAttributes[triangles.Length];
         for (int i = 0; i < triangles.Length; i++)
         {
-            _trianglesLean[i] = triangles[i].Lean;
+            _triangles[i] = triangles[i].Lean;
+            _attributes[i] = new TriangleAttributes
+            {
+                NormalA = triangles[i].NormalA,
+                NormalB = triangles[i].NormalB,
+                NormalC = triangles[i].NormalC,
+            };
         }
         using (counters?.TimeScope(Counters.Type.TimeMeshBvhBuild))
         {
             const float sahCostIntersect = 0.5f; // sahCostIntersect low as the triangle test is cheap.
-            _bvh = new Bvh<TriangleLean, ShapeHitLean>(_trianglesLean, sahCostIntersect: sahCostIntersect);
+            _bvh = new Bvh<TriangleLean, ShapeHitLean>(_triangles, sahCostIntersect: sahCostIntersect);
         }
         _counters = counters;
 
@@ -33,7 +41,12 @@ class Mesh : IShape
         _counters?.Bump(Counters.Type.MeshIntersect);
         if (_bvh.Intersect(ray, _counters) is not (ShapeHitLean leanHit, int idx))
             return null;
-        return _triangles[idx].Inflate(leanHit);
+
+        return _triangles[idx].Inflate(
+            leanHit,
+            _attributes[idx].NormalA,
+            _attributes[idx].NormalB,
+            _attributes[idx].NormalC);
     }
 
     public bool IntersectAny(Ray ray)
@@ -47,7 +60,7 @@ class Mesh : IShape
 
     public void OverlayWireframe(Overlay overlay, Transform trans, Color color)
     {
-        foreach (Triangle tri in _triangles)
+        foreach (TriangleLean tri in _triangles)
         {
             Vec3 a = trans.TransformPoint(tri.PosA);
             Vec3 b = trans.TransformPoint(tri.PosB);
