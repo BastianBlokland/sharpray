@@ -59,7 +59,7 @@ class Texture
     public Vec3 SampleNormal(Vec2 coord)
     {
         Color c = Sample(coord);
-        return new Vec3(c.R * 2f - 1f, c.G * 2f - 1f, c.B * 2f - 1f).NormalizeOr(Vec3.Up);
+        return new Vec3(c.R * 2f - 1f, -(c.G * 2f - 1f), c.B * 2f - 1f).NormalizeOr(Vec3.Up);
     }
 
     public static Texture FromSrgb(Image image)
