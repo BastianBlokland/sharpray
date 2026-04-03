@@ -70,7 +70,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
         Vec3 scale = new Vec3(6f, 6f, 6f);
         Transform trans = new Transform(new Vec3(1f, 1.7f, 4f), rot, scale);
         Material mat = new Material(new Color(0.2f, 0.7f, 0.2f), 0.5f, 0.0f);
-        ObjLoader.Load("assets/dragon.obj", scene, trans, mat, counters);
+        ObjLoader.Load("assets/dragon.obj", scene, counters, trans, mat);
     }
 
     // Spheres.

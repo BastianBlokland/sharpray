@@ -129,9 +129,9 @@ static class ObjLoader
     public static void Load(
         string path,
         Scene scene,
+        Counters counters,
         Transform? transform = null,
-        Material? material = null,
-        Counters counters)
+        Material? material = null)
     {
         using var stream = File.OpenRead(path);
         using var reader = new StreamReader(stream, bufferSize: 65536);
