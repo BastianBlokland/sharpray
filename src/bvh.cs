@@ -13,7 +13,7 @@ record struct BvhStats(
     float SahCost // Surface area heuristic, estimate cost of things to test (boxes and shapes) for a random ray.
 );
 
-class Bvh<T, THit> where T : IShape<THit> where THit : struct, IShapeHit
+class Bvh<T, THit> where T : IShape<THit> where THit : unmanaged, IShapeHit
 {
     private readonly int _splitBinCount;
 
@@ -249,6 +249,130 @@ class Bvh<T, THit> where T : IShape<THit> where THit : struct, IShapeHit
             }
         }
         return false;
+    }
+
+    public void Intersect(ReadOnlySpan<Ray> rays, Span<(THit Hit, int Index)?> hits, Counters counters)
+    {
+        Debug.Assert(rays.Length == hits.Length);
+        hits.Clear();
+
+        if (_nodeCount == 0)
+            return;
+
+        long[] counterData = counters.GetLocalData();
+
+        Span<float> bestDists = stackalloc float[rays.Length];
+        bestDists.Fill(float.PositiveInfinity);
+
+        Span<THit?> shapeHits = stackalloc THit?[rays.Length];
+
+        Span<int> stack = stackalloc int[128];
+        int stackCount = 1; // Insert root node (index is already zero).
+
+        while (stackCount > 0)
+        {
+            ref Node node = ref _nodes[stack[--stackCount]];
+            if (node.ShapeCount == 0)
+            {
+                // Parent node: descend children if any ray hits their bounds.
+                counterData[(int)Counters.Type.BvhIntersectNode] += 2;
+                bool anyA = false, anyB = false;
+                for (int r = 0; r < rays.Length; ++r)
+                {
+                    if (!anyA)
+                        anyA |= _nodes[node.Child].Bounds.IntersectDist(rays[r]) is float tA && tA < bestDists[r];
+                    if (!anyB)
+                        anyB |= _nodes[node.Child + 1].Bounds.IntersectDist(rays[r]) is float tB && tB < bestDists[r];
+                    if (anyA && anyB)
+                        break;
+                }
+                if (anyA)
+                    stack[stackCount++] = node.Child;
+                if (anyB)
+                    stack[stackCount++] = node.Child + 1;
+            }
+            else
+            {
+                // Leaf node: test all shapes against all rays.
+                counterData[(int)Counters.Type.BvhIntersectShape] += node.ShapeCount * rays.Length;
+                for (int i = 0; i != node.ShapeCount; ++i)
+                {
+                    int idx = _items[node.Child + i];
+                    _shapes[idx].Intersect(rays, shapeHits);
+                    for (int r = 0; r < rays.Length; ++r)
+                    {
+                        if (shapeHits[r] is THit hit && hit.Dist < bestDists[r])
+                        {
+                            bestDists[r] = hit.Dist;
+                            hits[r] = (hit, idx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void IntersectAny(ReadOnlySpan<Ray> rays, Span<bool> hits, Counters counters)
+    {
+        Debug.Assert(rays.Length == hits.Length);
+        hits.Clear();
+
+        if (_nodeCount == 0)
+            return;
+
+        long[] counterData = counters.GetLocalData();
+
+        Span<bool> shapeHits = stackalloc bool[rays.Length];
+        int activeCount = rays.Length;
+
+        Span<int> stack = stackalloc int[128];
+        int stackCount = 1; // Insert root node (index is already zero).
+
+        while (stackCount > 0 && activeCount > 0)
+        {
+            ref Node node = ref _nodes[stack[--stackCount]];
+            if (node.ShapeCount == 0)
+            {
+                // Parent node: descend children if any active ray hits their bounds.
+                counterData[(int)Counters.Type.BvhIntersectNode] += 2;
+                bool anyA = false, anyB = false;
+                for (int r = 0; r < rays.Length; ++r)
+                {
+                    if (hits[r])
+                        continue;
+                    if (!anyA)
+                        anyA |= _nodes[node.Child].Bounds.IntersectDist(rays[r]).HasValue;
+                    if (!anyB)
+                        anyB |= _nodes[node.Child + 1].Bounds.IntersectDist(rays[r]).HasValue;
+                    if (anyA && anyB)
+                        break;
+                }
+                if (anyA)
+                    stack[stackCount++] = node.Child;
+                if (anyB)
+                    stack[stackCount++] = node.Child + 1;
+            }
+            else
+            {
+                // Leaf node: test shapes against active rays, deactivate on first hit.
+                counterData[(int)Counters.Type.BvhIntersectShape] += node.ShapeCount * activeCount;
+                for (int i = 0; i != node.ShapeCount; ++i)
+                {
+                    int idx = _items[node.Child + i];
+                    _shapes[idx].IntersectAny(rays, shapeHits);
+                    for (int r = 0; r < rays.Length; ++r)
+                    {
+                        if (!hits[r] && shapeHits[r])
+                        {
+                            hits[r] = true;
+                            --activeCount;
+                        }
+                    }
+                    if (activeCount == 0)
+                        break;
+                }
+            }
+        }
     }
 
     public void OverlayBounds(Overlay overlay, Transform trans, int maxDepth = int.MaxValue)

@@ -7,7 +7,7 @@ interface IShapeHit
     float Dist { get; }
 }
 
-interface IShape<THit> where THit : struct, IShapeHit
+interface IShape<THit> where THit : unmanaged, IShapeHit
 {
     AABox Bounds();
 
