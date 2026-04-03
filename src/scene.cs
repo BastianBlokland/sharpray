@@ -148,33 +148,32 @@ class Scene
     private Sky _sky;
     private bool _built;
     private Bvh<Object, ShapeHit>? _bvh;
+    private Counters _counters = null!;
 
     public Scene(Sky sky)
     {
         _sky = sky;
     }
 
-    public void Build(Counters? counters = null)
+    public void Build(Counters counters)
     {
         lock (_lock)
         {
             if (_built)
                 return;
             _built = true;
+            _counters = counters;
         }
-        using (counters?.TimeScope(Counters.Type.TimeSceneBvhBuild))
+        using (counters.TimeScope(Counters.Type.TimeSceneBvhBuild))
         {
             const float sahCostIntersect = 10f; // High as object tests are expensive.
             const int splitBinCount = 32; // Evaluate many splits for the Scene bvh.
             _bvh = new Bvh<Object, ShapeHit>(_objects, sahCostIntersect: sahCostIntersect, splitBinCount: splitBinCount);
         }
-        if (counters != null)
-        {
-            BvhStats stats = _bvh.GetStats();
-            counters.Bump(Counters.Type.SceneObject, _objects.Count);
-            counters.Bump(Counters.Type.SceneBvhNodes, stats.NodeCount);
-            counters.Bump(Counters.Type.SceneBvhDepth, stats.DepthMax);
-        }
+        BvhStats stats = _bvh.GetStats();
+        _counters.Bump(Counters.Type.SceneObject, _objects.Count);
+        _counters.Bump(Counters.Type.SceneBvhNodes, stats.NodeCount);
+        _counters.Bump(Counters.Type.SceneBvhDepth, stats.DepthMax);
     }
 
     public void AddObject(Object obj)
@@ -189,21 +188,29 @@ class Scene
 
     public AABox Bounds() => _bvh?.Bounds ?? AABox.Inverted();
 
-    public bool Occluded(Ray ray, Counters counters)
+    public bool Occluded(Ray ray)
     {
         if (!_built)
             throw new InvalidOperationException("Scene not built");
-        counters.Bump(Counters.Type.SceneOcclude);
-        return _bvh!.IntersectAny(ray, counters);
+        _counters.Bump(Counters.Type.SceneOcclude);
+        return _bvh!.IntersectAny(ray, _counters);
     }
 
-    public Surface Trace(Ray ray, Counters counters)
+    public void Occluded(ReadOnlySpan<Ray> rays, Span<bool> results)
     {
         if (!_built)
             throw new InvalidOperationException("Scene not built");
-        counters.Bump(Counters.Type.SceneTrace);
+        _counters.Bump(Counters.Type.SceneOcclude, rays.Length);
+        _bvh!.IntersectAny(rays, results, _counters);
+    }
 
-        if (_bvh!.Intersect(ray, counters) is (ShapeHit hit, int idx))
+    public Surface Trace(Ray ray)
+    {
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
+        _counters.Bump(Counters.Type.SceneTrace);
+
+        if (_bvh!.Intersect(ray, _counters) is (ShapeHit hit, int idx))
         {
             Material mat = _objects[idx].Material;
             return new Surface(mat.Radiance, hit, mat);
@@ -212,12 +219,34 @@ class Scene
         return new Surface(_sky.AmbientRadianceRay(ray));
     }
 
-    public Fragment Sample(Ray ray, ref Rng rng, uint bounces, Counters counters)
+    public void Trace(ReadOnlySpan<Ray> rays, Span<Surface> results)
+    {
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
+        _counters.Bump(Counters.Type.SceneTrace, rays.Length);
+
+        Span<(ShapeHit Hit, int Index)?> hits = stackalloc (ShapeHit, int)?[rays.Length];
+        _bvh!.Intersect(rays, hits, _counters);
+
+        for (int i = 0; i < rays.Length; ++i)
+        {
+            if (hits[i] is (ShapeHit hit, int idx))
+            {
+                results[i] = new Surface(mat.Radiance, hit, _objects[idx].Material);
+            }
+            else
+            {
+                results[i] = new Surface(_sky.AmbientRadianceRay(rays[i]));
+            }
+        }
+    }
+
+    public Fragment Sample(Ray ray, ref Rng rng, uint bounces)
     {
         if (!_built)
             throw new InvalidOperationException("Scene not built");
 
-        counters.Bump(Counters.Type.Sample);
+        _counters.Bump(Counters.Type.Sample);
 
         Color radiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
@@ -226,10 +255,10 @@ class Scene
 
         for (uint i = 0; i != (bounces + 1); ++i)
         {
-            counters.Bump(Counters.Type.SampleBounce);
+            _counters.Bump(Counters.Type.SampleBounce);
 
             bool isPrimary = i == 0;
-            Surface surf = Trace(ray, counters);
+            Surface surf = Trace(ray);
 
             // Accumulate radiance.
             radiance += surf.Radiance * energy;
@@ -245,7 +274,7 @@ class Scene
 
             if (surf.Hit is ShapeHit hit)
             {
-                counters.Bump(Counters.Type.SampleHit);
+                _counters.Bump(Counters.Type.SampleHit);
 
                 if (isPrimary)
                 {
@@ -264,13 +293,13 @@ class Scene
                 if (sunCosTheta > 0f && roughness > 0.05f)
                 {
                     Ray shadowRay = new Ray(hitPos, sunDir);
-                    if (Occluded(shadowRay, counters))
-                        counters.Bump(Counters.Type.ShadowRayOccluded);
+                    if (Occluded(shadowRay))
+                        _counters.Bump(Counters.Type.ShadowRayOccluded);
                     else
                         radiance += _sky.SunRadiance * energy * sunCosTheta;
                 }
                 else
-                    counters.Bump(Counters.Type.ShadowRaySkipped);
+                    _counters.Bump(Counters.Type.ShadowRaySkipped);
 
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
@@ -278,7 +307,7 @@ class Scene
                     float survive = MathF.Max(energy.R, MathF.Max(energy.G, energy.B));
                     if (rng.NextFloat() >= survive)
                     {
-                        counters.Bump(Counters.Type.SampleTerminate);
+                        _counters.Bump(Counters.Type.SampleTerminate);
                         break;
                     }
                     energy /= survive;
@@ -293,7 +322,7 @@ class Scene
             }
             else
             {
-                counters.Bump(Counters.Type.SampleMiss);
+                _counters.Bump(Counters.Type.SampleMiss);
 
                 // Add sun contibution for primary rays.
                 if (isPrimary)

@@ -148,7 +148,7 @@ class Renderer
             Vec2 pos = new Vec2((x + rng.NextFloat()) / Width, (y + rng.NextFloat()) / Height);
             Ray ray = View.Ray(pos, _aspect);
 
-            Fragment frag = _scene.Sample(ray, ref rng, _bounces, _counters);
+            Fragment frag = _scene.Sample(ray, ref rng, _bounces);
 
             radianceSum += frag.Radiance;
             if (frag.Normal is Vec3 n)
