@@ -109,6 +109,7 @@ if (dumpScene)
 
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
+Image imageOut = new Image(width, height);
 
 fmt.WriteLine("> Starting render");
 FlushToConsole(ref fmt);
@@ -123,7 +124,8 @@ using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
         // Preview intermediate results.
         if (outputPreview && progress.Step % previewInterval == 0)
         {
-            compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
+            compositor.Preview(renderer, overlay, imageOut);
+            imageOut.Save(Path.Combine(outputPath, "preview.bmp"));
         }
 
         Timestamp? estTotal = null;
@@ -142,48 +144,46 @@ using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
 if (outputPreview)
 {
     // Output final 'preview' (non-denoised) output.
-    compositor.Preview(renderer, overlay).Save(Path.Combine(outputPath, "preview.bmp"));
+    compositor.Preview(renderer, overlay, imageOut);
+    imageOut.Save(Path.Combine(outputPath, "preview.bmp"));
 }
 
 if (outputNormal)
 {
-    Image normalsImage = new Image(width, height);
     for (uint i = 0; i < width * height; ++i)
     {
-        normalsImage.Pixels[i] = new Pixel(
+        imageOut.Pixels[i] = new Pixel(
             (byte)((renderer.Normals[i].X * 0.5f + 0.5f) * 255f),
             (byte)((renderer.Normals[i].Y * 0.5f + 0.5f) * 255f),
             (byte)((renderer.Normals[i].Z * 0.5f + 0.5f) * 255f));
     }
-    normalsImage.Save(Path.Combine(outputPath, "normal.bmp"));
+    imageOut.Save(Path.Combine(outputPath, "normal.bmp"));
 }
 
 if (outputDepth)
 {
-    Image depthImage = new Image(width, height);
     for (uint i = 0; i < width * height; ++i)
     {
         const float depthMaxInv = 1f / 25f;
         float depth = renderer.Depth[i];
-        depthImage.Pixels[i] = float.IsInfinity(depth)
+        imageOut.Pixels[i] = float.IsInfinity(depth)
             ? Pixel.Red
             : new Pixel((byte)(Math.Clamp(depth * depthMaxInv, 0f, 1f) * 255f));
     }
-    depthImage.Save(Path.Combine(outputPath, "depth.bmp"));
+    imageOut.Save(Path.Combine(outputPath, "depth.bmp"));
 }
 
 if (outputSurface)
 {
-    Image surfaceImage = new Image(width, height);
     for (uint i = 0; i < width * height; ++i)
     {
         Vec2 surface = renderer.Surface[i];
-        surfaceImage.Pixels[i] = new Pixel(
+        imageOut.Pixels[i] = new Pixel(
             (byte)(MathF.Abs(surface.X % 1f) * 255f),
             (byte)(MathF.Abs(surface.Y % 1f) * 255f),
             0);
     }
-    surfaceImage.Save(Path.Combine(outputPath, "surface.bmp"));
+    imageOut.Save(Path.Combine(outputPath, "surface.bmp"));
 }
 
 counters.Dump(ref fmt);
@@ -195,7 +195,8 @@ if (outputImage)
     FlushToConsole(ref fmt);
     using (counters.TimeScope(Counters.Type.TimeCompose))
     {
-        compositor.Compose(renderer, overlay).Save(Path.Combine(outputPath, "final.bmp"));
+        compositor.Compose(renderer, overlay, imageOut);
+        imageOut.Save(Path.Combine(outputPath, "final.bmp"));
     }
 }
 
