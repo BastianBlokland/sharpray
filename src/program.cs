@@ -26,7 +26,7 @@ const uint samples = 64;
 const uint bounces = 8;
 const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.15f;
-const float denoiseSigmaNormal = 0.5f;
+const float denoiseSigmaNormal = 0.25f;
 const float denoiseSigmaDepth = 1.0f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true, outputDepth = true;
