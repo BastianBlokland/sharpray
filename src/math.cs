@@ -2,15 +2,23 @@ using System;
 using System.Diagnostics;
 using System.Numerics;
 
-interface IShape
+interface IShapeHit
+{
+    float Dist { get; }
+}
+
+interface IShape<THit> where THit : struct, IShapeHit
 {
     AABox Bounds();
     bool Overlaps(AABox box);
-    ShapeHit? Intersect(Ray ray);
+    THit? Intersect(Ray ray);
     bool IntersectAny(Ray ray) => Intersect(ray) is not null;
 }
 
-struct ShapeHit
+interface IShape : IShape<ShapeHit> { }
+interface IShapeLean : IShape<ShapeHitLean> { }
+
+struct ShapeHit : IShapeHit
 {
     public float Dist;
     public Vec3 Norm;
@@ -23,6 +31,22 @@ struct ShapeHit
         Norm = norm;
         Surface = surfaceCoord;
     }
+
+    float IShapeHit.Dist => Dist;
+}
+
+struct ShapeHitLean : IShapeHit
+{
+    public float Dist;
+    public Vec2 Surface; // aka, UV or TextureCoord.
+
+    public ShapeHitLean(float dist, Vec2 surface)
+    {
+        Dist = dist;
+        Surface = surface;
+    }
+
+    float IShapeHit.Dist => Dist;
 }
 
 static class ShapeExtensions
@@ -1189,34 +1213,21 @@ struct Plane : IShape
     }
 }
 
-struct Triangle : IShape
+struct TriangleLean : IShapeLean
 {
     public Vec3 PosA, PosAToB, PosAToC;
-    public Vec3 NormalA, NormalB, NormalC;
 
-    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC)
+    public TriangleLean(Vec3 posA, Vec3 posB, Vec3 posC)
     {
         PosA = posA;
         PosAToB = posB - posA;
         PosAToC = posC - posA;
-        NormalA = NormalB = NormalC = Normal;
-    }
-
-    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC, Vec3 normalA, Vec3 normalB, Vec3 normalC)
-    {
-        PosA = posA;
-        PosAToB = posB - posA;
-        PosAToC = posC - posA;
-        NormalA = normalA;
-        NormalB = normalB;
-        NormalC = normalC;
     }
 
     public Vec3 PosB => PosA + PosAToB;
     public Vec3 PosC => PosA + PosAToC;
     public Vec3 Normal => Vec3.Cross(PosAToB, PosAToC).Normalize();
     public Vec3 Center => (PosA + PosB + PosC) / 3f;
-    public Plane Plane => Plane.AtTriangle(PosA, PosB, PosC);
 
     public AABox Bounds()
     {
@@ -1228,7 +1239,7 @@ struct Triangle : IShape
 
     public bool Overlaps(AABox box) => Bounds().Overlaps(box);
 
-    public ShapeHit? Intersect(Ray ray)
+    public ShapeHitLean? Intersect(Ray ray)
     {
         // Möller–Trumbore intersection.
         // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
@@ -1263,13 +1274,11 @@ struct Triangle : IShape
         float invDet = 1f / det;
         float uBary = Math.Clamp(u * invDet, 0f, 1f);
         float vBary = Math.Clamp(v * invDet, 0f, 1f - uBary);
-        Vec3 interp = NormalA * (1f - uBary - vBary) + NormalB * uBary + NormalC * vBary;
-        return new ShapeHit(tScaled * invDet, interp.NormalizeOr(Normal), new Vec2(uBary, vBary));
+        return new ShapeHitLean(tScaled * invDet, new Vec2(uBary, vBary));
     }
 
     public bool IntersectAny(Ray ray)
     {
-        // Möller–Trumbore intersection.
         Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
         float det = Vec3.Dot(PosAToB, h);
 
@@ -1296,6 +1305,47 @@ struct Triangle : IShape
 
         return Vec3.Dot(PosAToC, q) >= 0f;
     }
+}
+
+struct Triangle : IShape
+{
+    public TriangleLean Lean;
+    public Vec3 NormalA, NormalB, NormalC;
+
+    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC)
+    {
+        Lean = new TriangleLean(posA, posB, posC);
+        NormalA = NormalB = NormalC = Lean.Normal;
+    }
+
+    public Triangle(Vec3 posA, Vec3 posB, Vec3 posC, Vec3 normalA, Vec3 normalB, Vec3 normalC)
+    {
+        Lean = new TriangleLean(posA, posB, posC);
+        NormalA = normalA;
+        NormalB = normalB;
+        NormalC = normalC;
+    }
+
+    public Vec3 PosA => Lean.PosA;
+    public Vec3 PosB => Lean.PosB;
+    public Vec3 PosC => Lean.PosC;
+    public Vec3 Normal => Lean.Normal;
+    public Vec3 Center => Lean.Center;
+    public Plane Plane => Plane.AtTriangle(PosA, PosB, PosC);
+
+    public AABox Bounds() => Lean.Bounds();
+    public bool Overlaps(AABox box) => Lean.Overlaps(box);
+
+    public ShapeHit? Intersect(Ray ray)
+    {
+        if (Lean.Intersect(ray) is not ShapeHitLean leanHit)
+            return null;
+        float uBary = leanHit.Surface.X, vBary = leanHit.Surface.Y;
+        Vec3 interp = NormalA * (1f - uBary - vBary) + NormalB * uBary + NormalC * vBary;
+        return new ShapeHit(leanHit.Dist, interp.NormalizeOr(Lean.Normal), leanHit.Surface);
+    }
+
+    public bool IntersectAny(Ray ray) => Lean.IntersectAny(ray);
 }
 
 struct View

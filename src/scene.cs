@@ -251,6 +251,7 @@ class Scene
                     surface = hit.Surface;
                     depth = hit.Dist;
                 }
+
                 // Invert the normal for backface hits.
                 Vec3 shadingNorm = Vec3.Dot(hit.Norm, ray.Dir) > 0f ? -hit.Norm : hit.Norm;
                 Vec3 hitPos = ray[hit.Dist] + shadingNorm * 1e-4f;
