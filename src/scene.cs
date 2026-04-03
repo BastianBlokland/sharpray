@@ -319,6 +319,10 @@ class Scene
                 Vec3 scatterDirSpecular = Vec3.Reflect(ray.Dir, normShading);
                 Vec3 scatterDir = Vec3.Lerp(scatterDirSpecular, scatterDirDiffuse, roughness).NormalizeOr(normShading);
 
+                // Clamp scatter ray to stay above the geometric surface.
+                if (Vec3.Dot(scatterDir, normHit) <= 0f)
+                    scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, normHit) * normHit).NormalizeOr(normHit);
+
                 ray = new Ray(hitPos, scatterDir);
             }
             else
