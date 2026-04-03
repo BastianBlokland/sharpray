@@ -151,8 +151,9 @@ static class ObjLoader
     {
         var positions = new List<Vec3>();
         var normals = new List<Vec3>();
+        var surfaces = new List<Vec2>();
         var triangles = new List<Triangle>();
-        var faceEntries = new List<(int Pos, int Norm)>();
+        var faceEntries = new List<(int Pos, int Norm, int Surf)>();
         var materials = new Dictionary<string, Material>();
         string fileName = Path.GetFileNameWithoutExtension(path);
         string? currentMaterialName = null;
@@ -194,6 +195,11 @@ static class ObjLoader
                 positions.Add(ReadVec3(lexer));
                 lexer.SkipLine();
             }
+            else if (word.SequenceEqual("vt"))
+            {
+                surfaces.Add(ReadVec2(lexer));
+                lexer.SkipLine();
+            }
             else if (word.SequenceEqual("vn"))
             {
                 normals.Add(ReadVec3(lexer));
@@ -202,8 +208,8 @@ static class ObjLoader
             else if (word.SequenceEqual("f"))
             {
                 faceEntries.Clear();
-                ReadFace(lexer, positions.Count, normals.Count, faceEntries);
-                TriangulateFace(faceEntries, positions, normals, triangles);
+                ReadFace(lexer, positions.Count, normals.Count, surfaces.Count, faceEntries);
+                TriangulateFace(faceEntries, positions, normals, surfaces, triangles);
             }
             else if (word.SequenceEqual("o") || word.SequenceEqual("g"))
             {
@@ -324,9 +330,10 @@ static class ObjLoader
     }
 
     private static void TriangulateFace(
-        IReadOnlyList<(int Pos, int Norm)> entries,
+        IReadOnlyList<(int Pos, int Norm, int Surf)> entries,
         IReadOnlyList<Vec3> positions,
         IReadOnlyList<Vec3> normals,
+        IReadOnlyList<Vec2> surfaces,
         List<Triangle> output)
     {
         if (entries.Count < 3)
@@ -334,46 +341,63 @@ static class ObjLoader
 
         // Triangle fan from the first vertex.
 
-        (int facePosA, int faceNormA) = entries[0];
+        (int facePosA, int faceNormA, int faceSurfA) = entries[0];
         Vec3 triPosA = positions[facePosA];
+        Vec2 triSurfA = faceSurfA >= 0 ? surfaces[faceSurfA] : Vec2.Zero;
 
         for (int i = 2; i < entries.Count; ++i)
         {
-            (int facePosB, int faceNormB) = entries[i - 1];
-            (int facePosC, int faceNormC) = entries[i];
+            (int facePosB, int faceNormB, int faceSurfB) = entries[i - 1];
+            (int facePosC, int faceNormC, int faceSurfC) = entries[i];
 
             Vec3 triPosB = positions[facePosB];
             Vec3 triPosC = positions[facePosC];
+            Vec2 triSurfB = faceSurfB >= 0 ? surfaces[faceSurfB] : new Vec2(1, 0);
+            Vec2 triSurfC = faceSurfC >= 0 ? surfaces[faceSurfC] : new Vec2(0, 1);
 
             if (Vec3.Cross(triPosB - triPosA, triPosC - triPosA).MagnitudeSqr() < 1e-12f)
                 continue; // Zero area triangle; skip.
 
             if (faceNormA >= 0 && faceNormB >= 0 && faceNormC >= 0)
-                output.Add(new Triangle(triPosA, triPosB, triPosC, normals[faceNormA], normals[faceNormB], normals[faceNormC]));
+            {
+                output.Add(new Triangle(
+                    triPosA, triPosB, triPosC,
+                    normals[faceNormA], normals[faceNormB], normals[faceNormC],
+                    triSurfA, triSurfB, triSurfC));
+            }
             else
-                output.Add(new Triangle(triPosA, triPosB, triPosC));
+            {
+                output.Add(new Triangle(
+                    triPosA, triPosB, triPosC,
+                    triSurfA, triSurfB, triSurfC));
+            }
         }
     }
 
-    private static void ReadFace(ObjLexer lexer, int posCount, int normCount, List<(int Pos, int Norm)> output)
+    private static void ReadFace(
+        ObjLexer lexer,
+        int posCount,
+        int normCount,
+        int surfCount,
+        List<(int Pos, int Norm, int Surf)> output)
     {
         while (lexer.Peek() == ObjToken.Word)
         {
             int pos = ReadIndex(lexer, posCount);
-            int norm = -1;
+            int norm = -1, surf = -1;
             if (lexer.Peek() == ObjToken.Slash)
             {
-                lexer.Next(); // First slash
+                lexer.Next(); // First slash.
                 if (lexer.Peek() == ObjToken.Word)
-                    lexer.Next(); // Skip texcoord index
+                    surf = ReadIndex(lexer, surfCount);
                 if (lexer.Peek() == ObjToken.Slash)
                 {
-                    lexer.Next(); // Second slash
+                    lexer.Next(); // Second slash.
                     if (lexer.Peek() == ObjToken.Word)
                         norm = ReadIndex(lexer, normCount);
                 }
             }
-            output.Add((pos, norm));
+            output.Add((pos, norm, surf));
         }
     }
 
@@ -386,6 +410,9 @@ static class ObjLoader
             throw new Exception($"OBJ: index out of bounds ({idx}, count: {count})");
         return idx;
     }
+
+    private static Vec2 ReadVec2(ObjLexer lexer) =>
+        new Vec2(ReadFloat(lexer), ReadFloat(lexer));
 
     private static Vec3 ReadVec3(ObjLexer lexer) =>
         new Vec3(ReadFloat(lexer), ReadFloat(lexer), ReadFloat(lexer));
