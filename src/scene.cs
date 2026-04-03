@@ -274,9 +274,11 @@ class Scene
             {
                 counters.Bump(Counters.Type.SampleHit);
 
-                // Invert the normal for backface hits.
-                Vec3 normHit = Vec3.Dot(hit.Norm, ray.Dir) > 0f ? -hit.Norm : hit.Norm;
-                Vec3 normShading = surf.Material is Material mat ? mat.SampleNormal(hit.Uv, normHit, hit.Tan) : normHit;
+                // Invert the normal and tangent handedness for backface hits.
+                bool backface = Vec3.Dot(hit.Norm, ray.Dir) > 0f;
+                Vec3 normHit = backface ? -hit.Norm : hit.Norm;
+                Vec4 tanHit = backface ? new Vec4(hit.Tan.Xyz, -hit.Tan.W) : hit.Tan;
+                Vec3 normShading = surf.Material is Material mat ? mat.SampleNormal(hit.Uv, normHit, tanHit) : normHit;
 
                 if (isPrimary)
                 {
