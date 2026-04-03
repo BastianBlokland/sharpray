@@ -237,6 +237,7 @@ struct Vec2 : ISpanFormattable
     }
 
     public static Vec2 Zero => new Vec2(0f, 0f);
+    public static Vec2 One => new Vec2(1f, 1f);
 }
 
 struct Vec2i : ISpanFormattable
