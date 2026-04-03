@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.IO;
 
@@ -38,6 +39,26 @@ class Image
         Width = width;
         Height = height;
         Pixels = new Pixel[width * height];
+    }
+
+    private Image(uint width, uint height, Pixel[] pixels)
+    {
+        Debug.Assert(width > 0 && height > 0);
+        Debug.Assert(pixels.Length == width * height);
+        Width = width;
+        Height = height;
+        Pixels = pixels;
+    }
+
+    public void FlipVertical()
+    {
+        for (uint y = 0; y != Height / 2; ++y)
+        {
+            uint topRow = y * Width;
+            uint bottomRow = (Height - 1 - y) * Width;
+            for (uint x = 0; x != Width; ++x)
+                (Pixels[topRow + x], Pixels[bottomRow + x]) = (Pixels[bottomRow + x], Pixels[topRow + x]);
+        }
     }
 
     public enum Format
@@ -170,6 +191,57 @@ class Image
         {
             return false;
         }
+    }
+
+    public static Image Load(string path)
+    {
+        Format? format = FormatFromPath(path);
+        if (format == null)
+            throw new Exception($"Image: Unsupported file format '{Path.GetExtension(path)}'");
+        using var stream = File.OpenRead(path);
+        using var reader = new BinaryReader(stream);
+        return format switch
+        {
+            Format.Tga => LoadTga(reader),
+            _ => throw new Exception($"Image: Loading not supported for format '{format}'"),
+        };
+    }
+
+    private static Image LoadTga(BinaryReader reader)
+    {
+        // TGA header (18 bytes).
+        // Format reference: http://www.paulbourke.net/dataformats/tga/
+        reader.ReadByte(); // idLength (skip).
+        byte colorMapType = reader.ReadByte();
+        byte imageType = reader.ReadByte();
+        reader.ReadBytes(5); // colorMapSpec (skip).
+        reader.ReadBytes(4); // xOrigin + yOrigin (skip).
+        uint width = reader.ReadUInt16();
+        uint height = reader.ReadUInt16();
+        byte bitsPerPixel = reader.ReadByte();
+        byte descriptor = reader.ReadByte();
+
+        if (colorMapType != 0)
+            throw new Exception("TGA: Color-mapped images not supported");
+        if (imageType != 2)
+            throw new Exception("TGA: Only uncompressed TrueColor images supported (no RLE)");
+        if (bitsPerPixel != 24)
+            throw new Exception($"TGA: Only 24-bit images supported, got {bitsPerPixel}-bit");
+
+        uint pixelCount = width * height;
+        Pixel[] pixels = new Pixel[pixelCount];
+        for (uint i = 0; i != pixelCount; ++i)
+        {
+            byte b = reader.ReadByte();
+            byte g = reader.ReadByte();
+            byte r = reader.ReadByte();
+            pixels[i] = new Pixel(r, g, b);
+        }
+
+        Image image = new Image(width, height, pixels);
+        if ((descriptor & 0x20) == 0)
+            image.FlipVertical();
+        return image;
     }
 
     public static Format? FormatFromPath(string path)
