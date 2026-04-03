@@ -20,7 +20,7 @@ interface IShapeLean : IShape<ShapeHitLean> { }
 
 struct ShapeHit : IShapeHit
 {
-    public float Dist;
+    public float Dist { get; }
     public Vec3 Norm;
     public Vec2 Surface; // aka, UV or TextureCoord.
 
@@ -31,13 +31,11 @@ struct ShapeHit : IShapeHit
         Norm = norm;
         Surface = surfaceCoord;
     }
-
-    float IShapeHit.Dist => Dist;
 }
 
 struct ShapeHitLean : IShapeHit
 {
-    public float Dist;
+    public float Dist { get; }
     public Vec2 Surface; // aka, UV or TextureCoord.
 
     public ShapeHitLean(float dist, Vec2 surface)
@@ -45,8 +43,6 @@ struct ShapeHitLean : IShapeHit
         Dist = dist;
         Surface = surface;
     }
-
-    float IShapeHit.Dist => Dist;
 }
 
 static class ShapeExtensions
@@ -1381,14 +1377,19 @@ struct Triangle : IShape
     public AABox Bounds() => Lean.Bounds();
     public bool Overlaps(AABox box) => Lean.Overlaps(box);
 
-    public ShapeHit? Intersect(Ray ray)
+    public ShapeHit Inflate(ShapeHitLean leanHit)
     {
-        if (Lean.Intersect(ray) is not ShapeHitLean leanHit)
-            return null;
         float uBary = leanHit.Surface.X, vBary = leanHit.Surface.Y;
         Vec3 interp = NormalA * (1f - uBary - vBary) + NormalB * uBary + NormalC * vBary;
         Vec3 norm = interp.MagnitudeSqr() >= 1e-12f ? interp.Normalize() : Lean.Normal;
         return new ShapeHit(leanHit.Dist, norm, leanHit.Surface);
+    }
+
+    public ShapeHit? Intersect(Ray ray)
+    {
+        if (Lean.Intersect(ray) is not ShapeHitLean leanHit)
+            return null;
+        return Inflate(leanHit);
     }
 
     public bool IntersectAny(Ray ray) => Lean.IntersectAny(ray);
