@@ -1237,7 +1237,52 @@ struct TriangleLean : IShapeLean
             new Vec3(MathF.Max(PosA.X, MathF.Max(posB.X, posC.X)), MathF.Max(PosA.Y, MathF.Max(posB.Y, posC.Y)), MathF.Max(PosA.Z, MathF.Max(posB.Z, posC.Z))));
     }
 
-    public bool Overlaps(AABox box) => Bounds().Overlaps(box);
+    public bool Overlaps(AABox box)
+    {
+        // Fast rejection: AABB vs AABB.
+        if (!Bounds().Overlaps(box))
+            return false;
+
+        // Separating Axis Theorem: triangle vs AABB.
+        // https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/code/tribox3.txt
+        Vec3 h = box.Size * 0.5f;
+
+        // Translate triangle vertices into box-centered space.
+        Vec3 v0 = PosA - box.Center;
+        Vec3 v1 = v0 + PosAToB;
+        Vec3 v2 = v0 + PosAToC;
+        Vec3 e2 = PosAToC - PosAToB; // Edge C→B in local space (PosC - PosB).
+
+        // Tests one of the 9 edge cross-product axes.
+        bool Separated(Vec3 axis)
+        {
+            float p0 = Vec3.Dot(v0, axis);
+            float p1 = Vec3.Dot(v1, axis);
+            float p2 = Vec3.Dot(v2, axis);
+            float r = h.X * MathF.Abs(axis.X) + h.Y * MathF.Abs(axis.Y) + h.Z * MathF.Abs(axis.Z);
+            return MathF.Max(MathF.Max(p0, p1), p2) < -r || MathF.Min(MathF.Min(p0, p1), p2) > r;
+        }
+
+        // 9 axes: each triangle edge crossed with each AABB edge (X, Y, Z).
+        if (Separated(new Vec3(0f, -PosAToB.Z, PosAToB.Y))) return false;
+        if (Separated(new Vec3(PosAToB.Z, 0f, -PosAToB.X))) return false;
+        if (Separated(new Vec3(-PosAToB.Y, PosAToB.X, 0f))) return false;
+        if (Separated(new Vec3(0f, -PosAToC.Z, PosAToC.Y))) return false;
+        if (Separated(new Vec3(PosAToC.Z, 0f, -PosAToC.X))) return false;
+        if (Separated(new Vec3(-PosAToC.Y, PosAToC.X, 0f))) return false;
+        if (Separated(new Vec3(0f, -e2.Z, e2.Y))) return false;
+        if (Separated(new Vec3(e2.Z, 0f, -e2.X))) return false;
+        if (Separated(new Vec3(-e2.Y, e2.X, 0f))) return false;
+
+        // Triangle face normal axis.
+        Vec3 normal = Vec3.Cross(PosAToB, PosAToC);
+        float d = Vec3.Dot(normal, v0);
+        float rn = h.X * MathF.Abs(normal.X) + h.Y * MathF.Abs(normal.Y) + h.Z * MathF.Abs(normal.Z);
+        if (d > rn || d < -rn)
+            return false;
+
+        return true;
+    }
 
     public ShapeHitLean? Intersect(Ray ray)
     {
