@@ -34,19 +34,30 @@ class Compositor
     public Image Preview(Renderer rend, Overlay? overlay)
     {
         Image result = new Image(rend.Width, rend.Height);
+        Preview(rend, overlay, result);
+        return result;
+    }
+
+    public void Preview(Renderer rend, Overlay? overlay, Image result)
+    {
+        Debug.Assert(result.Width == rend.Width && result.Height == rend.Height);
         for (uint i = 0; i != rend.Width * rend.Height; ++i)
         {
             result.Pixels[i] = Tonemap(rend.Radiance[i]);
         }
-
         overlay?.Draw(result, rend.View, rend.Depth, _counters);
-        return result;
     }
 
     public Image Compose(Renderer rend, Overlay? overlay)
     {
         Image result = new Image(rend.Width, rend.Height);
+        Compose(rend, overlay, result);
+        return result;
+    }
 
+    public void Compose(Renderer rend, Overlay? overlay, Image result)
+    {
+        Debug.Assert(result.Width == rend.Width && result.Height == rend.Height);
         Parallel.For(0, (int)rend.Height, y =>
         {
             for (int x = 0; x != rend.Width; ++x)
@@ -58,7 +69,6 @@ class Compositor
         });
 
         overlay?.Draw(result, rend.View, rend.Depth, _counters);
-        return result;
     }
 
     private Color Filter(Color[] radiance, Vec3[] normals, float[] depth, int width, int height, int x, int y)
