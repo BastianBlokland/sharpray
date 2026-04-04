@@ -1314,23 +1314,17 @@ struct TriangleLean : IShapeLean
         Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
         float det = Vec3.Dot(PosAToB, h);
 
-        bool backface = det < 0f;
-        if (backface)
-        {
-            h = -h;
-            det = -det;
-        }
         if (det <= 1e-7f)
-            return null; // Parallel.
+            return null; // Parallel or backface.
 
-        const float edgeEps = 1e-6f;
+        const float edgeEps = 1e-7f;
 
         Vec3 ao = ray.Origin - PosA;
         float u = Vec3.Dot(ao, h);
         if (u < -edgeEps || u > det + edgeEps)
             return null;
 
-        Vec3 q = backface ? Vec3.Cross(PosAToB, ao) : Vec3.Cross(ao, PosAToB);
+        Vec3 q = Vec3.Cross(ao, PosAToB);
         float v = Vec3.Dot(ray.Dir, q);
         if (v < -edgeEps || u + v > det + edgeEps)
             return null;
