@@ -357,6 +357,7 @@ class Scene
         counters.Bump(Counters.Type.Sample);
 
         Color radiance = Color.Black, energy = Color.White;
+        float scatterPdf = 0f; // PDF of the current ray direction; 0 = primary ray (no BSDF sample).
         Vec3? normal = null;
         Vec2? uv = null;
         float? depth = null;
@@ -368,17 +369,20 @@ class Scene
             bool isPrimary = i == 0;
             Surface surf = Trace(ray, counters);
 
-            // Accumulate radiance.
-            radiance += surf.Radiance * energy;
-
             if (surf.Hit is ShapeHit hit)
             {
                 counters.Bump(Counters.Type.SampleHit);
 
-                float nDotV = MathF.Max(1e-4f, Vec3.Dot(surf.Normal, -ray.Dir));
+                // Emissive surface contribution (no MIS for area lights yet).
+                radiance += surf.Radiance * energy;
+
+                float rawNDotV = Vec3.Dot(surf.Normal, -ray.Dir);
+                float nDotV = MathF.Max(1e-4f, rawNDotV);
                 Color baseReflectivity = Color.Lerp(new Color(0.04f), surf.Color, surf.Metallic);
                 Color fresnel = FresnelSchlick(nDotV, baseReflectivity);
                 Color diffuseColor = (Color.White - fresnel) * surf.Color;
+                float roughnessSqr = MathF.Max(surf.Roughness * surf.Roughness, 1e-4f);
+                float specProbability = float.Clamp(fresnel.Luminance, 0.001f, 0.999f);
 
                 if (isPrimary)
                 {
@@ -400,25 +404,59 @@ class Scene
                     energy /= survive;
                 }
 
-                // Scatter ray: random between specular and diffused weighted by fresnel.
+                // NEE (Next Event Estimation): sample sky light and add MIS-weighted contribution.
+                // Skip when shading normal faces away from viewer (e.g. back-facing normal map):
+                // clamped nDotV would give non-physical 1/(4*nDotV) amplification in the BRDF.
+                if (rawNDotV > 0f && Sky!.LightDirRand(ref rng) is LightDir lightSample)
+                {
+                    Vec3 l = lightSample.Dir;
+                    float nDotL_nee = Vec3.Dot(surf.Normal, l);
+                    if (nDotL_nee > 0f && Vec3.Dot(hit.Norm, l) > 0f && !Occluded(new Ray(hitPos, l), counters))
+                    {
+                        counters.Bump(Counters.Type.SampleNee);
+
+                        // Evaluate full BSDF × cosTheta at light direction.
+                        Vec3 h_nee = (l - ray.Dir).NormalizeOr(surf.Normal); // normalize(l + view)
+                        float nDotH_nee = float.Clamp(Vec3.Dot(surf.Normal, h_nee), 1e-6f, 1f);
+                        float hDotV_nee = MathF.Max(1e-6f, Vec3.Dot(h_nee, -ray.Dir));
+                        float d_nee = GgxD(nDotH_nee, roughnessSqr);
+                        float g_nee = SmithG1(nDotV, roughnessSqr) * SmithG1(nDotL_nee, roughnessSqr);
+                        Color f_nee = FresnelSchlick(hDotV_nee, baseReflectivity);
+                        Color specBrdf = f_nee * (d_nee * g_nee / (4f * nDotV));
+                        Color diffBrdf = (Color.White - FresnelSchlick(nDotL_nee, baseReflectivity)) * surf.Color * (nDotL_nee / MathF.PI);
+                        Color bsdfTimesCos = specBrdf + diffBrdf;
+
+                        // MIS: power heuristic combining light PDF and BSDF mixture PDF.
+                        float bsdfPdf_nee = specProbability * d_nee * nDotH_nee / (4f * hDotV_nee)
+                                          + (1f - specProbability) * nDotL_nee / MathF.PI;
+                        float misWeight_nee = PowerHeuristic(lightSample.Pdf, bsdfPdf_nee);
+
+                        Color neeContrib = Sky.Radiance(l) * bsdfTimesCos * (misWeight_nee / lightSample.Pdf) * energy;
+                        Debug.Assert(neeContrib.IsFinite);
+                        radiance += neeContrib;
+                    }
+                }
+
+                // BSDF scatter: pick specular or diffuse, track scatter PDF for MIS on next miss.
                 Vec3 scatterDir;
-                float specProbability = float.Clamp(fresnel.Luminance, 0.001f, 0.999f);
                 if (rng.NextFloat() < specProbability)
                 {
                     // Specular: GGX importance sampling.
-                    float roughnessSqr = MathF.Max(surf.Roughness * surf.Roughness, 1e-4f);
                     Vec3 halfVec = GgxSpecularHalfVector(surf, roughnessSqr, ref rng);
                     scatterDir = Vec3.Reflect(ray.Dir, halfVec);
 
                     float nDotL = MathF.Max(0f, Vec3.Dot(surf.Normal, scatterDir));
-                    float nDotH = MathF.Max(1e-6f, Vec3.Dot(surf.Normal, halfVec));
-                    float hDotV = MathF.Max(0f, Vec3.Dot(halfVec, -ray.Dir));
+                    float nDotH = float.Clamp(Vec3.Dot(surf.Normal, halfVec), 1e-6f, 1f);
+                    float hDotV = MathF.Max(1e-6f, Vec3.Dot(halfVec, -ray.Dir));
 
                     // BRDF weight: G * F * hDotV / (nDotV * nDotH) divided by specProbability.
                     Color f = FresnelSchlick(hDotV, baseReflectivity);
                     float g = SmithG1(nDotV, roughnessSqr) * SmithG1(nDotL, roughnessSqr);
                     energy *= f * (g * hDotV / (nDotV * nDotH)) / specProbability;
                     Debug.Assert(energy.IsFinite);
+
+                    // Mixture PDF: specProb × D × nDotH / (4 × hDotV).
+                    scatterPdf = specProbability * GgxD(nDotH, roughnessSqr) * nDotH / (4f * hDotV);
                 }
                 else
                 {
@@ -426,6 +464,10 @@ class Scene
                     scatterDir = (surf.Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(surf.Normal);
                     energy *= diffuseColor / (1f - specProbability);
                     Debug.Assert(energy.IsFinite);
+
+                    // Mixture PDF: (1 - specProb) × nDotL / π.
+                    float nDotL = MathF.Max(0f, Vec3.Dot(surf.Normal, scatterDir));
+                    scatterPdf = (1f - specProbability) * nDotL / MathF.PI;
                 }
 
                 // Clamp scatter ray to stay above the geometric surface.
@@ -437,6 +479,20 @@ class Scene
             else
             {
                 counters.Bump(Counters.Type.SampleMiss);
+
+                // Sky hit: MIS-weight the BSDF contribution against the NEE technique.
+                // Primary rays hitting the sky directly have no prior BSDF sample, so no MIS.
+                if (scatterPdf > 0f)
+                {
+                    float lightPdf = Sky!.LightDir(ray.Dir)?.Pdf ?? 0f;
+                    float misWeight = PowerHeuristic(scatterPdf, lightPdf);
+                    Color skyContrib = surf.Radiance * energy * misWeight;
+                    radiance += skyContrib;
+                }
+                else
+                {
+                    radiance += surf.Radiance * energy;
+                }
                 break;
             }
         }
@@ -513,11 +569,32 @@ class Scene
         return surf.TransformDir(dir);
     }
 
+    // GGX normal distribution function.
+    // https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
+    private static float GgxD(float nDotH, float roughnessSqr)
+    {
+        float alphaSqr = roughnessSqr * roughnessSqr;
+        float cos2 = nDotH * nDotH;
+        // Rearranged as (1-cos²) + cos²·α² to avoid float cancellation when nDotH≈1, α≈0.
+        float denom = (1f - cos2) + cos2 * alphaSqr;
+        return alphaSqr / (MathF.PI * denom * denom);
+    }
+
+    // MIS power heuristic with exponent 2: pA² / (pA² + pB²).
+    // https://www.pbr-book.org/3ed-2018/Monte_Carlo_Integration/Importance_Sampling#PowerHeuristic
+    private static float PowerHeuristic(float pA, float pB)
+    {
+        float pA2 = pA * pA;
+        float pB2 = pB * pB;
+        return pA2 / (pA2 + pB2);
+    }
+
     // Fraction of microfacets visible from a given direction.
     // https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
+    // k = alpha/2 (IBL form, Karis 2013), where alpha = roughnessSqr = r².
     private static float SmithG1(float nDotX, float alpha)
     {
-        float k = alpha * alpha / 2f;
+        float k = alpha / 2f;
         return nDotX / (nDotX * (1f - k) + k);
     }
 

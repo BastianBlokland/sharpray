@@ -31,6 +31,7 @@ class Counters
         SampleHit,
         SampleMiss,
         SampleTerminate,
+        SampleNee, // Next Event Estimation.
         SceneObject,
         SceneBvhNodes,
         SceneBvhDepth,
