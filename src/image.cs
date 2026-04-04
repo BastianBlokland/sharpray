@@ -47,6 +47,8 @@ class Image
     public uint Height { get; init; }
     public Pixel[] Pixels { get; init; }
 
+    public Vec2i Size => new Vec2i((int)Width, (int)Height);
+
     public Image(uint width, uint height)
     {
         Debug.Assert(width > 0 && height > 0);
@@ -285,6 +287,8 @@ class ImageHdr
     public uint Width { get; init; }
     public uint Height { get; init; }
     public PixelHdr[] Pixels { get; init; }
+
+    public Vec2i Size => new Vec2i((int)Width, (int)Height);
 
     private ImageHdr(uint width, uint height, PixelHdr[] pixels)
     {
