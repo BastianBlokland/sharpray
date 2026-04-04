@@ -341,9 +341,19 @@ class Scene
                 float specProbability = float.Clamp(fresnel.Luminance, 0.001f, 0.999f);
                 if (rng.NextFloat() < specProbability)
                 {
-                    // Specular (perfect mirror).
-                    scatterDir = Vec3.Reflect(ray.Dir, surf.Normal);
-                    energy *= fresnel / specProbability;
+                    // Specular: GGX importance sampling.
+                    float roughnessSqr = surf.Roughness * surf.Roughness;
+                    Vec3 halfVec = GgxSpecularHalfVector(surf, roughnessSqr, ref rng);
+                    scatterDir = Vec3.Reflect(ray.Dir, halfVec);
+
+                    float nDotL = MathF.Max(0f, Vec3.Dot(surf.Normal, scatterDir));
+                    float nDotH = MathF.Max(1e-6f, Vec3.Dot(surf.Normal, halfVec));
+                    float hDotV = MathF.Max(0f, Vec3.Dot(halfVec, -ray.Dir));
+
+                    // BRDF weight: G * F * hDotV / (nDotV * nDotH) divided by specProbability.
+                    Color f = FresnelSchlick(hDotV, baseReflectivity);
+                    float g = SmithG1(nDotV, roughnessSqr) * SmithG1(nDotL, roughnessSqr);
+                    energy *= f * (g * hDotV / (MathF.Max(nDotV, 1e-6f) * nDotH)) / specProbability;
                 }
                 else
                 {
@@ -427,6 +437,27 @@ class Scene
 
         for (int i = 0; i != _objects.Count; ++i)
             _objects[i].OverlayBounds(overlay, Color.ForIndex(i), maxDepth);
+    }
+
+    // Compute a GGX half-vector for given roughness.
+    // https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
+    private static Vec3 GgxSpecularHalfVector(Surface surf, float roughnessSqr, ref Rng rng)
+    {
+        float u1 = rng.NextFloat();
+        float u2 = rng.NextFloat();
+        float cosTheta = MathF.Sqrt((1f - u1) / (u1 * (roughnessSqr * roughnessSqr - 1f) + 1f));
+        float sinTheta = MathF.Sqrt(MathF.Max(0f, 1f - cosTheta * cosTheta));
+        float phi = 2f * MathF.PI * u2;
+        Vec3 dir = new Vec3(sinTheta * MathF.Cos(phi), sinTheta * MathF.Sin(phi), cosTheta);
+        return surf.TransformDir(dir);
+    }
+
+    // Fraction of microfacets visible from a given direction.
+    // https://www.pbr-book.org/3ed-2018/Reflection_Models/Microfacet_Models
+    private static float SmithG1(float nDotX, float alpha)
+    {
+        float k = alpha * alpha / 2f;
+        return nDotX / (nDotX * (1f - k) + k);
     }
 
     // Schlick approximation of the Fresnel equations.
