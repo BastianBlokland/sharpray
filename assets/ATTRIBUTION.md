@@ -7,6 +7,8 @@
 - **Authors:** Stanford Computer Graphics Laboratory
 - **License:** Public domain. The Stanford repository requests attribution when used.
 
+Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)
+
 > The Stanford Bunny was scanned by Greg Turk and Marc Levoy in 1994.
 
 ## Stanford Dragon (`dragon.obj`)
@@ -15,6 +17,8 @@
 - **URL:** http://graphics.stanford.edu/data/3Dscanrep/
 - **Authors:** Stanford Computer Graphics Laboratory
 - **License:** Public domain. The Stanford repository requests attribution when used.
+
+Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casual-effects.com/data)
 
 > The Stanford Dragon was scanned by the Stanford Graphics Lab.
 
