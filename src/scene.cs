@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 record struct Surface(
     Color Radiance,
@@ -140,17 +141,26 @@ struct Object : IShape
     }
 }
 
-struct Sky
+interface ISky
+{
+    Color AmbientRadianceRay(Ray ray);
+    Color SunRadianceRay(Ray ray);
+    Color SunRadiance { get; }
+    Vec3 SunSampleDir(ref Rng rng);
+}
+
+class SkyProcedural : ISky
 {
     public Color RadianceTop;
     public Color RadianceMiddle;
     public Color RadianceBottom;
     public Vec3 SunDir;
-    public Color SunRadiance;
     public float SunAngle;
     public float SunAngleCos;
 
-    public Sky(
+    public Color SunRadiance { get; set; }
+
+    public SkyProcedural(
         Color radianceTop,
         Color radianceMiddle,
         Color radianceBottom,
@@ -187,22 +197,31 @@ struct Sky
     {
         return Quat.Look(SunDir, new Vec3(0, 1, 0)) * Vec3.RandInCone(ref rng, SunAngle);
     }
+}
 
-    public Color RadianceRay(Ray ray) => AmbientRadianceRay(ray) + SunRadianceRay(ray);
+class SkyTexture : ISky
+{
+    private readonly Texture _texture;
+
+    public SkyTexture(Texture texture)
+    {
+        _texture = texture;
+    }
+
+    public Color AmbientRadianceRay(Ray ray) => _texture.Sample(ray.Dir.EquirectUv());
+    public Color SunRadianceRay(Ray ray) => Color.Black;
+    public Color SunRadiance => Color.Black;
+    public Vec3 SunSampleDir(ref Rng rng) => Vec3.Up;
 }
 
 class Scene
 {
+    public ISky? Sky { get; set; }
+
     private List<Object> _objects = new List<Object>();
     private readonly object _lock = new object();
-    private Sky _sky;
     private bool _built;
     private Bvh<Object, ShapeHit>? _bvh;
-
-    public Scene(Sky sky)
-    {
-        _sky = sky;
-    }
 
     public void Build(Counters? counters = null)
     {
@@ -212,6 +231,8 @@ class Scene
                 return;
             _built = true;
         }
+        Debug.Assert(Sky != null, "Sky missing");
+
         using (counters?.TimeScope(Counters.Type.TimeSceneBvhBuild))
         {
             const float sahCostIntersect = 10f; // High as object tests are expensive.
@@ -268,7 +289,7 @@ class Scene
             return new Surface(mat.Radiance, hit, color, roughness, metallic, normal, tangent);
         }
 
-        return new Surface(_sky.AmbientRadianceRay(ray));
+        return new Surface(Sky!.AmbientRadianceRay(ray));
     }
 
     public Fragment Sample(Ray ray, ref Rng rng, uint bounces, Counters counters)
@@ -377,7 +398,7 @@ class Scene
                 // Add sun contibution for primary rays.
                 if (isPrimary)
                 {
-                    radiance += _sky.SunRadianceRay(ray) * energy;
+                    radiance += Sky!.SunRadianceRay(ray) * energy;
                 }
                 break;
             }
