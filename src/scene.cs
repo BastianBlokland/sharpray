@@ -297,7 +297,7 @@ class Scene
             {
                 counters.Bump(Counters.Type.SampleHit);
 
-                float nDotV = MathF.Max(0f, Vec3.Dot(surf.Normal, -ray.Dir));
+                float nDotV = MathF.Max(1e-4f, Vec3.Dot(surf.Normal, -ray.Dir));
                 Color baseReflectivity = Color.Lerp(new Color(0.04f), surf.Color, surf.Metallic);
                 Color fresnel = FresnelSchlick(nDotV, baseReflectivity);
                 Color diffuseColor = (Color.White - fresnel) * surf.Color;
@@ -353,7 +353,7 @@ class Scene
                     // BRDF weight: G * F * hDotV / (nDotV * nDotH) divided by specProbability.
                     Color f = FresnelSchlick(hDotV, baseReflectivity);
                     float g = SmithG1(nDotV, roughnessSqr) * SmithG1(nDotL, roughnessSqr);
-                    energy *= f * (g * hDotV / (MathF.Max(nDotV, 1e-6f) * nDotH)) / specProbability;
+                    energy *= f * (g * hDotV / (nDotV * nDotH)) / specProbability;
                 }
                 else
                 {
