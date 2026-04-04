@@ -38,6 +38,13 @@ Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casu
 - **Authors:** Charlotte Baglioni
 - **License:** CC0 (public domain)
 
+## Spot (`spot/`)
+
+- **Source:** Keenan Crane's Model Repository
+- **URL:** https://www.cs.cmu.edu/~kmcrane/Projects/ModelRepository/
+- **Authors:** Keenan Crane
+- **License:** Public domain
+
 ## Qwantani Late Afternoon Puresky (`qwantani_late_afternoon.hdr`)
 
 - **Source:** Poly Haven
