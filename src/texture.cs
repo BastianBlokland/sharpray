@@ -78,8 +78,6 @@ class Texture
         return new Texture(texels, image.Width, image.Height);
     }
 
-    public static Texture FromNormal(Image image) => FromLinear(image);
-
     public static Texture FromHdr(ImageHdr image)
     {
         Color[] texels = new Color[image.Pixels.Length];
