@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 
 struct Pixel
 {
@@ -25,6 +26,19 @@ struct Pixel
     public static Pixel Red => new Pixel(255, 0, 0);
     public static Pixel Green => new Pixel(0, 255, 0);
     public static Pixel Blue => new Pixel(0, 0, 255);
+}
+
+struct PixelHdr
+{
+    public byte R, G, B, E; // E = Exponent.
+
+    public PixelHdr(byte r, byte g, byte b, byte e)
+    {
+        R = r;
+        G = g;
+        B = b;
+        E = e;
+    }
 }
 
 class Image
@@ -263,5 +277,118 @@ class Image
         if (ext == ".ppm") return Format.Ppm;
         if (ext == ".bmp") return Format.Bmp;
         return null;
+    }
+}
+
+class ImageHdr
+{
+    public uint Width { get; init; }
+    public uint Height { get; init; }
+    public PixelHdr[] Pixels { get; init; }
+
+    private ImageHdr(uint width, uint height, PixelHdr[] pixels)
+    {
+        Width = width;
+        Height = height;
+        Pixels = pixels;
+    }
+
+    public static ImageHdr Load(string path)
+    {
+        using var stream = File.OpenRead(path);
+        using var reader = new BinaryReader(stream);
+        return LoadHdr(reader);
+    }
+
+    private static ImageHdr LoadHdr(BinaryReader reader)
+    {
+        // HDR image loader for the Radiance HDR (.hdr) format.
+        // https://paulbourke.net/dataformats/pic/
+
+        Span<char> buffer = stackalloc char[256];
+
+        ReadOnlySpan<char> magic = ReadLine(reader, buffer);
+        if (!magic.StartsWith("#?RADIANCE") && !magic.StartsWith("#?RGBE"))
+            throw new Exception($"ImageHdr: Invalid magic '{magic}'");
+
+        // Skip metadata lines until empty line.
+        while (ReadLine(reader, buffer).Length > 0)
+            ;
+
+        ReadOnlySpan<char> sizeLine = ReadLine(reader, buffer);
+        Span<Range> sizeParts = stackalloc Range[4];
+        if (sizeLine.Split(sizeParts, ' ') != 4 || !sizeLine[sizeParts[0]].SequenceEqual("-Y") || !sizeLine[sizeParts[2]].SequenceEqual("+X"))
+            throw new Exception($"ImageHdr: Unsupported size/orientation '{sizeLine}'");
+
+        uint height = uint.Parse(sizeLine[sizeParts[1]]);
+        uint width = uint.Parse(sizeLine[sizeParts[3]]);
+
+        PixelHdr[] pixels = new PixelHdr[width * height];
+
+        Span<byte> scanline = stackalloc byte[(int)width * 4]; // Interleaved RGBE per pixel.
+        Span<byte> scanlineHeader = stackalloc byte[4];
+        for (uint y = 0; y != height; ++y)
+        {
+            reader.Read(scanlineHeader);
+
+            if (scanlineHeader[0] == 2 && scanlineHeader[1] == 2 && (scanlineHeader[2] & 0x80) == 0)
+            {
+                // RLE encoding.
+                uint lineWidth = ((uint)scanlineHeader[2] << 8) | scanlineHeader[3];
+                if (lineWidth != width)
+                    throw new Exception($"ImageHdr: Scanline width mismatch ({lineWidth} vs {width})");
+
+                for (int channel = 0; channel != 4; ++channel)
+                {
+                    for (int x = 0; x < width;)
+                    {
+                        byte code = reader.ReadByte();
+                        if (code > 128)
+                        {
+                            // Run: repeat next byte (code - 128) times.
+                            int count = code - 128;
+                            byte val = reader.ReadByte();
+                            for (int i = 0; i != count; ++i)
+                                scanline[x++ * 4 + channel] = val;
+                        }
+                        else
+                        {
+                            // Non-run: read code literal bytes.
+                            for (int i = 0; i != code; ++i)
+                                scanline[x++ * 4 + channel] = reader.ReadByte();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (scanlineHeader[0] == 1 && scanlineHeader[1] == 1 && scanlineHeader[2] == 1)
+                    throw new Exception("ImageHdr: Old RLE format not supported");
+
+                // Uncompressed scanline (header contains the first pixel).
+                scanlineHeader.CopyTo(scanline);
+                reader.Read(scanline[4..]);
+            }
+
+            // Output the scanline.
+            MemoryMarshal.Cast<byte, PixelHdr>(scanline).CopyTo(pixels.AsSpan((int)(y * width), (int)width));
+        }
+
+        return new ImageHdr(width, height, pixels);
+    }
+
+    private static Span<char> ReadLine(BinaryReader reader, Span<char> buffer)
+    {
+        int length = 0;
+        while (true)
+        {
+            byte val = reader.ReadByte();
+            switch (val)
+            {
+                case (byte)'\n': return buffer[..length];
+                case (byte)'\r': break;
+                default: buffer[length++] = (char)val; break;
+            }
+        }
     }
 }

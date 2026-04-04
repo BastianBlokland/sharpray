@@ -80,6 +80,14 @@ class Texture
 
     public static Texture FromNormal(Image image) => FromLinear(image);
 
+    public static Texture FromHdr(ImageHdr image)
+    {
+        Color[] texels = new Color[image.Pixels.Length];
+        for (int i = 0; i != texels.Length; ++i)
+            texels[i] = Color.FromPixel(image.Pixels[i]);
+        return new Texture(texels, image.Width, image.Height);
+    }
+
     public static Texture Checker(Color a, Color b, uint size = 8)
     {
         Color[] texels = new Color[size * size];
