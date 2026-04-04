@@ -342,7 +342,7 @@ class Scene
                 if (rng.NextFloat() < specProbability)
                 {
                     // Specular: GGX importance sampling.
-                    float roughnessSqr = surf.Roughness * surf.Roughness;
+                    float roughnessSqr = MathF.Max(surf.Roughness * surf.Roughness, 1e-4f);
                     Vec3 halfVec = GgxSpecularHalfVector(surf, roughnessSqr, ref rng);
                     scatterDir = Vec3.Reflect(ray.Dir, halfVec);
 
@@ -354,12 +354,14 @@ class Scene
                     Color f = FresnelSchlick(hDotV, baseReflectivity);
                     float g = SmithG1(nDotV, roughnessSqr) * SmithG1(nDotL, roughnessSqr);
                     energy *= f * (g * hDotV / (nDotV * nDotH)) / specProbability;
+                    Debug.Assert(energy.IsFinite);
                 }
                 else
                 {
                     // Diffuse (cosine-weighted Lambert).
                     scatterDir = (surf.Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(surf.Normal);
                     energy *= diffuseColor / (1f - specProbability);
+                    Debug.Assert(energy.IsFinite);
                 }
 
                 // Clamp scatter ray to stay above the geometric surface.
@@ -380,6 +382,7 @@ class Scene
                 break;
             }
         }
+        Debug.Assert(radiance.IsFinite);
         return new Fragment(radiance, normal, uv, depth);
     }
 
