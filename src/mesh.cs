@@ -96,6 +96,32 @@ class Mesh : IShape
         fmt.WriteLine($"sah={bvhStats.SahCost:F1}"); // Surface area heuristic, how many things to test (boxes and shapes) for a random ray.
     }
 
+    public static void ComputeSmoothNormals(Span<Triangle> triangles)
+    {
+        const float posEqEpsilon = 1e-6f;
+        var normalAccum = new Dictionary<Vec3, Vec3>(new Vec3Comparer(posEqEpsilon));
+
+        // Accumulate weighted normals for each vertex.
+        foreach (Triangle tri in triangles)
+        {
+            Vec3 normWeighted = tri.Normal * tri.Area;
+            normalAccum[tri.PosA] = normalAccum.GetValueOrDefault(tri.PosA) + normWeighted;
+            normalAccum[tri.PosB] = normalAccum.GetValueOrDefault(tri.PosB) + normWeighted;
+            normalAccum[tri.PosC] = normalAccum.GetValueOrDefault(tri.PosC) + normWeighted;
+        }
+
+        // Update the triangles based on the accumulated vertex normals.
+        for (int i = 0; i != triangles.Length; ++i)
+        {
+            ref Triangle tri = ref triangles[i];
+
+            Vec3 normA = normalAccum[tri.PosA].NormalizeOr(tri.Normal);
+            Vec3 normB = normalAccum[tri.PosB].NormalizeOr(tri.Normal);
+            Vec3 normC = normalAccum[tri.PosC].NormalizeOr(tri.Normal);
+            tri = new Triangle(tri.PosA, tri.PosB, tri.PosC, normA, normB, normC, tri.UvA, tri.UvB, tri.UvC);
+        }
+    }
+
     public static Mesh CreateSphere(int rings = 32, int segments = 32, float radius = 1f)
     {
         var triangles = new List<Triangle>();
