@@ -377,7 +377,7 @@ class ImageHdr
         return new ImageHdr(width, height, pixels);
     }
 
-    private static Span<char> ReadLine(BinaryReader reader, Span<char> buffer)
+    private static ReadOnlySpan<char> ReadLine(BinaryReader reader, Span<char> buffer)
     {
         int length = 0;
         while (true)
