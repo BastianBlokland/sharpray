@@ -356,9 +356,6 @@ static class ObjLoader
             Vec2 triUvB = faceUvB >= 0 ? uvs[faceUvB] : new Vec2(1, 0);
             Vec2 triUvC = faceUvC >= 0 ? uvs[faceUvC] : new Vec2(0, 1);
 
-            if (Vec3.Cross(triPosB - triPosA, triPosC - triPosA).MagnitudeSqr() < 1e-12f)
-                continue; // Zero area triangle; skip.
-
             if (faceNormA >= 0 && faceNormB >= 0 && faceNormC >= 0)
             {
                 output.Add(new Triangle(
