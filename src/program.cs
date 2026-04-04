@@ -40,23 +40,20 @@ Directory.CreateDirectory(outputPath);
 
 Overlay overlay = new Overlay();
 
-Sky sky = new Sky(
-    new Color(0.35f, 0.45f, 0.75f) * 0.75f,
-    new Color(0.85f, 0.8f, 0.8f) * 0.75f,
-    new Color(0.45f, 0.38f, 0.26f) * 0.75f,
-    new Vec3(0.4f, 0.3f, 1f).Normalize(),
-    new Color(4f, 3.5f, 2.5f),
-    float.DegreesToRadians(2.6f));
-
-View view = new View(
-    new Transform(
-        new Vec3(1f, 5f, -2f),
-        Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
-    float.DegreesToRadians(75f));
-
-Scene scene = new Scene(sky);
+Scene scene = new Scene();
 using (counters.TimeScope(Counters.Type.TimeSetup))
 {
+    // Sky.
+    Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
+    scene.Sky = new SkyTexture(skyTexture);
+    // scene.Sky = new SkyProcedural(
+    //     new Color(0.35f, 0.45f, 0.75f) * 0.75f,
+    //     new Color(0.85f, 0.8f, 0.8f) * 0.75f,
+    //     new Color(0.45f, 0.38f, 0.26f) * 0.75f,
+    //     new Vec3(0.4f, 0.3f, 1f).Normalize(),
+    //     new Color(4f, 3.5f, 2.5f),
+    //     float.DegreesToRadians(2.6f));
+
     // Floor.
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
     Texture floorRough = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_rough.tga"));
@@ -110,6 +107,12 @@ if (dumpScene)
     fmt.Separate();
     FlushToConsole(ref fmt);
 }
+
+View view = new View(
+    new Transform(
+        new Vec3(1f, 5f, -2f),
+        Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
+    float.DegreesToRadians(75f));
 
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
 Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
