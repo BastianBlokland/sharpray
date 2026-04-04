@@ -236,7 +236,8 @@ struct Vec2 : ISpanFormattable
         }
     }
 
-    public Vec2i ToInt() => new Vec2i((int)MathF.Round(X), (int)MathF.Round(Y));
+    public Vec2i ToInt() => new Vec2i((int)X, (int)Y);
+    public Vec2i RoundToInt() => new Vec2i((int)MathF.Round(X), (int)MathF.Round(Y));
 
     public override int GetHashCode() => HashCode.Combine(X, Y);
 

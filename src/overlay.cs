@@ -64,8 +64,8 @@ class Overlay
             if (projA is (Vec2 posA, float depthA) && projB is (Vec2 posB, float depthB))
             {
                 float depthBias = 1f - line.DepthBias;
-                Vec2i coordA = (posA * size).ToInt();
-                Vec2i coordB = (posB * size).ToInt();
+                Vec2i coordA = (posA * size).RoundToInt();
+                Vec2i coordB = (posB * size).RoundToInt();
 
                 RasterizeLine(
                     image,
@@ -83,7 +83,7 @@ class Overlay
             counters?.Bump(Counters.Type.OverlayText);
 
             if (view.Project(entry.WorldPos, aspect) is (Vec2 pos, float _))
-                RasterizeText(image, entry.Text, (pos * size).ToInt(), entry.Align, entry.Color.ToPixel());
+                RasterizeText(image, entry.Text, (pos * size).RoundToInt(), entry.Align, entry.Color.ToPixel());
         }
 
         foreach (TextEntry2D entry in _text2D)
