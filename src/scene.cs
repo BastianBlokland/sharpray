@@ -1,5 +1,6 @@
 
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 
 record struct Surface(
@@ -9,7 +10,16 @@ record struct Surface(
     float Roughness = 1f,
     float Metallic = 0f,
     Vec3 Normal = default,
-    Vec4 Tangent = default);
+    Vec4 Tangent = default)
+{
+    public Vec3 TransformDir(Vec3 d)
+    {
+        Debug.Assert(d.IsUnit, "Dir must be normalized");
+        Vec3 tan = Tangent.Xyz;
+        Vec3 bitan = Tangent.W * Vec3.Cross(Normal, tan);
+        return d.X * tan + d.Y * bitan + d.Z * Normal;
+    }
+}
 
 record struct Fragment(
     Color Radiance,
