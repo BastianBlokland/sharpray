@@ -1455,6 +1455,7 @@ struct Triangle : IShape
     public Vec3 PosC => Lean.PosC;
     public Vec3 Normal => Lean.Normal;
     public Vec3 Center => Lean.Center;
+    public float Area => Vec3.Cross(Lean.PosAToB, Lean.PosAToC).Magnitude() * 0.5f;
     public Plane Plane => Plane.AtTriangle(PosA, PosB, PosC);
 
     public AABox Bounds() => Lean.Bounds();
