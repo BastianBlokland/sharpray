@@ -98,7 +98,6 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     scene.Build(counters);
 }
 
-
 // scene.OverlayInfo(overlay);
 // scene.OverlayWireframe(overlay);
 // scene.OverlayBounds(overlay, 4);
