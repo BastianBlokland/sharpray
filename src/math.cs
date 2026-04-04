@@ -257,6 +257,7 @@ struct Vec2 : ISpanFormattable
         return new Vec2(v.X / s, v.Y / s);
     }
 
+    public static Vec2 Rand(ref Rng rng) => new Vec2(rng.NextFloat(), rng.NextFloat());
     public static Vec2 Zero => new Vec2(0f, 0f);
     public static Vec2 One => new Vec2(1f, 1f);
 }
