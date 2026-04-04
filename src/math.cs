@@ -1427,7 +1427,8 @@ struct Triangle : IShape
         NormA = normA; NormB = normB; NormC = normC;
         UvA = uvA; UvB = uvB; UvC = uvC;
 
-        Vec3 avgNorm = ((normA + normB + normC) / 3f).NormalizeOr(Lean.Normal);
+        Vec3 geoNorm = Vec3.Cross(posB - posA, posC - posA).NormalizeOr(Vec3.Up);
+        Vec3 avgNorm = ((normA + normB + normC) / 3f).NormalizeOr(geoNorm);
         TanA = TanB = TanC = ComputeTangent(posA, posB, posC, uvA, uvB, uvC, avgNorm);
     }
 
