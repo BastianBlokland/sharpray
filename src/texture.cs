@@ -6,6 +6,7 @@ enum TextureFilter { Bilinear, Point }
 class Texture
 {
     public readonly uint Width, Height;
+    public Vec2i Size => new Vec2i((int)Width, (int)Height);
 
     public TextureFilter Filter;
     public Vec2 Tiling;
