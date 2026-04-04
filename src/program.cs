@@ -89,7 +89,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
             float angle = i * (MathF.PI * 2f / sphereCount);
             float roughness = 1.0f - (float)i / (sphereCount - 1);
             Vec3 pos = center + new Vec3(MathF.Cos(angle) * orbitRadius, 0f, MathF.Sin(angle) * orbitRadius);
-            Material mat = new Material(ballColor, roughness, 0.5f);
+            Material mat = new Material(ballColor, roughness, 1.0f);
             IShape shape = new Sphere(pos, radius);
             scene.AddObject(new Object($"sphere_{i}", Transform.Identity(), mat, shape));
         }

@@ -280,9 +280,10 @@ class Scene
             {
                 counters.Bump(Counters.Type.SampleHit);
 
-                // Absorb light frequencies.
-                Color specColor = Color.Lerp(Color.White, surf.Color, surf.Metallic);
-                energy *= Color.Lerp(surf.Color, specColor, 1f - surf.Roughness);
+                float nDotV = MathF.Max(0f, Vec3.Dot(surf.Normal, -ray.Dir));
+                Color baseReflectivity = Color.Lerp(new Color(0.04f), surf.Color, surf.Metallic);
+                Color fresnel = FresnelSchlick(nDotV, baseReflectivity);
+                Color diffuseColor = (Color.White - fresnel) * surf.Color;
 
                 if (isPrimary)
                 {
@@ -294,14 +295,14 @@ class Scene
 
                 // Direct sun contribution.
                 Vec3 sunDir = _sky.SunSampleDir(ref rng);
-                float sunCosTheta = Vec3.Dot(surf.Normal, sunDir);
-                if (sunCosTheta > 0f && surf.Roughness > 0.05f)
+                float nDotSun = Vec3.Dot(surf.Normal, sunDir);
+                if (nDotSun > 0f && surf.Roughness > 0.05f)
                 {
                     Ray shadowRay = new Ray(hitPos, sunDir);
                     if (Occluded(shadowRay, counters))
                         counters.Bump(Counters.Type.ShadowRayOccluded);
                     else
-                        radiance += _sky.SunRadiance * energy * sunCosTheta;
+                        radiance += _sky.SunRadiance * energy * diffuseColor * nDotSun;
                 }
                 else
                     counters.Bump(Counters.Type.ShadowRaySkipped);
@@ -318,10 +319,21 @@ class Scene
                     energy /= survive;
                 }
 
-                // Compute scatter ray.
-                Vec3 scatterDirDiffuse = (surf.Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(surf.Normal); // Cosine-weighted distribution.
-                Vec3 scatterDirSpecular = Vec3.Reflect(ray.Dir, surf.Normal);
-                Vec3 scatterDir = Vec3.Lerp(scatterDirSpecular, scatterDirDiffuse, surf.Roughness).NormalizeOr(surf.Normal);
+                // Scatter ray: random between specular and diffused weighted by fresnel.
+                Vec3 scatterDir;
+                float specProbability = float.Clamp(fresnel.Luminance, 0.001f, 0.999f);
+                if (rng.NextFloat() < specProbability)
+                {
+                    // Specular (perfect mirror).
+                    scatterDir = Vec3.Reflect(ray.Dir, surf.Normal);
+                    energy *= fresnel / specProbability;
+                }
+                else
+                {
+                    // Diffuse (cosine-weighted Lambert).
+                    scatterDir = (surf.Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(surf.Normal);
+                    energy *= diffuseColor / (1f - specProbability);
+                }
 
                 // Clamp scatter ray to stay above the geometric surface.
                 if (Vec3.Dot(scatterDir, hit.Norm) <= 0f)
@@ -398,5 +410,15 @@ class Scene
 
         for (int i = 0; i != _objects.Count; ++i)
             _objects[i].OverlayBounds(overlay, Color.ForIndex(i), maxDepth);
+    }
+
+    // Schlick approximation of the Fresnel equations.
+    // https://en.wikipedia.org/wiki/Schlick%27s_approximation
+    private static Color FresnelSchlick(float nDotV, Color baseReflectivity)
+    {
+        float x = 1f - nDotV;
+        float x2 = x * x;
+        float x5 = x2 * x2 * x;
+        return baseReflectivity + (Color.White - baseReflectivity) * x5;
     }
 }
