@@ -260,6 +260,7 @@ static class ObjLoader
 
     private static void ParseMtl(string path, Dictionary<string, Material> output)
     {
+        string dir = Path.GetDirectoryName(path)!;
         string? name = null;
         Color color = Color.White;
         Color radiance = default;
@@ -267,13 +268,17 @@ static class ObjLoader
         float metallic = 0f;
         bool hasPr = false; // Physical roughness.
         float ns = 0f; // Shininess.
+        Texture? colorTex = null;
+        Texture? roughnessTex = null;
+        Texture? normalTex = null;
+
 
         void BuildMaterial()
         {
             if (name == null)
                 return;
             float matRoughness = Math.Clamp(hasPr ? roughness : MathF.Sqrt(2f / (ns + 2f)), 0, 1);
-            output[name] = new Material(color, matRoughness, metallic, radiance);
+            output[name] = new Material(color, matRoughness, metallic, radiance, colorTex, roughnessTex, normalTex);
         }
 
         using var stream = File.OpenRead(path);
@@ -302,6 +307,9 @@ static class ObjLoader
                 metallic = 0f;
                 hasPr = false;
                 ns = 0f;
+                colorTex = null;
+                roughnessTex = null;
+                normalTex = null;
 
                 lexer.SkipLine();
             }
@@ -329,6 +337,24 @@ static class ObjLoader
             else if (word.SequenceEqual("Ns"))
             {
                 ns = ReadFloat(lexer);
+                lexer.SkipLine();
+            }
+            else if (word.SequenceEqual("map_Kd"))
+            {
+                lexer.Next(wordBuf, out int len);
+                colorTex = Texture.FromSrgb(Image.Load(Path.Combine(dir, wordBuf[..len].ToString())));
+                lexer.SkipLine();
+            }
+            else if (word.SequenceEqual("map_Pr") || word.SequenceEqual("map_roughness"))
+            {
+                lexer.Next(wordBuf, out int len);
+                roughnessTex = Texture.FromLinear(Image.Load(Path.Combine(dir, wordBuf[..len].ToString())));
+                lexer.SkipLine();
+            }
+            else if (word.SequenceEqual("map_bump") || word.SequenceEqual("norm") || word.SequenceEqual("map_Kn"))
+            {
+                lexer.Next(wordBuf, out int len);
+                normalTex = Texture.FromLinear(Image.Load(Path.Combine(dir, wordBuf[..len].ToString())));
                 lexer.SkipLine();
             }
             else
