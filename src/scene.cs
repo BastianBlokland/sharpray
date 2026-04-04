@@ -7,8 +7,9 @@ record struct Surface(
     ShapeHit? Hit = null,
     Color Color = default,
     float Roughness = 1f,
+    float Metallic = 0f,
     Vec3 Normal = default,
-    float Metallic = 0f);
+    Vec4 Tangent = default);
 
 record struct Fragment(
     Color Radiance,
@@ -247,8 +248,14 @@ class Scene
             Material mat = _objects[idx].Material;
             Color color = mat.SampleColor(hit.Uv);
             float roughness = mat.SampleRoughness(hit.Uv);
+            float metallic = mat.Metallic;
             Vec3 normal = mat.SampleNormal(hit.Uv, hit.Norm, hit.Tan);
-            return new Surface(mat.Radiance, hit, color, roughness, normal, mat.Metallic);
+
+            // Re-orthogonalize tangent.
+            Vec3 tangentDir = (hit.Tan.Xyz - Vec3.Dot(hit.Tan.Xyz, normal) * normal).NormalizeOr(hit.Tan.Xyz);
+            Vec4 tangent = new Vec4(tangentDir, hit.Tan.W);
+
+            return new Surface(mat.Radiance, hit, color, roughness, metallic, normal, tangent);
         }
 
         return new Surface(_sky.AmbientRadianceRay(ray));
