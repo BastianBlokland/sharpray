@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 
 /**
  * Wavefront Obj.
@@ -124,20 +125,28 @@ class ObjLexer
     };
 }
 
+struct ObjConfig
+{
+    public Transform Transform = Transform.Identity();
+    public Material? Material = null;
+    public bool SmoothNormals = true;
+
+    public ObjConfig() { }
+}
+
 static class ObjLoader
 {
     public static void Load(
         string path,
         Scene scene,
-        Transform? transform = null,
-        Material? material = null,
+        ObjConfig config = default,
         Counters? counters = null)
     {
         using var stream = File.OpenRead(path);
         using var reader = new StreamReader(stream, bufferSize: 65536);
         using (counters?.TimeScope(Counters.Type.TimeObjLoad))
         {
-            Parse(new ObjLexer(reader), path, scene, transform, material, counters);
+            Parse(new ObjLexer(reader), path, scene, config, counters);
         }
     }
 
@@ -145,8 +154,7 @@ static class ObjLoader
         ObjLexer lexer,
         string path,
         Scene scene,
-        Transform? transform,
-        Material? material,
+        ObjConfig config,
         Counters? counters)
     {
         var positions = new List<Vec3>();
@@ -164,17 +172,18 @@ static class ObjLoader
         {
             if (triangles.Count == 0)
                 return;
+            if (config.SmoothNormals && normals.Count == 0)
+                Mesh.ComputeSmoothNormals(CollectionsMarshal.AsSpan(triangles));
 
             string name = currentObjectName is string n ? $"{fileName}_{n}" : $"{fileName}_{objectCount}";
-            Transform objTrans = transform ?? Transform.Identity();
             Material objMat;
             if (currentMaterialName == null || !materials.TryGetValue(currentMaterialName, out objMat))
             {
-                objMat = material ?? new Material(Color.White, 1.0f);
+                objMat = config.Material ?? new Material(Color.White, 1.0f);
             }
             Mesh mesh = new Mesh(triangles, counters);
 
-            scene.AddObject(new Object(name, objTrans, objMat, mesh));
+            scene.AddObject(new Object(name, config.Transform, objMat, mesh));
 
             triangles.Clear();
             objectCount++;
