@@ -52,6 +52,8 @@ class Cdf1
         }
         return Math.Min(lo, Count - 1);
     }
+
+    public uint SampleRand(ref Rng rng) => Sample(rng.NextFloat());
 }
 
 // Cumulative Distribution Function
@@ -91,4 +93,6 @@ class Cdf2
         int x = (int)_conditionals[y].Sample(coord.X);
         return new Vec2i(x, y);
     }
+
+    public Vec2i SampleRand(ref Rng rng) => Sample(Vec2.Rand(ref rng));
 }
