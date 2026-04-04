@@ -115,12 +115,16 @@ struct Object : IShape
         fmt.IndentPop();
     }
 
+    public void OverlayWireframe(Overlay overlay, Color color)
+    {
+        if (Shape is Mesh mesh)
+            mesh.OverlayWireframe(overlay, Trans, color);
+    }
+
     public void OverlayBounds(Overlay overlay, Color color, int maxDepth = int.MaxValue)
     {
         if (Shape is Mesh mesh)
-        {
             mesh.OverlayBounds(overlay, Trans, maxDepth);
-        }
         overlay.AddLineBox(_boundsRotated, color);
     }
 }
@@ -376,6 +380,15 @@ class Scene
         }
     }
 
+    public void OverlayWireframe(Overlay overlay)
+    {
+        if (!_built)
+            throw new InvalidOperationException("Scene not built");
+
+        for (int i = 0; i != _objects.Count; ++i)
+            _objects[i].OverlayWireframe(overlay, Color.ForIndex(i));
+    }
+
     public void OverlayBounds(Overlay overlay, int maxDepth = int.MaxValue)
     {
         if (!_built)
@@ -384,8 +397,6 @@ class Scene
         _bvh?.OverlayBounds(overlay, Transform.Identity(), maxDepth);
 
         for (int i = 0; i != _objects.Count; ++i)
-        {
             _objects[i].OverlayBounds(overlay, Color.ForIndex(i), maxDepth);
-        }
     }
 }

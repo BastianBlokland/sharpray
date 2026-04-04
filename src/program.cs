@@ -100,6 +100,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
 
 
 // scene.OverlayInfo(overlay);
+// scene.OverlayWireframe(overlay);
 // scene.OverlayBounds(overlay, 4);
 
 if (dumpScene)
