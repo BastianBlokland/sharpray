@@ -113,6 +113,8 @@ struct Color : ISpanFormattable
         return new Pixel((byte)(r * 255f + 0.5f), (byte)(g * 255f + 0.5f), (byte)(b * 255f + 0.5f));
     }
 
+    public override int GetHashCode() => HashCode.Combine(R, G, B);
+
     public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { R, G, B }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
@@ -235,6 +237,8 @@ struct Vec2 : ISpanFormattable
 
     public Vec2i ToInt() => new Vec2i((int)MathF.Round(X), (int)MathF.Round(Y));
 
+    public override int GetHashCode() => HashCode.Combine(X, Y);
+
     public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
@@ -276,6 +280,8 @@ struct Vec2i : ISpanFormattable
     }
 
     public Vec2 ToFloat() => new Vec2(X, Y);
+
+    public override int GetHashCode() => HashCode.Combine(X, Y);
 
     public override string ToString() => FormatUtils.FormatSet(stackalloc int[] { X, Y });
     public string ToString(string? format, IFormatProvider? provider) => ToString();
@@ -352,6 +358,8 @@ struct Vec3 : ISpanFormattable
         float v = 0.5f - MathF.Asin(Math.Clamp(Y, -1f, 1f)) / MathF.PI;
         return new Vec2(u, v);
     }
+
+    public override int GetHashCode() => HashCode.Combine(X, Y, Z);
 
     public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y, Z }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
@@ -475,6 +483,8 @@ struct Vec4 : ISpanFormattable
     }
 
     public Vec3 Xyz => new Vec3(X, Y, Z);
+
+    public override int GetHashCode() => HashCode.Combine(X, Y, Z, W);
 
     public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y, Z, W }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
