@@ -95,4 +95,52 @@ class Mesh : IShape
         fmt.WriteLine($"leafDepth={bvhStats.LeafDepthAvg:F1}");
         fmt.WriteLine($"sah={bvhStats.SahCost:F1}"); // Surface area heuristic, how many things to test (boxes and shapes) for a random ray.
     }
+
+    public static Mesh CreateSphere(int rings = 32, int segments = 32, float radius = 1f)
+    {
+        var triangles = new List<Triangle>();
+
+        for (int ring = 0; ring != rings; ++ring)
+        {
+            float theta0 = MathF.PI * ring / rings;
+            float theta1 = MathF.PI * (ring + 1) / rings;
+            float v0 = (float)ring / rings;
+            float v1 = (float)(ring + 1) / rings;
+
+            for (int seg = 0; seg != segments; ++seg)
+            {
+                float phi0 = MathF.PI + 2f * MathF.PI * seg / segments;
+                float phi1 = MathF.PI + 2f * MathF.PI * (seg + 1) / segments;
+                float u0 = (float)seg / segments;
+                float u1 = (float)(seg + 1) / segments;
+
+                Vec3 n00 = SphereNormal(theta0, phi0);
+                Vec3 n01 = SphereNormal(theta0, phi1);
+                Vec3 n10 = SphereNormal(theta1, phi0);
+                Vec3 n11 = SphereNormal(theta1, phi1);
+
+                Vec3 p00 = n00 * radius;
+                Vec3 p01 = n01 * radius;
+                Vec3 p10 = n10 * radius;
+                Vec3 p11 = n11 * radius;
+
+                Vec2 uv00 = new Vec2(u0, v0);
+                Vec2 uv01 = new Vec2(u1, v0);
+                Vec2 uv10 = new Vec2(u0, v1);
+                Vec2 uv11 = new Vec2(u1, v1);
+
+                // Two triangles per quad, wound CCW from outside.
+                triangles.Add(new Triangle(p00, p11, p10, n00, n11, n10, uv00, uv11, uv10));
+                triangles.Add(new Triangle(p00, p01, p11, n00, n01, n11, uv00, uv01, uv11));
+            }
+        }
+
+        return new Mesh(triangles);
+    }
+
+    private static Vec3 SphereNormal(float theta, float phi)
+    {
+        float sinTheta = MathF.Sin(theta);
+        return new Vec3(sinTheta * MathF.Cos(phi), MathF.Cos(theta), sinTheta * MathF.Sin(phi));
+    }
 }
