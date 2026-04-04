@@ -297,6 +297,7 @@ struct Vec2i : ISpanFormattable
     public static Vec2i operator -(Vec2i a, Vec2i b) => new Vec2i(a.X - b.X, a.Y - b.Y);
     public static Vec2i operator *(Vec2i v, int s) => new Vec2i(v.X * s, v.Y * s);
     public static Vec2i operator *(int s, Vec2i v) => new Vec2i(s * v.X, s * v.Y);
+    public static Vec2i operator %(Vec2i a, Vec2i b) => new Vec2i(a.X % b.X, a.Y % b.Y);
     public static Vec2 operator +(Vec2i v, float s) => new Vec2(v.X + s, v.Y + s);
 
     public static Vec2i Zero => new Vec2i(0, 0);
