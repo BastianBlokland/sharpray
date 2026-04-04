@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -295,6 +296,15 @@ struct Vec2i : ISpanFormattable
     public static Vec2i operator *(int s, Vec2i v) => new Vec2i(s * v.X, s * v.Y);
 
     public static Vec2i Zero => new Vec2i(0, 0);
+}
+
+class Vec3Comparer(float epsilon) : IEqualityComparer<Vec3>
+{
+    private readonly float _invEpsilon = 1f / epsilon;
+
+    private long Quantize(float v) => (long)MathF.Round(v * _invEpsilon);
+    public bool Equals(Vec3 a, Vec3 b) => Quantize(a.X) == Quantize(b.X) && Quantize(a.Y) == Quantize(b.Y) && Quantize(a.Z) == Quantize(b.Z);
+    public int GetHashCode(Vec3 v) => HashCode.Combine(Quantize(v.X), Quantize(v.Y), Quantize(v.Z));
 }
 
 struct Vec3 : ISpanFormattable
