@@ -2,9 +2,19 @@
 using System;
 using System.Collections.Generic;
 
-record struct Surface(Color Radiance, ShapeHit? Hit = null, Material? Material = null);
+record struct Surface(
+    Color Radiance,
+    ShapeHit? Hit = null,
+    Color Color = default,
+    float Roughness = 1f,
+    Vec3 Normal = default,
+    float Metallic = 0f);
 
-record struct Fragment(Color Radiance, Vec3? Normal, Vec2? Uv, float? Depth);
+record struct Fragment(
+    Color Radiance,
+    Vec3? Normal,
+    Vec2? Uv,
+    float? Depth);
 
 record struct Material(
     Color Color,
@@ -231,7 +241,10 @@ class Scene
         if (_bvh!.Intersect(ray, counters) is (ShapeHit hit, int idx))
         {
             Material mat = _objects[idx].Material;
-            return new Surface(mat.Radiance, hit, mat);
+            Color color = mat.SampleColor(hit.Uv);
+            float roughness = mat.SampleRoughness(hit.Uv);
+            Vec3 normal = mat.SampleNormal(hit.Uv, hit.Norm, hit.Tan);
+            return new Surface(mat.Radiance, hit, color, roughness, normal, mat.Metallic);
         }
 
         return new Surface(_sky.AmbientRadianceRay(ray));
@@ -259,39 +272,26 @@ class Scene
             // Accumulate radiance.
             radiance += surf.Radiance * energy;
 
-            // Absorb some of the light frequencies.
-            float roughness = 1.0f;
-            if (surf.Material is Material material)
-            {
-                Vec2 hitUv = surf.Hit is ShapeHit h ? h.Uv : Vec2.Zero;
-                Color matColor = material.SampleColor(hitUv);
-                Color specColor = Color.Lerp(Color.White, matColor, material.Metallic);
-                energy *= Color.Lerp(matColor, specColor, 1f - roughness);
-                roughness = material.SampleRoughness(hitUv);
-            }
-
             if (surf.Hit is ShapeHit hit)
             {
                 counters.Bump(Counters.Type.SampleHit);
 
-                // Invert the normal and tangent handedness for backface hits.
-                bool backface = Vec3.Dot(hit.Norm, ray.Dir) > 0f;
-                Vec3 normHit = backface ? -hit.Norm : hit.Norm;
-                Vec4 tanHit = backface ? new Vec4(hit.Tan.Xyz, -hit.Tan.W) : hit.Tan;
-                Vec3 normShading = surf.Material is Material mat ? mat.SampleNormal(hit.Uv, normHit, tanHit) : normHit;
+                // Absorb light frequencies.
+                Color specColor = Color.Lerp(Color.White, surf.Color, surf.Metallic);
+                energy *= Color.Lerp(surf.Color, specColor, 1f - surf.Roughness);
 
                 if (isPrimary)
                 {
-                    normal = normShading;
+                    normal = surf.Normal;
                     uv = hit.Uv;
                     depth = hit.Dist;
                 }
-                Vec3 hitPos = ray[hit.Dist] + normHit * 1e-4f;
+                Vec3 hitPos = ray[hit.Dist] + hit.Norm * 1e-4f;
 
                 // Direct sun contribution.
                 Vec3 sunDir = _sky.SunSampleDir(ref rng);
-                float sunCosTheta = Vec3.Dot(normShading, sunDir);
-                if (sunCosTheta > 0f && roughness > 0.05f)
+                float sunCosTheta = Vec3.Dot(surf.Normal, sunDir);
+                if (sunCosTheta > 0f && surf.Roughness > 0.05f)
                 {
                     Ray shadowRay = new Ray(hitPos, sunDir);
                     if (Occluded(shadowRay, counters))
@@ -315,13 +315,13 @@ class Scene
                 }
 
                 // Compute scatter ray.
-                Vec3 scatterDirDiffuse = (normShading + Vec3.RandOnSphere(ref rng)).NormalizeOr(normShading); // Cosine-weighted distribution.
-                Vec3 scatterDirSpecular = Vec3.Reflect(ray.Dir, normShading);
-                Vec3 scatterDir = Vec3.Lerp(scatterDirSpecular, scatterDirDiffuse, roughness).NormalizeOr(normShading);
+                Vec3 scatterDirDiffuse = (surf.Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(surf.Normal); // Cosine-weighted distribution.
+                Vec3 scatterDirSpecular = Vec3.Reflect(ray.Dir, surf.Normal);
+                Vec3 scatterDir = Vec3.Lerp(scatterDirSpecular, scatterDirDiffuse, surf.Roughness).NormalizeOr(surf.Normal);
 
                 // Clamp scatter ray to stay above the geometric surface.
-                if (Vec3.Dot(scatterDir, normHit) <= 0f)
-                    scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, normHit) * normHit).NormalizeOr(normHit);
+                if (Vec3.Dot(scatterDir, hit.Norm) <= 0f)
+                    scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, hit.Norm) * hit.Norm).NormalizeOr(hit.Norm);
 
                 ray = new Ray(hitPos, scatterDir);
             }
