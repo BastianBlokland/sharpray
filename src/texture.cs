@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 enum TextureFilter { Bilinear, Point }
 
@@ -22,6 +23,13 @@ class Texture
         Tiling = Vec2.One;
 
         _texels = pixels;
+    }
+
+    public Color Get(Vec2i pos)
+    {
+        Debug.Assert(pos.X >= 0 && pos.X < Width);
+        Debug.Assert(pos.Y >= 0 && pos.Y < Height);
+        return _texels[(uint)pos.Y * Width + (uint)pos.X];
     }
 
     public Color Sample(Vec2 coord)
