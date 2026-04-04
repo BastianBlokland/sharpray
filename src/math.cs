@@ -97,6 +97,8 @@ struct Color : ISpanFormattable
         }
     }
 
+    public float Luminance => 0.2126f * R + 0.7152f * G + 0.0722f * B;
+
     public Color Clamp01() => new Color(Math.Clamp(R, 0f, 1f), Math.Clamp(G, 0f, 1f), Math.Clamp(B, 0f, 1f));
 
     public Pixel ToPixel()
