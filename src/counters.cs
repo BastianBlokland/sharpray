@@ -31,8 +31,6 @@ class Counters
         SampleHit,
         SampleMiss,
         SampleTerminate,
-        ShadowRayOccluded,
-        ShadowRaySkipped,
         SceneObject,
         SceneBvhNodes,
         SceneBvhDepth,

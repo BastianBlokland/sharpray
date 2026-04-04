@@ -142,10 +142,7 @@ struct Object : IShape
 
 interface ISky
 {
-    Color AmbientRadianceRay(Ray ray);
-    Color SunRadianceRay(Ray ray);
-    Color SunRadiance { get; }
-    Vec3 SunSampleDir(ref Rng rng);
+    Color Radiance(Vec3 dir);
 }
 
 class SkyProcedural : ISky
@@ -156,8 +153,7 @@ class SkyProcedural : ISky
     public Vec3 SunDir;
     public float SunAngle;
     public float SunAngleCos;
-
-    public Color SunRadiance { get; set; }
+    public Color SunRadiance;
 
     public SkyProcedural(
         Color radianceTop,
@@ -176,25 +172,17 @@ class SkyProcedural : ISky
         SunAngleCos = MathF.Cos(sunAngle);
     }
 
-    public Color AmbientRadianceRay(Ray ray)
+    public Color Radiance(Vec3 dir)
     {
         const float bias = 0.0001f;
-        float topBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias - ray.Dir.Y), 4f);
-        float bottomBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias + ray.Dir.Y), 40f);
+        float topBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias - dir.Y), 4f);
+        float bottomBlend = 1f - MathF.Pow(MathF.Min(1f, 1f + bias + dir.Y), 40f);
         float middleBlend = 1f - topBlend - bottomBlend;
-        return RadianceTop * topBlend + RadianceMiddle * middleBlend + RadianceBottom * bottomBlend;
-    }
+        Color ambient = RadianceTop * topBlend + RadianceMiddle * middleBlend + RadianceBottom * bottomBlend;
 
-    public Color SunRadianceRay(Ray ray)
-    {
-        float sunDot = Vec3.Dot(ray.Dir, SunDir);
+        float sunDot = Vec3.Dot(dir, SunDir);
         float sunBlend = MathF.Max(0f, (sunDot - SunAngleCos) / (1f - SunAngleCos));
-        return SunRadiance * sunBlend;
-    }
-
-    public Vec3 SunSampleDir(ref Rng rng)
-    {
-        return Quat.Look(SunDir, new Vec3(0, 1, 0)) * Vec3.RandInCone(ref rng, SunAngle);
+        return ambient + SunRadiance * sunBlend;
     }
 }
 
@@ -207,10 +195,7 @@ class SkyTexture : ISky
         _texture = texture;
     }
 
-    public Color AmbientRadianceRay(Ray ray) => _texture.Sample(ray.Dir.EquirectUv());
-    public Color SunRadianceRay(Ray ray) => Color.Black;
-    public Color SunRadiance => Color.Black;
-    public Vec3 SunSampleDir(ref Rng rng) => Vec3.Up;
+    public Color Radiance(Vec3 dir) => _texture.Sample(dir.EquirectUv());
 }
 
 class Scene
@@ -288,7 +273,7 @@ class Scene
             return new Surface(mat.Radiance, hit, color, roughness, metallic, normal, tangent);
         }
 
-        return new Surface(Sky!.AmbientRadianceRay(ray));
+        return new Surface(Sky!.Radiance(ray.Dir));
     }
 
     public Fragment Sample(Ray ray, ref Rng rng, uint bounces, Counters counters)
@@ -329,20 +314,6 @@ class Scene
                     depth = hit.Dist;
                 }
                 Vec3 hitPos = ray[hit.Dist] + hit.Norm * 1e-4f;
-
-                // Direct sun contribution.
-                Vec3 sunDir = Sky!.SunSampleDir(ref rng);
-                float nDotSun = Vec3.Dot(surf.Normal, sunDir);
-                if (nDotSun > 0f && surf.Roughness > 0.05f)
-                {
-                    Ray shadowRay = new Ray(hitPos, sunDir);
-                    if (Occluded(shadowRay, counters))
-                        counters.Bump(Counters.Type.ShadowRayOccluded);
-                    else
-                        radiance += Sky!.SunRadiance * energy * diffuseColor * nDotSun;
-                }
-                else
-                    counters.Bump(Counters.Type.ShadowRaySkipped);
 
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
@@ -393,12 +364,6 @@ class Scene
             else
             {
                 counters.Bump(Counters.Type.SampleMiss);
-
-                // Add sun contibution for primary rays.
-                if (isPrimary)
-                {
-                    radiance += Sky!.SunRadianceRay(ray) * energy;
-                }
                 break;
             }
         }
