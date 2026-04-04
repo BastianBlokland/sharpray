@@ -461,6 +461,15 @@ struct Vec3 : ISpanFormattable
         float sinT = MathF.Sqrt(1f - z * z);
         return new Vec3(MathF.Cos(phi) * sinT, MathF.Sin(phi) * sinT, z);
     }
+
+    public static Vec3 FromEquirectUv(Vec2 uv)
+    {
+        // Inverse of EquirectUv().
+        float phi = (uv.X - 0.5f) * 2f * MathF.PI;
+        float sinTheta = MathF.Sin(MathF.PI * uv.Y);
+        float y = MathF.Cos(MathF.PI * uv.Y);
+        return new Vec3(sinTheta * MathF.Cos(phi), y, sinTheta * MathF.Sin(phi));
+    }
 }
 
 struct Vec4 : ISpanFormattable
