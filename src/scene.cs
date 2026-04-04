@@ -2,7 +2,6 @@
 using System;
 using System.Diagnostics;
 using System.Collections.Generic;
-using System.Diagnostics;
 
 record struct Surface(
     Color Radiance,
@@ -332,7 +331,7 @@ class Scene
                 Vec3 hitPos = ray[hit.Dist] + hit.Norm * 1e-4f;
 
                 // Direct sun contribution.
-                Vec3 sunDir = _sky.SunSampleDir(ref rng);
+                Vec3 sunDir = Sky!.SunSampleDir(ref rng);
                 float nDotSun = Vec3.Dot(surf.Normal, sunDir);
                 if (nDotSun > 0f && surf.Roughness > 0.05f)
                 {
@@ -340,7 +339,7 @@ class Scene
                     if (Occluded(shadowRay, counters))
                         counters.Bump(Counters.Type.ShadowRayOccluded);
                     else
-                        radiance += _sky.SunRadiance * energy * diffuseColor * nDotSun;
+                        radiance += Sky!.SunRadiance * energy * diffuseColor * nDotSun;
                 }
                 else
                     counters.Bump(Counters.Type.ShadowRaySkipped);
