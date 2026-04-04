@@ -33,3 +33,10 @@
 - **URL:** https://polyhaven.com/a/cobblestone_floor_09
 - **Authors:** Charlotte Baglioni
 - **License:** CC0 (public domain)
+
+## Qwantani Late Afternoon Puresky (`qwantani_late_afternoon.hdr`)
+
+- **Source:** Poly Haven
+- **URL:** https://polyhaven.com/a/qwantani_late_afternoon_puresky
+- **Authors:** Greg Zaal, Jarod Guest
+- **License:** CC0 (public domain)
