@@ -343,6 +343,16 @@ struct Vec3 : ISpanFormattable
         return Cross(up, this).Normalize();
     }
 
+    public Vec2 EquirectUv()
+    {
+        // Map a unit direction to equirectangular UV (Y-up, u wraps around XZ, v from top to bottom).
+        // https://en.wikipedia.org/wiki/Equirectangular_projection
+        Debug.Assert(IsUnit, "EquirectUv requires a unit vector");
+        float u = MathF.Atan2(Z, X) / (MathF.PI * 2f) + 0.5f;
+        float v = 0.5f - MathF.Asin(Math.Clamp(Y, -1f, 1f)) / MathF.PI;
+        return new Vec2(u, v);
+    }
+
     public override string ToString() => FormatUtils.FormatSet(stackalloc float[] { X, Y, Z }, "G3");
     public string ToString(string? format, IFormatProvider? provider) => ToString();
     public bool TryFormat(Span<char> dest, out int written, ReadOnlySpan<char> format, IFormatProvider? provider)
