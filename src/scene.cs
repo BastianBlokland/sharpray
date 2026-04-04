@@ -140,9 +140,57 @@ struct Object : IShape
     }
 }
 
+record struct LightDir(
+    Vec3 Dir,
+    float Pdf // Probability Density Function, likelihood of the direction being chosen.
+);
+
 interface ISky
 {
     Color Radiance(Vec3 dir);
+
+    // Compute a LightDir including its pdf (Probability Density Function).
+    LightDir? LightDir(Vec3 dir);
+    LightDir? LightDirRand(ref Rng rng);
+}
+
+readonly struct SunProcedural
+{
+    private readonly Vec3 _dir;
+    private readonly float _angle;
+    private readonly Color _radiance;
+    private readonly float _angleCos;
+    private readonly Quat _rot;
+
+    public SunProcedural(Vec3 dir, float angle, Color radiance)
+    {
+        _dir = dir;
+        _angle = angle;
+        _radiance = radiance;
+        _angleCos = MathF.Cos(angle);
+        _rot = Quat.Look(dir, Vec3.Up);
+    }
+
+    public Color Radiance(Vec3 dir)
+    {
+        float blend = MathF.Max(0f, (Vec3.Dot(dir, _dir) - _angleCos) / (1f - _angleCos));
+        return _radiance * blend;
+    }
+
+    public LightDir? LightDir(Vec3 dir)
+    {
+        if (Vec3.Dot(dir, _dir) < _angleCos)
+            return null;
+        float pdf = 1f / (2f * MathF.PI * (1f - _angleCos));
+        return new LightDir(dir, pdf);
+    }
+
+    public LightDir LightDirRand(ref Rng rng)
+    {
+        Vec3 dir = _rot * Vec3.RandInCone(ref rng, _angle);
+        float pdf = 1f / (2f * MathF.PI * (1f - _angleCos));
+        return new LightDir(dir, pdf);
+    }
 }
 
 class SkyProcedural : ISky
@@ -150,10 +198,7 @@ class SkyProcedural : ISky
     public Color RadianceTop;
     public Color RadianceMiddle;
     public Color RadianceBottom;
-    public Vec3 SunDir;
-    public float SunAngle;
-    public float SunAngleCos;
-    public Color SunRadiance;
+    public SunProcedural Sun;
 
     public SkyProcedural(
         Color radianceTop,
@@ -166,10 +211,7 @@ class SkyProcedural : ISky
         RadianceTop = radianceTop;
         RadianceMiddle = radianceMiddle;
         RadianceBottom = radianceBottom;
-        SunDir = sunDir;
-        SunRadiance = sunRadiance;
-        SunAngle = sunAngle;
-        SunAngleCos = MathF.Cos(sunAngle);
+        Sun = new SunProcedural(sunDir, sunAngle, sunRadiance);
     }
 
     public Color Radiance(Vec3 dir)
@@ -180,22 +222,53 @@ class SkyProcedural : ISky
         float middleBlend = 1f - topBlend - bottomBlend;
         Color ambient = RadianceTop * topBlend + RadianceMiddle * middleBlend + RadianceBottom * bottomBlend;
 
-        float sunDot = Vec3.Dot(dir, SunDir);
-        float sunBlend = MathF.Max(0f, (sunDot - SunAngleCos) / (1f - SunAngleCos));
-        return ambient + SunRadiance * sunBlend;
+        return ambient + Sun.Radiance(dir);
     }
+
+    public LightDir? LightDirRand(ref Rng rng) => Sun.LightDirRand(ref rng);
+    public LightDir? LightDir(Vec3 dir) => Sun.LightDir(dir);
 }
 
 class SkyTexture : ISky
 {
     private readonly Texture _texture;
+    private readonly Cdf2 _cdf;
+    private readonly float _pdfScale;
 
     public SkyTexture(Texture texture)
     {
+        float Weight(Vec2i pos)
+        {
+            // sin(theta) for equirectangular area distortion: texels near poles cover less solid angle.
+            return texture.Get(pos).Luminance * MathF.Sin(MathF.PI * (pos.Y + 0.5f) / texture.Size.Y);
+        }
+
         _texture = texture;
+        _cdf = new Cdf2(texture.Size, Weight);
+        _pdfScale = texture.Size.X * texture.Size.Y / (_cdf.TotalWeight * 2f * MathF.PI * MathF.PI);
     }
 
     public Color Radiance(Vec3 dir) => _texture.Sample(dir.EquirectUv());
+
+    public LightDir? LightDirRand(ref Rng rng)
+    {
+        if (_cdf.TotalWeight <= 0f)
+            return null;
+        Vec2i texel = _cdf.SampleRand(ref rng);
+        Vec3 dir = Vec3.FromEquirectUv((texel + 0.5f) / _texture.Size.ToFloat());
+        float pdf = _texture.Get(texel).Luminance * _pdfScale;
+        return pdf > 0f ? new LightDir(dir, pdf) : null;
+    }
+
+    public LightDir? LightDir(Vec3 dir)
+    {
+        if (_cdf.TotalWeight <= 0f)
+            return null;
+        Vec2 uv = dir.EquirectUv();
+        Vec2i coord = (uv * _texture.Size.ToFloat()).ToInt() % _texture.Size;
+        float pdf = _texture.Get(coord).Luminance * _pdfScale;
+        return pdf > 0f ? new LightDir(dir, pdf) : null;
+    }
 }
 
 class Scene
