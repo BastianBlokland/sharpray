@@ -116,10 +116,10 @@ class Texture
         Analyze(histThresholds, hist, out float peakLum, out Color peakColor, out float avgLum);
 
         fmt.WriteLine($"size={Width}x{Height}");
-        fmt.WriteLine($"peakLuminance={peakLum:G4} peakColor={peakColor}");
-        fmt.WriteLine($"avgLuminance={avgLum:G4}");
-        fmt.WriteLine($"dynamicRange={peakLum / MathF.Max(avgLum, 1e-6f):G3}x");
-        fmt.WriteLine("luminanceHistogram");
+        fmt.WriteLine($"lumPeak={peakLum:G4} peakColor={peakColor}");
+        fmt.WriteLine($"lumAvg={avgLum:G4}");
+        fmt.WriteLine($"lumDynamicRange={peakLum / MathF.Max(avgLum, 1e-6f):G3}x");
+        fmt.WriteLine("lumHistogram");
         fmt.IndentPush();
         for (int i = 0; i < histThresholds.Length; ++i)
         {
