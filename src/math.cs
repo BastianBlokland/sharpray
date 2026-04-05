@@ -740,11 +740,11 @@ readonly struct Mat4
 }
 
 
-struct Transform
+readonly struct Transform
 {
-    public Vec3 Pos;
-    public Quat Rot;
-    public Vec3 Scale;
+    public readonly Vec3 Pos;
+    public readonly Quat Rot;
+    public readonly Vec3 Scale;
 
     public Transform(Vec3 pos, Quat rot, Vec3 scale)
     {
@@ -770,11 +770,8 @@ struct Transform
         Scale = new Vec3(1, 1, 1);
     }
 
-    public void RotateAround(Vec3 pivot, Quat rot)
-    {
-        Pos = pivot + rot * (Pos - pivot);
-        Rot = (rot * Rot).Normalize();
-    }
+    public Transform RotateAround(Vec3 pivot, Quat rot) =>
+        new Transform(pivot + rot * (Pos - pivot), (rot * Rot).Normalize(), Scale);
 
     public Vec3 TransformDir(Vec3 d) => Rot * d;
     public Vec3 TransformDirInv(Vec3 d) => Rot.Inverse() * d;
