@@ -23,12 +23,12 @@ const uint width = 512;
 const uint height = 512;
 const uint blockSize = 32;
 const uint samples = 128;
-const uint bounces = 16;
+const uint bounces = 4;
 const float indirectClamp = 5f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
 const float exposure = 1.0f;
-const float denoiseSigmaSpace = 4.0f;
-const float denoiseSigmaColor = 0.025f;
+const float denoiseSigmaSpace = 6.0f;
+const float denoiseSigmaColor = 0.05f;
 const float denoiseSigmaNormal = 0.05f;
 const float denoiseSigmaDepth = 1.0f;
 const bool dumpScene = true;
@@ -47,16 +47,15 @@ Scene scene = new Scene();
 using (counters.TimeScope(Counters.Type.TimeSetup))
 {
     // Sky.
-    Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
-    scene.Sky = new SkyTexture(skyTexture);
-    // scene.Sky = new SkyProcedural(
-    //     new Color(0.08f, 0.17f, 0.70f),
-    //     new Color(0.50f, 0.65f, 0.90f),
-    //     new Color(0.12f, 0.09f, 0.07f),
-    //     new Vec3(0.4f, 0.3f, 1f).Normalize(),
-    //     new Color(100000f, 90000f, 65000f), // ~5500K.
-    //     float.DegreesToRadians(0.53f));
-
+    // Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
+    // scene.Sky = new SkyTexture(skyTexture);
+    scene.Sky = new SkyProcedural(
+        new Color(0.08f, 0.17f, 0.70f),
+        new Color(0.50f, 0.65f, 0.90f),
+        new Color(0.12f, 0.09f, 0.07f),
+        new Vec3(0.5f, 1f, -0.5f).Normalize(),
+        new Color(100000f, 90000f, 65000f), // ~5500K.
+        float.DegreesToRadians(0.53f));
     // Floor.
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
     Texture floorRough = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_rough.tga"));
