@@ -71,6 +71,64 @@ class Texture
         return new Vec3(c.R * 2f - 1f, -(c.G * 2f - 1f), c.B * 2f - 1f).NormalizeOr(Vec3.Up);
     }
 
+    public void Analyze(
+        ReadOnlySpan<float> histogramThresholds,
+        Span<int> histogram,
+        out float peakLum,
+        out Color peakColor,
+        out float avgLum)
+    {
+        Debug.Assert(histogram.Length == histogramThresholds.Length + 1);
+
+        histogram.Clear();
+
+        peakLum = 0f;
+        peakColor = Color.Black;
+        double totalLum = 0.0;
+
+        foreach (Color c in _texels)
+        {
+            float lum = c.Luminance;
+            totalLum += lum;
+            if (lum > peakLum)
+            {
+                peakLum = lum;
+                peakColor = c;
+            }
+            int bucket = histogramThresholds.Length;
+            for (int i = 0; i != histogramThresholds.Length; ++i)
+            {
+                if (lum < histogramThresholds[i])
+                {
+                    bucket = i;
+                    break;
+                }
+            }
+            ++histogram[bucket];
+        }
+        avgLum = (float)(totalLum / _texels.Length);
+    }
+
+    public void Describe(ref FormatWriter fmt)
+    {
+        Span<float> histThresholds = stackalloc float[] { 1f, 10f, 100f, 1000f };
+        Span<int> hist = stackalloc int[histThresholds.Length + 1];
+        Analyze(histThresholds, hist, out float peakLum, out Color peakColor, out float avgLum);
+
+        fmt.WriteLine($"size={Width}x{Height}");
+        fmt.WriteLine($"peakLuminance={peakLum:G4} peakColor={peakColor}");
+        fmt.WriteLine($"avgLuminance={avgLum:G4}");
+        fmt.WriteLine($"dynamicRange={peakLum / MathF.Max(avgLum, 1e-6f):G3}x");
+        fmt.WriteLine("luminanceHistogram");
+        fmt.IndentPush();
+        for (int i = 0; i < histThresholds.Length; ++i)
+        {
+            fmt.WriteLine($"[<{histThresholds[i]:F0}]={hist[i]}");
+        }
+        fmt.WriteLine($"[>={histThresholds[^1]:F0}]={hist[histThresholds.Length]}");
+        fmt.IndentPop();
+    }
+
     public static Texture FromSrgb(Image image)
     {
         Color[] texels = new Color[image.Pixels.Length];
