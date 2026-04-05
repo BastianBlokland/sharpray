@@ -254,6 +254,7 @@ readonly struct SunProcedural
     private readonly Color _radiance;
     private readonly float _angleCos;
     private readonly Quat _rot;
+    private readonly float _pdfDenom; // π * (1 - cosθ_max), normalization for importance-sampled PDF.
 
     public SunProcedural(Vec3 dir, float angle, Color radiance)
     {
@@ -262,6 +263,7 @@ readonly struct SunProcedural
         _radiance = radiance;
         _angleCos = MathF.Cos(angle);
         _rot = Quat.Look(dir, Vec3.Up);
+        _pdfDenom = MathF.PI * (1f - _angleCos);
     }
 
     public Color Radiance(Vec3 dir)
@@ -272,17 +274,22 @@ readonly struct SunProcedural
 
     public SampleDir? LightDir(Vec3 dir)
     {
-        if (Vec3.Dot(dir, _dir) < _angleCos)
+        float cosTheta = Vec3.Dot(dir, _dir);
+        if (cosTheta < _angleCos)
             return null;
-        float pdf = 1f / (2f * MathF.PI * (1f - _angleCos));
-        return new SampleDir(dir, pdf);
+        float blend = (cosTheta - _angleCos) / (1f - _angleCos);
+        return new SampleDir(dir, blend / _pdfDenom);
     }
 
     public SampleDir LightDirRand(ref Rng rng)
     {
-        Vec3 dir = _rot * Vec3.RandInCone(ref rng, _angle);
-        float pdf = 1f / (2f * MathF.PI * (1f - _angleCos));
-        return new SampleDir(dir, pdf);
+        // Importance sample proportional to blend.
+        float phi = MathF.PI * 2f * rng.NextFloat();
+        float blend = MathF.Sqrt(rng.NextFloat());
+        float z = _angleCos + (1f - _angleCos) * blend;
+        float sinT = MathF.Sqrt(MathF.Max(0f, 1f - z * z));
+        Vec3 dir = _rot * new Vec3(MathF.Cos(phi) * sinT, MathF.Sin(phi) * sinT, z);
+        return new SampleDir(dir, blend / _pdfDenom);
     }
 
     public void Describe(ref FormatWriter fmt)
