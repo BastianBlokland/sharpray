@@ -10,6 +10,7 @@ readonly record struct Surface(
     float Roughness,
     float Metallic,
     Vec3 Normal,
+    Vec3 NormalRaw, // Uneffect by normal-mapping.
     Vec4 Tangent)
 {
     public Color BaseReflectivity => Color.Lerp(new Color(0.04f), Color, Metallic);
@@ -82,9 +83,10 @@ readonly record struct Surface(
         }
 
         // Clamp scatter ray to stay above the geometric surface.
-        Vec3 geoNorm = Hit.Norm;
-        if (Vec3.Dot(scatterDir, geoNorm) <= 0f)
-            scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, geoNorm) * geoNorm).NormalizeOr(geoNorm);
+        if (Vec3.Dot(scatterDir, NormalRaw) <= 0f)
+        {
+            scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, NormalRaw) * NormalRaw).NormalizeOr(NormalRaw);
+        }
 
         return new SampleDir(scatterDir, Pdf(viewDir, scatterDir));
     }
@@ -460,7 +462,7 @@ class Scene
             Vec3 tangentDir = (hit.Tan.Xyz - Vec3.Dot(hit.Tan.Xyz, normal) * normal).NormalizeOr(hit.Tan.Xyz);
             Vec4 tangent = new Vec4(tangentDir, hit.Tan.W);
 
-            Surface surf = new Surface(mat.Radiance, hit, color, roughness, metallic, normal, tangent);
+            Surface surf = new Surface(mat.Radiance, hit, color, roughness, metallic, normal, hit.Norm, tangent);
             return (surf, hit.Dist);
         }
 
@@ -497,7 +499,7 @@ class Scene
                     uv = surf.Hit.Uv;
                     depth = dist;
                 }
-                Vec3 hitPos = ray[dist] + surf.Hit.Norm * 1e-4f;
+                Vec3 hitPos = ray[dist] + surf.NormalRaw * 1e-4f;
 
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
