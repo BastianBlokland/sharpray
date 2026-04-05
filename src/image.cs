@@ -3,9 +3,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 
-struct Pixel
+readonly struct Pixel
 {
-    public byte R, G, B;
+    public readonly byte R, G, B;
 
     public Pixel(byte r, byte g, byte b)
     {
@@ -28,9 +28,9 @@ struct Pixel
     public static Pixel Blue => new Pixel(0, 0, 255);
 }
 
-struct PixelHdr
+readonly struct PixelHdr
 {
-    public byte R, G, B, E; // E = Exponent.
+    public readonly byte R, G, B, E; // E = Exponent.
 
     public PixelHdr(byte r, byte g, byte b, byte e)
     {

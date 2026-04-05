@@ -3,7 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 
-record struct Surface(
+readonly record struct Surface(
     Color Radiance,
     ShapeHit? Hit = null,
     Color Color = default,
@@ -112,18 +112,18 @@ record struct Surface(
     }
 }
 
-record struct Fragment(
+readonly record struct Fragment(
     Color Radiance,
     Vec3? Normal,
     Vec2? Uv,
     float? Depth);
 
-record struct SampleDir(
+readonly record struct SampleDir(
     Vec3 Dir,
     float Pdf // Probability Density Function, likelihood of the direction being chosen.
 );
 
-record struct Material(
+readonly record struct Material(
     Color Color,
     float Roughness,
     float Metallic = 0f,
@@ -160,15 +160,15 @@ record struct Material(
     }
 }
 
-struct Object : IShape
+readonly struct Object : IShape
 {
-    public string Name;
-    public Transform Trans;
-    public Material Material;
-    public IShape Shape;
+    public readonly string Name;
+    public readonly Transform Trans;
+    public readonly Material Material;
+    public readonly IShape Shape;
 
-    private Box _boundsRotated;
-    private AABox _bounds;
+    private readonly Box _boundsRotated;
+    private readonly AABox _bounds;
 
     public Object(String name, Transform trans, Material material, IShape shape)
     {

@@ -19,12 +19,12 @@ interface IShape<THit> where THit : struct, IShapeHit
 interface IShape : IShape<ShapeHit> { }
 interface IShapeLean : IShape<ShapeHitLean> { }
 
-struct ShapeHit : IShapeHit
+readonly struct ShapeHit : IShapeHit
 {
     public float Dist { get; }
-    public Vec3 Norm;
-    public Vec4 Tan; // xyz = tangent direction, w = bitangent handedness (+1/-1).
-    public Vec2 Uv;
+    public readonly Vec3 Norm;
+    public readonly Vec4 Tan; // xyz = tangent direction, w = bitangent handedness (+1/-1).
+    public readonly Vec2 Uv;
 
     public ShapeHit(float dist, Vec3 norm, Vec4 tan, Vec2 uv)
     {
@@ -37,10 +37,10 @@ struct ShapeHit : IShapeHit
     }
 }
 
-struct ShapeHitLean : IShapeHit
+readonly struct ShapeHitLean : IShapeHit
 {
     public float Dist { get; }
-    public Vec2 Uv;
+    public readonly Vec2 Uv;
 
     public ShapeHitLean(float dist, Vec2 uv)
     {
@@ -71,9 +71,9 @@ static class ShapeExtensions
     }
 }
 
-struct Color : ISpanFormattable
+readonly struct Color : ISpanFormattable
 {
-    public float R, G, B;
+    public readonly float R, G, B;
 
     public Color(float v)
     {
@@ -217,9 +217,9 @@ struct Color : ISpanFormattable
     }
 }
 
-struct Vec2 : ISpanFormattable
+readonly struct Vec2 : ISpanFormattable
 {
-    public float X, Y;
+    public readonly float X, Y;
 
     public Vec2(float x, float y)
     {
@@ -312,9 +312,9 @@ class Vec3Comparer(float epsilon) : IEqualityComparer<Vec3>
     public int GetHashCode(Vec3 v) => HashCode.Combine(Quantize(v.X), Quantize(v.Y), Quantize(v.Z));
 }
 
-struct Vec3 : ISpanFormattable
+readonly struct Vec3 : ISpanFormattable
 {
-    public float X, Y, Z;
+    public readonly float X, Y, Z;
 
     public Vec3(float x, float y, float z)
     {
@@ -477,9 +477,9 @@ struct Vec3 : ISpanFormattable
     }
 }
 
-struct Vec4 : ISpanFormattable
+readonly struct Vec4 : ISpanFormattable
 {
-    public float X, Y, Z, W;
+    public readonly float X, Y, Z, W;
 
     public Vec4(float x, float y, float z, float w)
     {
@@ -529,9 +529,9 @@ struct Vec4 : ISpanFormattable
     public static float Dot(Vec4 a, Vec4 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 }
 
-struct Quat : ISpanFormattable
+readonly struct Quat : ISpanFormattable
 {
-    public float X, Y, Z, W;
+    public readonly float X, Y, Z, W;
 
     private Quat(float x, float y, float z, float w)
     {
@@ -814,9 +814,9 @@ struct Transform
         a.Scale * b.Scale);
 }
 
-struct Ray
+readonly struct Ray
 {
-    public Vec3 Origin, Dir, DirInv;
+    public readonly Vec3 Origin, Dir, DirInv;
 
     public Ray(Vec3 origin, Vec3 dir)
     {
@@ -836,9 +836,9 @@ struct Ray
     public float Distance(Vec3 p) => Vec3.Dot(p - Origin, Dir);
 }
 
-struct Line
+readonly struct Line
 {
-    public Vec3 A, B;
+    public readonly Vec3 A, B;
 
     public Line(Vec3 a, Vec3 b)
     {
@@ -1027,10 +1027,10 @@ struct AABox : IShape
         new Vec3(float.PositiveInfinity, float.PositiveInfinity, float.PositiveInfinity));
 }
 
-struct Box : IShape
+readonly struct Box : IShape
 {
-    public AABox Local;
-    public Quat Rot;
+    public readonly AABox Local;
+    public readonly Quat Rot;
 
     public Box(AABox local, Quat rot)
     {
@@ -1134,10 +1134,10 @@ struct Box : IShape
         new Box(AABox.FromCenter(center, size), rot);
 }
 
-struct Sphere : IShape
+readonly struct Sphere : IShape
 {
-    public Vec3 Center;
-    public float Radius;
+    public readonly Vec3 Center;
+    public readonly float Radius;
 
     public Sphere(Vec3 center, float radius)
     {
@@ -1192,10 +1192,10 @@ struct Sphere : IShape
     }
 }
 
-struct Capsule : IShape
+readonly struct Capsule : IShape
 {
-    public Line Spine;
-    public float Radius;
+    public readonly Line Spine;
+    public readonly float Radius;
 
     public Capsule(Line spine, float radius)
     {
@@ -1237,10 +1237,10 @@ struct Capsule : IShape
     }
 }
 
-struct Plane : IShape
+readonly struct Plane : IShape
 {
-    public Vec3 Normal;
-    public float Distance;
+    public readonly Vec3 Normal;
+    public readonly float Distance;
 
     public Plane(Vec3 normal, float distance)
     {
@@ -1291,9 +1291,9 @@ struct Plane : IShape
     }
 }
 
-struct TriangleLean : IShapeLean
+readonly struct TriangleLean : IShapeLean
 {
-    public Vec3 PosA, PosAToB, PosAToC;
+    public readonly Vec3 PosA, PosAToB, PosAToC;
 
     public TriangleLean(Vec3 posA, Vec3 posB, Vec3 posC)
     {
@@ -1445,12 +1445,12 @@ struct TriangleLean : IShapeLean
     }
 }
 
-struct Triangle : IShape
+readonly struct Triangle : IShape
 {
-    public TriangleLean Lean;
-    public Vec3 NormA, NormB, NormC;
-    public Vec4 TanA, TanB, TanC;
-    public Vec2 UvA, UvB, UvC;
+    public readonly TriangleLean Lean;
+    public readonly Vec3 NormA, NormB, NormC;
+    public readonly Vec4 TanA, TanB, TanC;
+    public readonly Vec2 UvA, UvB, UvC;
 
     public Triangle(Vec3 posA, Vec3 posB, Vec3 posC)
         : this(posA, posB, posC, Vec2.Zero, new Vec2(1, 0), new Vec2(0, 1)) { }
@@ -1536,11 +1536,11 @@ struct Triangle : IShape
     }
 }
 
-struct View
+readonly struct View
 {
-    public Transform Trans;
-    public float Fov; // Field of view in radians. Horizontal aspect >= 1, vertical when aspect < 1.
-    public float Near;
+    public readonly Transform Trans;
+    public readonly float Fov; // Field of view in radians. Horizontal aspect >= 1, vertical when aspect < 1.
+    public readonly float Near;
 
     public View()
     {
@@ -1692,9 +1692,9 @@ struct Rng
     }
 }
 
-struct Timestamp : ISpanFormattable
+readonly struct Timestamp : ISpanFormattable
 {
-    private long _ticks;
+    private readonly long _ticks;
 
     private Timestamp(long ticks) { _ticks = ticks; }
 

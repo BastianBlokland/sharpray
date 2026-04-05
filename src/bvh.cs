@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-record struct BvhStats(
+readonly record struct BvhStats(
     int NodeCount,
     int DepthMax,
     int LeafCount,

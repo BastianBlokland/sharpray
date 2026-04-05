@@ -1,11 +1,11 @@
 using System;
 using System.Threading;
 
-struct TimeScope : IDisposable
+readonly struct TimeScope : IDisposable
 {
-    private Counters _counters;
-    private Counters.Type _type;
-    private Timestamp _start;
+    private readonly Counters _counters;
+    private readonly Counters.Type _type;
+    private readonly Timestamp _start;
 
     internal TimeScope(Counters counters, Counters.Type type)
     {
