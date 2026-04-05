@@ -128,6 +128,7 @@ struct FormatWriter
     public void WriteLine(string text) => _sb.AppendLine(new string(' ', Indent * 2) + text);
     public void WriteLine([InterpolatedStringHandlerArgument("")] ref Formatter f) => _sb.AppendLine();
 
+    public void BeginLine() => _sb.AppendLine(new string(' ', Indent * 2));
     public void EndLine() => _sb.AppendLine();
 
     public void Separate(int lines = 1)
