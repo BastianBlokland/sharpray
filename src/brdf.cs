@@ -29,4 +29,13 @@ static class Brdf
         float k = roughnessSqr * roughnessSqr / 2f;
         return nDotX / (nDotX * (1f - k) + k);
     }
+
+    // Importance-samples the GGX distribution, returning a half vector in local (z-up) tangent space.
+    public static Vec3 GgxSampleLocal(float roughnessSqr, Vec2 u)
+    {
+        float cosTheta = MathF.Sqrt((1f - u.X) / (u.X * (roughnessSqr * roughnessSqr - 1f) + 1f));
+        float sinTheta = MathF.Sqrt(MathF.Max(0f, 1f - cosTheta * cosTheta));
+        float phi = 2f * MathF.PI * u.Y;
+        return new Vec3(sinTheta * MathF.Cos(phi), sinTheta * MathF.Sin(phi), cosTheta);
+    }
 }
