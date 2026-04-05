@@ -488,6 +488,9 @@ class Scene
             {
                 counters.Bump(Counters.Type.SampleHit);
 
+                Vec3 viewDir = -ray.Dir;
+                Vec3 hitPos = ray[dist] + surf.NormalRaw * 1e-4f;
+
                 // Accumulate radiance.
                 radiance += surf.Radiance * energy;
 
@@ -513,10 +516,9 @@ class Scene
 
                 // Compute a scatter ray and accumulate its weight.
                 SampleDir scatter = surf.Scatter(ray.Dir, ref rng);
-                energy *= surf.Eval(-ray.Dir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
+                energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
                 Debug.Assert(energy.IsFinite);
 
-                Vec3 hitPos = ray[dist] + surf.NormalRaw * 1e-4f;
                 ray = new Ray(hitPos, scatter.Dir);
             }
             else
