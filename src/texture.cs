@@ -145,11 +145,19 @@ class Texture
         return new Texture(texels, image.Width, image.Height);
     }
 
-    public static Texture FromHdr(ImageHdr image)
+    public static Texture FromHdr(ImageHdr image, float maxLuminance = float.MaxValue)
     {
         Color[] texels = new Color[image.Pixels.Length];
         for (int i = 0; i != texels.Length; ++i)
-            texels[i] = Color.FromPixel(image.Pixels[i]);
+        {
+            Color c = Color.FromPixel(image.Pixels[i]);
+            float lum = c.Luminance;
+            if (lum > maxLuminance)
+            {
+                c *= maxLuminance / lum;
+            }
+            texels[i] = c;
+        }
         return new Texture(texels, image.Width, image.Height);
     }
 
