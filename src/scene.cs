@@ -499,7 +499,7 @@ class Scene
                 counters.Bump(Counters.Type.SampleHit);
 
                 Vec3 viewDir = -ray.Dir;
-                Vec3 hitPos = ray[dist] + surf.NormalRaw * 1e-4f;
+                Vec3 hitPos = ray[dist] + surf.NormalRaw * MathF.Max(1e-3f, dist * 1e-3f);
 
                 // Accumulate radiance.
                 radiance += surf.Radiance * energy;
