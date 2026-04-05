@@ -27,7 +27,8 @@ readonly record struct Surface(
     {
         Debug.Assert(viewDir.IsUnit, "Dir must be normalized");
         float nDotV = MathF.Max(1e-4f, Vec3.Dot(Normal, viewDir));
-        return float.Clamp(Brdf.Fresnel(nDotV, BaseReflectivity).Luminance, 0.001f, 0.999f);
+        float fresnel = Brdf.Fresnel(nDotV, BaseReflectivity).Luminance;
+        return float.Clamp(MathF.Max(fresnel, Metallic), 0.001f, 0.999f);
     }
 
     public Vec3 SpecularDir(Vec3 incomingDir, ref Rng rng)
@@ -61,7 +62,8 @@ readonly record struct Surface(
         Color specular = Brdf.GgxD(nDotH, roughnessSqr) * f * g / (4f * nDotV);
 
         // Diffuse: Lambert weighted by (1 - F) to avoid double-counting specular energy.
-        Color diffuse = (Color.White - Brdf.Fresnel(nDotV, BaseReflectivity)) * Color * (nDotL / MathF.PI);
+        // Metals have no diffuse, so scaled by (1 - Metallic).
+        Color diffuse = (Color.White - Brdf.Fresnel(nDotV, BaseReflectivity)) * Color * (1f - Metallic) * (nDotL / MathF.PI);
 
         return specular + diffuse;
     }
@@ -106,7 +108,7 @@ readonly record struct Surface(
 
         float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-4f);
         float pdfSpec = Brdf.GgxD(nDotH, roughnessSqr) * nDotH / (4f * hDotV);
-        float pdfDiff = nDotL / MathF.PI;
+        float pdfDiff = nDotL * (1f - Metallic) / MathF.PI;
 
         return specProbability * pdfSpec + (1f - specProbability) * pdfDiff;
     }
