@@ -264,9 +264,9 @@ readonly struct Vec2 : ISpanFormattable
     public static Vec2 One => new Vec2(1f, 1f);
 }
 
-struct Vec2i : ISpanFormattable
+readonly struct Vec2i : ISpanFormattable
 {
-    public int X, Y;
+    public readonly int X, Y;
 
     public Vec2i(int x, int y)
     {
@@ -301,6 +301,8 @@ struct Vec2i : ISpanFormattable
     public static Vec2 operator +(Vec2i v, float s) => new Vec2(v.X + s, v.Y + s);
 
     public static Vec2i Zero => new Vec2i(0, 0);
+    public static Vec2i Right => new Vec2i(1, 0);
+    public static Vec2i Up => new Vec2i(0, 1);
 }
 
 class Vec3Comparer(float epsilon) : IEqualityComparer<Vec3>

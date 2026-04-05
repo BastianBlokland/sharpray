@@ -142,12 +142,12 @@ class Overlay
             if (err2 >= spanY)
             {
                 bresenhamError += spanY;
-                cursor.X += stepX;
+                cursor += Vec2i.Right * stepX;
             }
             if (err2 <= spanX)
             {
                 bresenhamError += spanX;
-                cursor.Y += stepY;
+                cursor += Vec2i.Up * stepY;
             }
         }
     }
@@ -185,8 +185,7 @@ class Overlay
             for (int i = 0; i != lineCount; ++i)
                 width = Math.Max(width, text[lines[i]].Length);
 
-            coord.X -= width * Font.CharWidth / 2;
-            coord.Y -= lineCount * Font.CharHeight / 2;
+            coord -= new Vec2i(width * Font.CharWidth / 2, lineCount * Font.CharHeight / 2);
         }
 
         for (int i = 0; i != lineCount; ++i)
