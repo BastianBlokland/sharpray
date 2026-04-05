@@ -236,7 +236,6 @@ struct Object : IShape
     }
 }
 
-
 interface ISky
 {
     Color Radiance(Vec3 dir);
