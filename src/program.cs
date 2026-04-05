@@ -24,8 +24,9 @@ const uint height = 512;
 const uint blockSize = 32;
 const uint samples = 128;
 const uint bounces = 16;
+const float indirectClamp = 5f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
-const float exposure = 2.0f;
+const float exposure = 1.0f;
 const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.025f;
 const float denoiseSigmaNormal = 0.05f;
@@ -117,7 +118,7 @@ View view = new View(
         Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
     float.DegreesToRadians(75f));
 
-Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
+Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, indirectClamp, counters);
 Compositor compositor = new Compositor(tonemapper, exposure, denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
 Image imageOut = new Image(width, height);
 

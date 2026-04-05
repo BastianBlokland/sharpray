@@ -150,12 +150,7 @@ class Texture
         Color[] texels = new Color[image.Pixels.Length];
         for (int i = 0; i != texels.Length; ++i)
         {
-            Color c = Color.FromPixel(image.Pixels[i]);
-            float lum = c.Luminance;
-            if (lum > maxLuminance)
-            {
-                c *= maxLuminance / lum;
-            }
+            Color c = Color.FromPixel(image.Pixels[i]).ClampLuminance(maxLuminance);
             texels[i] = c;
         }
         return new Texture(texels, image.Width, image.Height);

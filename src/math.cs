@@ -102,6 +102,11 @@ readonly struct Color : ISpanFormattable
     public bool IsFinite => float.IsFinite(R) && float.IsFinite(G) && float.IsFinite(B);
 
     public Color Clamp01() => new Color(Math.Clamp(R, 0f, 1f), Math.Clamp(G, 0f, 1f), Math.Clamp(B, 0f, 1f));
+    public Color ClampLuminance(float max)
+    {
+        float lum = Luminance;
+        return lum > max ? this * (max / lum) : this;
+    }
 
     public Pixel ToPixel()
     {
