@@ -485,7 +485,6 @@ class Scene
         {
             counters.Bump(Counters.Type.SampleBounce);
 
-            bool isPrimary = i == 0;
             if (Trace(ray, counters) is (Surface surf, float dist))
             {
                 counters.Bump(Counters.Type.SampleHit);
@@ -493,8 +492,9 @@ class Scene
                 // Accumulate radiance.
                 radiance += surf.Radiance * energy;
 
-                if (isPrimary)
+                if (i == 0)
                 {
+                    // Save surface definition for the primary ray.
                     normal = surf.Normal;
                     uv = surf.Uv;
                     depth = dist;
