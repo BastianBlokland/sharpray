@@ -477,7 +477,7 @@ class Scene
         return null;
     }
 
-    public Fragment Sample(Ray ray, ref Rng rng, uint bounces, Counters counters)
+    public Fragment Sample(Ray ray, ref Rng rng, uint bounces, float indirectClamp, Counters counters)
     {
         if (!_built)
             throw new InvalidOperationException("Scene not built");
@@ -530,6 +530,7 @@ class Scene
                 // Compute a scatter ray and accumulate its weight.
                 SampleDir scatter = surf.Scatter(ray.Dir, ref rng);
                 energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
+                energy = energy.ClampLuminance(indirectClamp); // Combat fireflies.
                 Debug.Assert(energy.IsFinite);
 
                 lastScatter = scatter;

@@ -118,7 +118,7 @@ View view = new View(
         Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
     float.DegreesToRadians(75f));
 
-Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
+Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, indirectClamp, counters);
 Compositor compositor = new Compositor(tonemapper, exposure, denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
 Image imageOut = new Image(width, height);
 
