@@ -44,9 +44,9 @@ static class Brdf
     // MIS (Multiple Importance Sampling) power heuristic.
     public static float PowerHeuristic(float pdf1, float pdf2)
     {
+        Debug.Assert(float.IsFinite(pdf1) && float.IsFinite(pdf2));
         float p1 = pdf1 * pdf1;
         float p2 = pdf2 * pdf2;
-        Debug.Assert(p1 + p2 > 0f, "Both PDFs cannot be zero");
-        return p1 / (p1 + p2);
+        return p1 + p2 > 0f ? p1 / (p1 + p2) : 0f;
     }
 }
