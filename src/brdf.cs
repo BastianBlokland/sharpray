@@ -27,7 +27,7 @@ static class Brdf
     // Fraction of microfacets visible from a given direction (Smith shadowing-masking).
     public static float SmithG1(float nDotX, float roughnessSqr)
     {
-        float k = roughnessSqr * roughnessSqr / 2f;
+        float k = roughnessSqr / 2f;
         return nDotX / (nDotX * (1f - k) + k);
     }
 
