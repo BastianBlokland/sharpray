@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 /**
  * BRDF (Bidirectional Reflectance Distribution Function) utilities.
@@ -38,5 +39,14 @@ static class Brdf
         float sinTheta = MathF.Sqrt(MathF.Max(0f, 1f - cosTheta * cosTheta));
         float phi = 2f * MathF.PI * u.Y;
         return new Vec3(sinTheta * MathF.Cos(phi), sinTheta * MathF.Sin(phi), cosTheta);
+    }
+
+    // MIS (Multiple Importance Sampling) power heuristic.
+    public static float PowerHeuristic(float pdf1, float pdf2)
+    {
+        float p1 = pdf1 * pdf1;
+        float p2 = pdf2 * pdf2;
+        Debug.Assert(p1 + p2 > 0f, "Both PDFs cannot be zero");
+        return p1 / (p1 + p2);
     }
 }
