@@ -19,11 +19,13 @@ fmt.WriteLine("[SharpRay]");
 fmt.WriteLine("> Performing setup");
 FlushToConsole(ref fmt);
 
-const uint width = 512;
-const uint height = 512;
-const uint blockSize = 32;
-const uint samples = 128;
-const uint bounces = 16;
+const uint width = 2048;
+const uint height = 2048;
+const uint blockSize = 128;
+const uint samples = 1;
+const uint bounces = 0;
+const Tonemapper tonemapper = Tonemapper.Reinhard;
+const float exposure = 2.0f;
 const float denoiseSigmaSpace = 4.0f;
 const float denoiseSigmaColor = 0.025f;
 const float denoiseSigmaNormal = 0.05f;
@@ -44,54 +46,22 @@ Scene scene = new Scene();
 using (counters.TimeScope(Counters.Type.TimeSetup))
 {
     // Sky.
-    Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
-    scene.Sky = new SkyTexture(skyTexture);
-    // scene.Sky = new SkyProcedural(
-    //     new Color(0.35f, 0.45f, 0.75f) * 0.75f,
-    //     new Color(0.85f, 0.8f, 0.8f) * 0.75f,
-    //     new Color(0.45f, 0.38f, 0.26f) * 0.75f,
-    //     new Vec3(0.4f, 0.3f, 1f).Normalize(),
-    //     new Color(4f, 3.5f, 2.5f),
-    //     float.DegreesToRadians(2.6f));
+    // Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
+    // scene.Sky = new SkyTexture(skyTexture);
+    scene.Sky = new SkyProcedural(
+        new Color(0.08f, 0.17f, 0.70f),   // zenith: deep blue
+        new Color(0.50f, 0.65f, 0.90f),   // horizon: light blue-white
+        new Color(0.12f, 0.09f, 0.07f),   // below horizon: dark warm
+        new Vec3(0.5f, 1f, -0.5f).Normalize(),
+        new Color(100000f, 90000f, 65000f), // ~5500K, sun/sky illuminance ratio ~5:1
+        float.DegreesToRadians(0.53f));     // real solar angular diameter
 
-    // Floor.
-    Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
-    Texture floorRough = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_rough.tga"));
-    Texture floorNormal = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_nor.tga"));
-    floorColor.Tiling = floorRough.Tiling = floorNormal.Tiling = new Vec2(6f, 1.5f);
+    // Single test sphere.
     scene.AddObject(new Object(
-        "floor",
+        "sphere",
         Transform.Identity(),
-        new Material(Color.White, 1.0f, ColorTexture: floorColor, RoughnessTexture: floorRough, NormalTexture: floorNormal),
-        new AABox(new Vec3(-30f, -0.2f, -2f), new Vec3(30f, 0f, 15f))));
-
-    // Dragon.
-    {
-        Quat rot = Quat.AngleAxis(float.DegreesToRadians(-40f), Vec3.Up);
-        ObjLoader.Load("assets/dragon.obj", scene, new ObjConfig
-        {
-            Transform = new Transform(new Vec3(1f, 1.7f, 4f), rot, new Vec3(6f, 6f, 6f)),
-            Material = new Material(new Color(0.2f, 0.7f, 0.2f), 0.25f, 0.0f),
-        }, counters);
-    }
-
-    // Spheres.
-    {
-        Color ballColor = new Color(1f, 0.35f, 0.05f);
-        float radius = 0.75f;
-        Vec3 center = new Vec3(1f, radius, 4f);
-        float orbitRadius = 3.5f;
-        int sphereCount = 10;
-        for (int i = 0; i < sphereCount; ++i)
-        {
-            float angle = i * (MathF.PI * 2f / sphereCount);
-            float roughness = 1.0f - (float)i / (sphereCount - 1);
-            Vec3 pos = center + new Vec3(MathF.Cos(angle) * orbitRadius, 0f, MathF.Sin(angle) * orbitRadius);
-            Material mat = new Material(ballColor, roughness, 1.0f);
-            IShape shape = new Sphere(pos, radius);
-            scene.AddObject(new Object($"sphere_{i}", Transform.Identity(), mat, shape));
-        }
-    }
+        new Material(new Color(0.8f, 0.4f, 0.1f), 0.3f, 0.0f),
+        new Sphere(new Vec3(0f, 0f, 4f), 1.5f)));
 
     scene.Build(counters);
 }
@@ -110,13 +80,11 @@ if (dumpScene)
 }
 
 View view = new View(
-    new Transform(
-        new Vec3(1f, 5f, -2f),
-        Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
-    float.DegreesToRadians(75f));
+    new Transform(new Vec3(0f, 0f, -2f), Quat.Identity()),
+    float.DegreesToRadians(60f));
 
 Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, counters);
-Compositor compositor = new Compositor(denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
+Compositor compositor = new Compositor(tonemapper, exposure, denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
 Image imageOut = new Image(width, height);
 
 fmt.WriteLine("> Starting render");
@@ -203,7 +171,7 @@ if (outputImage)
     FlushToConsole(ref fmt);
     using (counters.TimeScope(Counters.Type.TimeCompose))
     {
-        compositor.Compose(renderer, overlay, imageOut);
+        compositor.Preview(renderer, overlay, imageOut);
         imageOut.Save(Path.Combine(outputPath, "final.bmp"));
     }
 }

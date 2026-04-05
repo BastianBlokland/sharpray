@@ -2,8 +2,13 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
+enum Tonemapper { Reinhard, LinearSmooth }
+
 class Compositor
 {
+    public Tonemapper Tonemapper;
+    public float Exposure;
+
     public float SigmaSpace; // Blur radius in pixels; higher = smoother.
     public float SigmaColor; // Radiance similarity threshold; lower = preserves more edges.
     public float SigmaNormal; // Normal similarity threshold; lower = respects geometry boundaries more.
@@ -16,14 +21,23 @@ class Compositor
     private float _sigmaDepthSqr2;
     private Counters _counters;
 
-    public Compositor(float sigmaSpace, float sigmaColor, float sigmaNormal, float sigmaDepth, Counters counters)
+    public Compositor(
+        Tonemapper tonemapper,
+        float exposure,
+        float sigmaSpace,
+        float sigmaColor,
+        float sigmaNormal,
+        float sigmaDepth,
+        Counters counters)
     {
-        _counters = counters;
+        Tonemapper = tonemapper;
+        Exposure = exposure;
         SigmaSpace = sigmaSpace;
         SigmaColor = sigmaColor;
         SigmaNormal = sigmaNormal;
         SigmaDepth = sigmaDepth;
 
+        _counters = counters;
         _radius = (int)MathF.Ceiling(sigmaSpace * 2f);
         _sigmaSpaceSqr2 = sigmaSpace * sigmaSpace * 2f;
         _sigmaColorSqr2 = sigmaColor * sigmaColor * 2f;
@@ -130,18 +144,24 @@ class Compositor
         return radianceSum / weightSum;
     }
 
-    private static Pixel Tonemap(Color radiance)
+    private Pixel Tonemap(Color radiance)
     {
-        // Linear with shoulder region.
-        // By user SteveM in comment section on https://mynameismjp.wordpress.com.
-        // https://mynameismjp.wordpress.com/2010/04/30/a-closer-look-at-tone-mapping/#comment-118287
-
-        const float a = 1.8f; // Mid.
-        const float b = 1.4f; // Toe.
-        const float c = 0.5f; // Shoulder.
-        const float d = 1.5f; // Mid.
-
-        Color result = (radiance * (a * radiance + new Color(b))) / (radiance * (a * radiance + new Color(c)) + new Color(d));
-        return result.ToPixel();
+        Color x = radiance * Exposure;
+        switch (Tonemapper)
+        {
+            case Tonemapper.Reinhard:
+                return (x / (x + new Color(1f))).ToPixel();
+            case Tonemapper.LinearSmooth:
+                // Linear with shoulder region.
+                // By user SteveM in comment section on https://mynameismjp.wordpress.com.
+                // https://mynameismjp.wordpress.com/2010/04/30/a-closer-look-at-tone-mapping/#comment-118287
+                const float a = 1.8f; // Mid.
+                const float b = 1.4f; // Toe.
+                const float c = 0.5f; // Shoulder.
+                const float d = 1.5f; // Mid.
+                return ((x * (a * x + new Color(b))) / (x * (a * x + new Color(c)) + new Color(d))).ToPixel();
+            default:
+                throw new InvalidOperationException($"Unknown tonemapper: {Tonemapper}");
+        }
     }
 }
