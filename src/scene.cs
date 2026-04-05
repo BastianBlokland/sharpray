@@ -479,6 +479,7 @@ class Scene
         Vec3? normal = null;
         Vec2? uv = null;
         float? depth = null;
+        SampleDir? lastScatter = null;
 
         for (uint i = 0; i != (bounces + 1); ++i)
         {
@@ -502,6 +503,9 @@ class Scene
                     depth = dist;
                 }
 
+                // Direct sky illumination.
+                radiance += SampleSkyDirect(surf, hitPos, viewDir, ref rng, counters) * energy;
+
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
                 {
@@ -519,19 +523,46 @@ class Scene
                 energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
                 Debug.Assert(energy.IsFinite);
 
+                lastScatter = scatter;
                 ray = new Ray(hitPos, scatter.Dir);
             }
             else
             {
                 counters.Bump(Counters.Type.SampleMiss);
 
-                // Add sky radiance.
-                radiance += (Sky?.Radiance(ray.Dir) ?? Color.Black) * energy;
+                // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
+                // the sky radiance we already added during the scatter.
+                float misWeight;
+                if (lastScatter is SampleDir scatter)
+                    misWeight = Brdf.PowerHeuristic(scatter.Pdf, Sky?.LightDir(ray.Dir)?.Pdf ?? 0f);
+                else
+                    misWeight = 1f;
+
+                radiance += (Sky?.Radiance(ray.Dir) ?? Color.Black) * misWeight * energy;
                 break;
             }
         }
         Debug.Assert(radiance.IsFinite);
         return new Fragment(radiance, normal, uv, depth);
+    }
+
+    // Sample the sky radiance contribution at the surface.
+    private Color SampleSkyDirect(Surface surf, Vec3 hitPos, Vec3 viewDir, ref Rng rng, Counters counters)
+    {
+        if (Sky?.LightDirRand(ref rng) is not SampleDir light)
+            return Color.Black; // Sky has no light.
+        if (Vec3.Dot(surf.Normal, light.Dir) <= 0f)
+            return Color.Black; // Light is behind the surface.
+        if (Occluded(new Ray(hitPos, light.Dir), counters))
+            return Color.Black; // Shadowed.
+
+        Color surfReflectance = surf.Eval(viewDir, light.Dir);
+        float surfPdf = surf.Pdf(viewDir, light.Dir);
+
+        // Compute the weight by combining the light dir probability and the surface probability
+        // using MIS (Multiple Importance Sampling).
+        float misWeight = Brdf.PowerHeuristic(light.Pdf, surfPdf);
+        return Sky.Radiance(light.Dir) * surfReflectance * misWeight / light.Pdf;
     }
 
     public void Describe(ref FormatWriter fmt)
