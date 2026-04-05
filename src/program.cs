@@ -47,15 +47,16 @@ Scene scene = new Scene();
 using (counters.TimeScope(Counters.Type.TimeSetup))
 {
     // Sky.
-    // Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
-    // scene.Sky = new SkyTexture(skyTexture);
-    scene.Sky = new SkyProcedural(
-        new Color(0.08f, 0.17f, 0.70f),
-        new Color(0.50f, 0.65f, 0.90f),
-        new Color(0.12f, 0.09f, 0.07f),
-        new Vec3(0.5f, 1f, -0.5f).Normalize(),
-        new Color(100000f, 90000f, 65000f), // ~5500K.
-        float.DegreesToRadians(0.53f));
+    Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
+    scene.Sky = new SkyTexture(skyTexture);
+
+    // scene.Sky = new SkyProcedural(
+    //     new Color(0.08f, 0.17f, 0.70f),
+    //     new Color(0.50f, 0.65f, 0.90f),
+    //     new Color(0.12f, 0.09f, 0.07f),
+    //     new Vec3(0.5f, 1f, -0.5f).Normalize(),
+    //     new Color(100000f, 90000f, 65000f), // ~5500K.
+    //     float.DegreesToRadians(0.53f));
 
     // Floor.
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
