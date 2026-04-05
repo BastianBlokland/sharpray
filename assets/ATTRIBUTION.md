@@ -45,6 +45,13 @@ Models downloaded from Morgan McGuire's [Computer Graphics Archive](https://casu
 - **Authors:** Keenan Crane
 - **License:** Public domain
 
+## Overcast Soil (`overcast_soil.hdr`)
+
+- **Source:** Poly Haven
+- **URL:** https://polyhaven.com/a/overcast_soil_puresky
+- **Authors:** Sergej Majboroda, Jarod Guest
+- **License:** CC0 (public domain)
+
 ## Qwantani Late Afternoon Puresky (`qwantani_late_afternoon.hdr`)
 
 - **Source:** Poly Haven
