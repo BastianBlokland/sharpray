@@ -628,9 +628,9 @@ readonly struct Quat : ISpanFormattable
     public static Quat Look(Vec3 forward, Vec3 upRef) => FromMat4(Mat4.RotateLook(forward, upRef));
 }
 
-struct Mat4
+readonly struct Mat4
 {
-    public Vec4 C0, C1, C2, C3; // Column-major.
+    public readonly Vec4 C0, C1, C2, C3; // Column-major.
 
     private Mat4(Vec4 c0, Vec4 c1, Vec4 c2, Vec4 c3)
     {
@@ -734,12 +734,8 @@ struct Mat4
 
     public static Mat4 Trs(Vec3 t, Quat r, Vec3 s)
     {
-        Mat4 m = RotateQuat(r);
-        m.C0 = m.C0 * s.X;
-        m.C1 = m.C1 * s.Y;
-        m.C2 = m.C2 * s.Z;
-        m.C3 = new Vec4(t.X, t.Y, t.Z, 1);
-        return m;
+        Mat4 rot = RotateQuat(r);
+        return new Mat4(rot.C0 * s.X, rot.C1 * s.Y, rot.C2 * s.Z, new Vec4(t.X, t.Y, t.Z, 1));
     }
 }
 
