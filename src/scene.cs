@@ -152,6 +152,8 @@ interface ISky
     // Compute a LightDir including its pdf (Probability Density Function).
     LightDir? LightDir(Vec3 dir);
     LightDir? LightDirRand(ref Rng rng);
+
+    void Describe(ref FormatWriter fmt);
 }
 
 readonly struct SunProcedural
@@ -191,6 +193,13 @@ readonly struct SunProcedural
         float pdf = 1f / (2f * MathF.PI * (1f - _angleCos));
         return new LightDir(dir, pdf);
     }
+
+    public void Describe(ref FormatWriter fmt)
+    {
+        fmt.WriteLine($"dir={_dir}");
+        fmt.WriteLine($"angle={float.RadiansToDegrees(_angle):G3}deg");
+        fmt.WriteLine($"radiance={_radiance} lum={_radiance.Luminance:G4}");
+    }
 }
 
 class SkyProcedural : ISky
@@ -227,6 +236,18 @@ class SkyProcedural : ISky
 
     public LightDir? LightDirRand(ref Rng rng) => Sun.LightDirRand(ref rng);
     public LightDir? LightDir(Vec3 dir) => Sun.LightDir(dir);
+
+    public void Describe(ref FormatWriter fmt)
+    {
+        fmt.WriteLine($"type=SkyProcedural");
+        fmt.WriteLine($"top={RadianceTop} lum={RadianceTop.Luminance:G3}");
+        fmt.WriteLine($"middle={RadianceMiddle} lum={RadianceMiddle.Luminance:G3}");
+        fmt.WriteLine($"bottom={RadianceBottom} lum={RadianceBottom.Luminance:G3}");
+        fmt.WriteLine("sun");
+        fmt.IndentPush();
+        Sun.Describe(ref fmt);
+        fmt.IndentPop();
+    }
 }
 
 class SkyTexture : ISky
@@ -268,6 +289,12 @@ class SkyTexture : ISky
         Vec2i coord = (uv * _texture.Size.ToFloat()).ToInt() % _texture.Size;
         float pdf = _texture.Get(coord).Luminance * _pdfScale;
         return pdf > 0f ? new LightDir(dir, pdf) : null;
+    }
+
+    public void Describe(ref FormatWriter fmt)
+    {
+        fmt.WriteLine("type=SkyTexture");
+        _texture.Describe(ref fmt);
     }
 }
 
@@ -449,14 +476,25 @@ class Scene
         if (!_built)
             throw new InvalidOperationException("Scene not built");
 
-        BvhStats bvhStats = _bvh!.GetStats();
-        fmt.WriteLine($"objects={new FormatNum(_objects.Count)}");
-        fmt.WriteLine($"nodes={new FormatNum(bvhStats.NodeCount)}");
-        fmt.WriteLine($"depth={bvhStats.DepthMax}");
-        fmt.WriteLine($"leafCount={new FormatNum(bvhStats.LeafCount)}");
-        fmt.WriteLine($"leafSize=({bvhStats.LeafSizeMin}/{bvhStats.LeafSizeAvg:F1}/{bvhStats.LeafSizeMax})");
-        fmt.WriteLine($"leafDepth={bvhStats.LeafDepthAvg:F1}");
-        fmt.WriteLine($"sah={bvhStats.SahCost:F1}");
+        fmt.WriteLine("sky");
+        fmt.IndentPush();
+        Sky!.Describe(ref fmt);
+        fmt.IndentPop();
+        fmt.Separate();
+
+        fmt.WriteLine("bvh");
+        fmt.IndentPush();
+        {
+            BvhStats bvhStats = _bvh!.GetStats();
+            fmt.WriteLine($"objects={new FormatNum(_objects.Count)}");
+            fmt.WriteLine($"nodes={new FormatNum(bvhStats.NodeCount)}");
+            fmt.WriteLine($"depth={bvhStats.DepthMax}");
+            fmt.WriteLine($"leafCount={new FormatNum(bvhStats.LeafCount)}");
+            fmt.WriteLine($"leafSize=({bvhStats.LeafSizeMin}/{bvhStats.LeafSizeAvg:F1}/{bvhStats.LeafSizeMax})");
+            fmt.WriteLine($"leafDepth={bvhStats.LeafDepthAvg:F1}");
+            fmt.WriteLine($"sah={bvhStats.SahCost:F1}");
+        }
+        fmt.IndentPop();
 
         foreach (Object obj in _objects)
         {
