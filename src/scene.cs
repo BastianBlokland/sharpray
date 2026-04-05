@@ -11,7 +11,8 @@ readonly record struct Surface(
     float Metallic,
     Vec3 Normal,
     Vec3 NormalRaw, // Uneffect by normal-mapping.
-    Vec4 Tangent)
+    Vec4 Tangent,
+    Vec2 Uv)
 {
     public Color BaseReflectivity => Color.Lerp(new Color(0.04f), Color, Metallic);
 
@@ -462,7 +463,7 @@ class Scene
             Vec3 tangentDir = (hit.Tan.Xyz - Vec3.Dot(hit.Tan.Xyz, normal) * normal).NormalizeOr(hit.Tan.Xyz);
             Vec4 tangent = new Vec4(tangentDir, hit.Tan.W);
 
-            Surface surf = new Surface(mat.Radiance, hit, color, roughness, metallic, normal, hit.Norm, tangent);
+            Surface surf = new Surface(mat.Radiance, hit, color, roughness, metallic, normal, hit.Norm, tangent, hit.Uv);
             return (surf, hit.Dist);
         }
 
@@ -496,7 +497,7 @@ class Scene
                 if (isPrimary)
                 {
                     normal = surf.Normal;
-                    uv = surf.Hit.Uv;
+                    uv = surf.Uv;
                     depth = dist;
                 }
                 Vec3 hitPos = ray[dist] + surf.NormalRaw * 1e-4f;
