@@ -5,7 +5,6 @@ using System.Collections.Generic;
 
 readonly record struct Surface(
     Color Radiance,
-    ShapeHit Hit,
     Color Color,
     float Roughness,
     float Metallic,
@@ -463,7 +462,7 @@ class Scene
             Vec3 tangentDir = (hit.Tan.Xyz - Vec3.Dot(hit.Tan.Xyz, normal) * normal).NormalizeOr(hit.Tan.Xyz);
             Vec4 tangent = new Vec4(tangentDir, hit.Tan.W);
 
-            Surface surf = new Surface(mat.Radiance, hit, color, roughness, metallic, normal, hit.Norm, tangent, hit.Uv);
+            Surface surf = new Surface(mat.Radiance, color, roughness, metallic, normal, hit.Norm, tangent, hit.Uv);
             return (surf, hit.Dist);
         }
 
