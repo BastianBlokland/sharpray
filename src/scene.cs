@@ -477,7 +477,7 @@ class Scene
         return null;
     }
 
-    public Fragment Sample(Ray ray, ref Rng rng, uint bounces, float indirectClamp, Counters counters)
+    public Fragment Sample(Ray ray, ref Rng rng, uint bounces, Counters counters)
     {
         if (!_built)
             throw new InvalidOperationException("Scene not built");
@@ -531,9 +531,6 @@ class Scene
                 SampleDir scatter = surf.Scatter(ray.Dir, ref rng);
                 energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
                 Debug.Assert(energy.IsFinite);
-
-                // Clamp indirect energy to suppress fireflies.
-                energy = energy.ClampLuminance(indirectClamp);
 
                 lastScatter = scatter;
                 ray = new Ray(hitPos, scatter.Dir);
