@@ -34,17 +34,17 @@ record struct Material(
     Color Radiance = default,
     Texture? ColorTexture = null,
     Texture? RoughnessTexture = null,
+    Texture? MetallicTexture = null,
     Texture? NormalTexture = null)
 {
-    public Color SampleColor(Vec2 uv)
-    {
-        return (ColorTexture?.Sample(uv) ?? Color.White) * Color;
-    }
+    public Color SampleColor(Vec2 uv) =>
+        (ColorTexture?.Sample(uv) ?? Color.White) * Color;
 
-    public float SampleRoughness(Vec2 uv)
-    {
-        return (RoughnessTexture?.Sample(uv).R ?? 1.0f) * Roughness;
-    }
+    public float SampleRoughness(Vec2 uv) =>
+        (RoughnessTexture?.Sample(uv).R ?? 1.0f) * Roughness;
+
+    public float SampleMetallic(Vec2 uv) =>
+        (MetallicTexture?.Sample(uv).R ?? 1.0f) * Metallic;
 
     public Vec3 SampleNormal(Vec2 uv, Vec3 geoNorm, Vec4 geoTan)
     {
@@ -363,7 +363,7 @@ class Scene
             Material mat = _objects[idx].Material;
             Color color = mat.SampleColor(hit.Uv);
             float roughness = mat.SampleRoughness(hit.Uv);
-            float metallic = mat.Metallic;
+            float metallic = mat.SampleMetallic(hit.Uv);
             Vec3 normal = mat.SampleNormal(hit.Uv, hit.Norm, hit.Tan);
 
             // Re-orthogonalize tangent.
