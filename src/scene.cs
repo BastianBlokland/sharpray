@@ -551,6 +551,8 @@ class Scene
     {
         if (Sky?.LightDirRand(ref rng) is not SampleDir light)
             return Color.Black; // Sky has no light.
+        if (light.Pdf <= 0f)
+            return Color.Black; // Zero probability direction (rare due to rng).
         if (Vec3.Dot(surf.Normal, light.Dir) <= 0f)
             return Color.Black; // Light is behind the surface.
         if (Occluded(new Ray(hitPos, light.Dir), counters))
