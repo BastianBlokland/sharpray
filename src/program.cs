@@ -56,6 +56,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
         new Vec3(0.5f, 1f, -0.5f).Normalize(),
         new Color(100000f, 90000f, 65000f), // ~5500K.
         float.DegreesToRadians(0.53f));
+
     // Floor.
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
     Texture floorRough = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_rough.tga"));
