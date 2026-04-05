@@ -5,12 +5,12 @@ using System.Collections.Generic;
 
 readonly record struct Surface(
     Color Radiance,
-    ShapeHit? Hit = null,
-    Color Color = default,
-    float Roughness = 1f,
-    float Metallic = 0f,
-    Vec3 Normal = default,
-    Vec4 Tangent = default)
+    ShapeHit Hit,
+    Color Color,
+    float Roughness,
+    float Metallic,
+    Vec3 Normal,
+    Vec4 Tangent)
 {
     public Color BaseReflectivity => Color.Lerp(new Color(0.04f), Color, Metallic);
 
@@ -67,7 +67,6 @@ readonly record struct Surface(
 
     public SampleDir Scatter(Vec3 incomingDir, ref Rng rng)
     {
-        Debug.Assert(Hit is ShapeHit, "Can only scatter surfaces with hits");
         Vec3 viewDir = -incomingDir;
 
         Vec3 scatterDir;
@@ -83,7 +82,7 @@ readonly record struct Surface(
         }
 
         // Clamp scatter ray to stay above the geometric surface.
-        Vec3 geoNorm = Hit!.Value.Norm;
+        Vec3 geoNorm = Hit.Norm;
         if (Vec3.Dot(scatterDir, geoNorm) <= 0f)
             scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, geoNorm) * geoNorm).NormalizeOr(geoNorm);
 
@@ -443,7 +442,7 @@ class Scene
         return _bvh!.IntersectAny(ray, counters);
     }
 
-    public Surface Trace(Ray ray, Counters counters)
+    public Surface? Trace(Ray ray, Counters counters)
     {
         if (!_built)
             throw new InvalidOperationException("Scene not built");
@@ -464,7 +463,7 @@ class Scene
             return new Surface(mat.Radiance, hit, color, roughness, metallic, normal, tangent);
         }
 
-        return new Surface(Sky!.Radiance(ray.Dir));
+        return null;
     }
 
     public Fragment Sample(Ray ray, ref Rng rng, uint bounces, Counters counters)
@@ -484,22 +483,20 @@ class Scene
             counters.Bump(Counters.Type.SampleBounce);
 
             bool isPrimary = i == 0;
-            Surface surf = Trace(ray, counters);
-
-            // Accumulate radiance.
-            radiance += surf.Radiance * energy;
-
-            if (surf.Hit is ShapeHit hit)
+            if (Trace(ray, counters) is Surface surf)
             {
                 counters.Bump(Counters.Type.SampleHit);
+
+                // Accumulate radiance.
+                radiance += surf.Radiance * energy;
 
                 if (isPrimary)
                 {
                     normal = surf.Normal;
-                    uv = hit.Uv;
-                    depth = hit.Dist;
+                    uv = surf.Hit.Uv;
+                    depth = surf.Hit.Dist;
                 }
-                Vec3 hitPos = ray[hit.Dist] + hit.Norm * 1e-4f;
+                Vec3 hitPos = ray[surf.Hit.Dist] + surf.Hit.Norm * 1e-4f;
 
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
@@ -523,6 +520,9 @@ class Scene
             else
             {
                 counters.Bump(Counters.Type.SampleMiss);
+
+                // Add sky radiance.
+                radiance += (Sky?.Radiance(ray.Dir) ?? Color.Black) * energy;
                 break;
             }
         }
