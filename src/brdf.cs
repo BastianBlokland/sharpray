@@ -19,7 +19,8 @@ static class Brdf
     public static float GgxD(float nDotH, float roughnessSqr)
     {
         float alpha2 = roughnessSqr * roughnessSqr;
-        float d = nDotH * nDotH * (alpha2 - 1f) + 1f;
+        float nDotHSqr = nDotH * nDotH;
+        float d = (1f - nDotHSqr) + nDotHSqr * alpha2;
         return alpha2 / (MathF.PI * d * d);
     }
 

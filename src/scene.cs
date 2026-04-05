@@ -599,5 +599,4 @@ class Scene
         for (int i = 0; i != _objects.Count; ++i)
             _objects[i].OverlayBounds(overlay, Color.ForIndex(i), maxDepth);
     }
-
 }
