@@ -442,7 +442,7 @@ class Scene
         return _bvh!.IntersectAny(ray, counters);
     }
 
-    public Surface? Trace(Ray ray, Counters counters)
+    public (Surface, float Dist)? Trace(Ray ray, Counters counters)
     {
         if (!_built)
             throw new InvalidOperationException("Scene not built");
@@ -460,7 +460,8 @@ class Scene
             Vec3 tangentDir = (hit.Tan.Xyz - Vec3.Dot(hit.Tan.Xyz, normal) * normal).NormalizeOr(hit.Tan.Xyz);
             Vec4 tangent = new Vec4(tangentDir, hit.Tan.W);
 
-            return new Surface(mat.Radiance, hit, color, roughness, metallic, normal, tangent);
+            Surface surf = new Surface(mat.Radiance, hit, color, roughness, metallic, normal, tangent);
+            return (surf, hit.Dist);
         }
 
         return null;
@@ -483,7 +484,7 @@ class Scene
             counters.Bump(Counters.Type.SampleBounce);
 
             bool isPrimary = i == 0;
-            if (Trace(ray, counters) is Surface surf)
+            if (Trace(ray, counters) is (Surface surf, float dist))
             {
                 counters.Bump(Counters.Type.SampleHit);
 
@@ -494,9 +495,9 @@ class Scene
                 {
                     normal = surf.Normal;
                     uv = surf.Hit.Uv;
-                    depth = surf.Hit.Dist;
+                    depth = dist;
                 }
-                Vec3 hitPos = ray[surf.Hit.Dist] + surf.Hit.Norm * 1e-4f;
+                Vec3 hitPos = ray[dist] + surf.Hit.Norm * 1e-4f;
 
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
