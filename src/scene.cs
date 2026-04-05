@@ -499,7 +499,6 @@ class Scene
                     uv = surf.Uv;
                     depth = dist;
                 }
-                Vec3 hitPos = ray[dist] + surf.NormalRaw * 1e-4f;
 
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
@@ -518,6 +517,7 @@ class Scene
                 energy *= surf.Eval(-ray.Dir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
                 Debug.Assert(energy.IsFinite);
 
+                Vec3 hitPos = ray[dist] + surf.NormalRaw * 1e-4f;
                 ray = new Ray(hitPos, scatter.Dir);
             }
             else
