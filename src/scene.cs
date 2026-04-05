@@ -52,8 +52,8 @@ readonly record struct Surface(
         float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-4f);
 
         Vec3 halfVec = (viewDir + lightDir).NormalizeOr(Normal);
-        float nDotH = MathF.Max(1e-6f, Vec3.Dot(Normal, halfVec));
-        float hDotV = MathF.Max(0f, Vec3.Dot(halfVec, viewDir));
+        float nDotH = Vec3.Dot(Normal, halfVec);
+        float hDotV = Vec3.Dot(halfVec, viewDir);
 
         // Specular: D*F*G / (4*nDotV*nDotL) * nDotL = D*F*G / (4*nDotV).
         Color f = Brdf.Fresnel(hDotV, BaseReflectivity);
@@ -98,11 +98,10 @@ readonly record struct Surface(
         if (nDotL <= 0f)
             return 0f; // Behind the surface.
 
-        float nDotV = MathF.Max(1e-4f, Vec3.Dot(Normal, viewDir));
         float specProbability = SpecularProbability(viewDir);
 
         Vec3 halfVec = (viewDir + lightDir).NormalizeOr(Normal);
-        float nDotH = MathF.Max(1e-6f, Vec3.Dot(Normal, halfVec));
+        float nDotH = MathF.Max(0f, Vec3.Dot(Normal, halfVec));
         float hDotV = MathF.Max(1e-6f, Vec3.Dot(halfVec, viewDir));
 
         float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-4f);
