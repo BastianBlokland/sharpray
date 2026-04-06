@@ -20,6 +20,7 @@ class Compositor
     private float _sigmaNormalSqr2;
     private float _sigmaDepthSqr2;
     private float _varianceScale;
+    private float _varianceMax;
     private Counters _counters;
 
     public Compositor(
@@ -30,6 +31,7 @@ class Compositor
         float sigmaNormal,
         float sigmaDepth,
         float varianceScale,
+        float varianceMax,
         Counters counters)
     {
         Tonemapper = tonemapper;
@@ -46,6 +48,7 @@ class Compositor
         _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
         _varianceScale = varianceScale;
+        _varianceMax = varianceMax;
     }
 
     public Image Preview(Renderer rend, Overlay? overlay)
@@ -107,10 +110,7 @@ class Compositor
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
 
-        // Widen color and normal sigmas for high-variance pixels.
         float centerVariance = variance[y * width + x];
-        float effectiveSigmaColorSqr2 = _sigmaColorSqr2 + _varianceScale * centerVariance;
-        float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * centerVariance;
 
         float weightSum = 0f;
         Color radianceSum = Color.Black;
@@ -130,6 +130,11 @@ class Compositor
                 Color refRadiance = radiance[refIndex];
                 Vec3 refNormal = normals[refIndex];
                 float refDepth = depth[refIndex];
+
+                // Widen color and normal sigmas based on combined variance of both pixels.
+                float combinedVariance = MathF.Min(centerVariance + variance[refIndex], _varianceMax);
+                float effectiveSigmaColorSqr2 = _sigmaColorSqr2 + _varianceScale * combinedVariance;
+                float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * combinedVariance;
 
                 float spatialDist = kernelX * kernelX + kernelY * kernelY;
                 float weight = MathF.Exp(-spatialDist / _sigmaSpaceSqr2);

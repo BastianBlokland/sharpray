@@ -26,14 +26,15 @@ const uint minSamples = 64;
 const uint maxSamples = 4096;
 const float varianceThreshold = 0.075f;
 const uint bounces = 4;
-const float indirectClamp = 25f;
+const float indirectClamp = 10f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
 const float exposure = 1.0f;
 const float denoiseSigmaSpace = 6.0f;
 const float denoiseSigmaColor = 0.01f;
-const float denoiseSigmaNormal = 0.05f;
+const float denoiseSigmaNormal = 0.2f;
 const float denoiseSigmaDepth = 0.1f;
-const float denoiseVarianceScale = 0.25f;
+const float denoiseVarianceScale = 0.1f;
+const float denoiseVarianceMax = 750f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
@@ -129,8 +130,8 @@ Renderer renderer = new Renderer(
 
 Compositor compositor = new Compositor(
     tonemapper, exposure,
-    denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, denoiseVarianceScale,
-    counters);
+    denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth,
+    denoiseVarianceScale, denoiseVarianceMax, counters);
 
 Image imageOut = new Image(width, height);
 
