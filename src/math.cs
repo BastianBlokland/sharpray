@@ -99,6 +99,7 @@ readonly struct Color : ISpanFormattable
     }
 
     public float Luminance => 0.2126f * R + 0.7152f * G + 0.0722f * B;
+    public float MagnitudeSqr => R * R + G * G + B * B;
     public bool IsFinite => float.IsFinite(R) && float.IsFinite(G) && float.IsFinite(B);
 
     public Color Clamp01() => new Color(Math.Clamp(R, 0f, 1f), Math.Clamp(G, 0f, 1f), Math.Clamp(B, 0f, 1f));

@@ -9,6 +9,7 @@ class Renderer
 
     public uint Width { get; }
     public uint Height { get; }
+    public Vec2i Size => new Vec2i((int)Width, (int)Height);
     public View View { get; }
     public Color[] Radiance { get; }
     public Vec3[] Normals { get; }

@@ -87,10 +87,8 @@ class Compositor
                     rend.Normals,
                     rend.Depth,
                     rend.Variance,
-                    (int)rend.Width,
-                    (int)rend.Height,
-                    x,
-                    y);
+                    rend.Size,
+                    new Vec2i(x, y));
                 result.Pixels[y * rend.Width + x] = Tonemap(filtered);
             }
             _counters.Flush();
@@ -99,18 +97,24 @@ class Compositor
         overlay?.Draw(result, rend.View, rend.Depth, _counters);
     }
 
-    private Color Filter(Color[] radiance, Vec3[] normals, float[] depth, float[] variance, int width, int height, int x, int y)
+    private Color Filter(
+        Color[] radiance,
+        Vec3[] normals,
+        float[] depth,
+        float[] variance,
+        Vec2i size,
+        Vec2i coord)
     {
         // Joint bilateral filter with normal and depth guidance.
         // https://en.wikipedia.org/wiki/Bilateral_filter
 
-        Color centerRadiance = radiance[y * width + x];
-        Vec3 centerNormal = normals[y * width + x];
-        float centerDepth = depth[y * width + x];
+        int centerIndex = coord.Y * size.X + coord.X;
+        Color centerRadiance = radiance[centerIndex];
+        Vec3 centerNormal = normals[centerIndex];
+        float centerDepth = depth[centerIndex];
+        float centerVariance = variance[centerIndex];
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
-
-        float centerVariance = variance[y * width + x];
 
         float weightSum = 0f;
         Color radianceSum = Color.Black;
@@ -121,34 +125,36 @@ class Compositor
         {
             for (int kernelX = -_radius; kernelX <= _radius; ++kernelX)
             {
-                int refX = x + kernelX;
-                int refY = y + kernelY;
-                if (refX < 0 || refX >= width || refY < 0 || refY >= height)
-                    continue;
+                int refX = coord.X + kernelX;
+                int refY = coord.Y + kernelY;
+                if (refX < 0 || refX >= size.X || refY < 0 || refY >= size.Y)
+                    continue; // Outside bounds.
 
-                int refIndex = refY * width + refX;
+                int refIndex = refY * size.X + refX;
                 Color refRadiance = radiance[refIndex];
                 Vec3 refNormal = normals[refIndex];
                 float refDepth = depth[refIndex];
+                float refVariance = variance[refIndex];
+                bool refHasNormal = refNormal.MagnitudeSqr() > 0f;
+                bool refHasDepth = !float.IsInfinity(refDepth);
 
                 // Widen color and normal sigmas based on combined variance of both pixels.
-                float combinedVariance = MathF.Min(centerVariance + variance[refIndex], _varianceMax);
+                float combinedVariance = MathF.Min(centerVariance + refVariance, _varianceMax);
                 float effectiveSigmaColorSqr2 = _sigmaColorSqr2 + _varianceScale * combinedVariance;
                 float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * combinedVariance;
 
-                float spatialDist = kernelX * kernelX + kernelY * kernelY;
-                float weight = MathF.Exp(-spatialDist / _sigmaSpaceSqr2);
+                float kernelDist = kernelX * kernelX + kernelY * kernelY;
+                float weight = MathF.Exp(-kernelDist / _sigmaSpaceSqr2);
 
                 Color radianceDelta = centerRadiance - refRadiance;
-                weight *= MathF.Exp(-(radianceDelta.R * radianceDelta.R + radianceDelta.G * radianceDelta.G + radianceDelta.B * radianceDelta.B) / effectiveSigmaColorSqr2);
+                weight *= MathF.Exp(-radianceDelta.MagnitudeSqr / effectiveSigmaColorSqr2);
 
-                if (hasCenterNormal && refNormal.MagnitudeSqr() > 0f)
+                if (hasCenterNormal && refHasNormal)
                 {
                     Vec3 normalDelta = centerNormal - refNormal;
                     weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / effectiveSigmaNormalSqr2);
                 }
-
-                if (hasCenterDepth && !float.IsInfinity(refDepth))
+                if (hasCenterDepth && refHasDepth)
                 {
                     float depthDelta = centerDepth - refDepth;
                     weight *= MathF.Exp(-(depthDelta * depthDelta) / _sigmaDepthSqr2);
