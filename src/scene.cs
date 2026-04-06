@@ -510,7 +510,7 @@ class Scene : IDescribable
                 // Russian roulette: terminate low-energy paths, compensate survivors.
                 if (i >= 3)
                 {
-                    float survive = MathF.Max(energy.R, MathF.Max(energy.G, energy.B));
+                    float survive = MathF.Min(1f, MathF.Max(energy.R, MathF.Max(energy.G, energy.B)));
                     if (rng.NextFloat() >= survive)
                     {
                         counters.Bump(Counters.Type.SampleTerminate);
