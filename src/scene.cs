@@ -157,8 +157,34 @@ readonly record struct Material(
     public void Describe(ref FormatWriter fmt)
     {
         fmt.WriteLine($"color={Color}");
+        if (ColorTexture != null)
+        {
+            fmt.IndentPush();
+            ColorTexture.Describe(ref fmt);
+            fmt.IndentPop();
+        }
         fmt.WriteLine($"roughness={Roughness:G3}");
+        if (RoughnessTexture != null)
+        {
+            fmt.IndentPush();
+            RoughnessTexture.Describe(ref fmt);
+            fmt.IndentPop();
+        }
         fmt.WriteLine($"metallic={Metallic:G3}");
+        if (MetallicTexture != null)
+        {
+            fmt.IndentPush();
+            MetallicTexture.Describe(ref fmt);
+            fmt.IndentPop();
+        }
+        fmt.WriteLine($"radiance={Radiance}");
+        if (NormalTexture != null)
+        {
+            fmt.WriteLine("normal");
+            fmt.IndentPush();
+            NormalTexture.Describe(ref fmt);
+            fmt.IndentPop();
+        }
     }
 }
 
