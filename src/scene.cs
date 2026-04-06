@@ -133,7 +133,7 @@ readonly record struct Material(
     Texture? ColorTexture = null,
     Texture? RoughnessTexture = null,
     Texture? MetallicTexture = null,
-    Texture? NormalTexture = null)
+    Texture? NormalTexture = null) : IDescribable
 {
     public Color SampleColor(Vec2 uv) =>
         (ColorTexture?.Sample(uv) ?? Color.White) * Color;
@@ -154,41 +154,20 @@ readonly record struct Material(
         return (norm.X * tan + norm.Y * bitan + norm.Z * geoNorm).NormalizeOr(geoNorm);
     }
 
-    public void Describe(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         fmt.WriteLine($"color={Color}");
-        if (ColorTexture != null)
-        {
-            fmt.IndentPush();
-            ColorTexture.Describe(ref fmt);
-            fmt.IndentPop();
-        }
+        ColorTexture?.DescribeIndented(fmt);
         fmt.WriteLine($"roughness={Roughness:G3}");
-        if (RoughnessTexture != null)
-        {
-            fmt.IndentPush();
-            RoughnessTexture.Describe(ref fmt);
-            fmt.IndentPop();
-        }
+        RoughnessTexture?.DescribeIndented(fmt);
         fmt.WriteLine($"metallic={Metallic:G3}");
-        if (MetallicTexture != null)
-        {
-            fmt.IndentPush();
-            MetallicTexture.Describe(ref fmt);
-            fmt.IndentPop();
-        }
+        MetallicTexture?.DescribeIndented(fmt);
         fmt.WriteLine($"radiance={Radiance}");
-        if (NormalTexture != null)
-        {
-            fmt.WriteLine("normal");
-            fmt.IndentPush();
-            NormalTexture.Describe(ref fmt);
-            fmt.IndentPop();
-        }
+        NormalTexture?.DescribeIndented("normal", fmt);
     }
 }
 
-readonly struct Object : IShape
+readonly struct Object : IShape, IDescribable
 {
     public readonly string Name;
     public readonly Transform Trans;
@@ -214,7 +193,7 @@ readonly struct Object : IShape
     public ShapeHit? Intersect(Ray ray) => Shape.Intersect(ray, Trans);
     public bool IntersectAny(Ray ray) => Shape.IntersectAny(ray, Trans);
 
-    public void Describe(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         fmt.WriteLine(Name);
         fmt.IndentPush();
@@ -228,10 +207,7 @@ readonly struct Object : IShape
             }
             fmt.IndentPop();
 
-            fmt.WriteLine("material");
-            fmt.IndentPush();
-            Material.Describe(ref fmt);
-            fmt.IndentPop();
+            Material.DescribeIndented("material", fmt);
 
             fmt.WriteLine("bounds");
             fmt.IndentPush();
@@ -240,12 +216,7 @@ readonly struct Object : IShape
             fmt.IndentPop();
 
             if (Shape is Mesh mesh)
-            {
-                fmt.WriteLine("mesh");
-                fmt.IndentPush();
-                mesh.Describe(ref fmt);
-                fmt.IndentPop();
-            }
+                mesh.DescribeIndented("mesh", fmt);
         }
         fmt.IndentPop();
     }
@@ -264,18 +235,16 @@ readonly struct Object : IShape
     }
 }
 
-interface ISky
+interface ISky : IDescribable
 {
     Color Radiance(Vec3 dir);
 
     // Compute a sample-direction toward the light.
     SampleDir? LightDir(Vec3 dir);
     SampleDir? LightDirRand(ref Rng rng);
-
-    void Describe(ref FormatWriter fmt);
 }
 
-readonly struct SunProcedural
+readonly struct SunProcedural : IDescribable
 {
     private readonly Vec3 _dir;
     private readonly float _angle;
@@ -320,7 +289,7 @@ readonly struct SunProcedural
         return new SampleDir(dir, blend / _pdfDenom);
     }
 
-    public void Describe(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         fmt.WriteLine($"dir={_dir}");
         fmt.WriteLine($"angle={float.RadiansToDegrees(_angle):G3}deg");
@@ -363,16 +332,13 @@ class SkyProcedural : ISky
     public SampleDir? LightDirRand(ref Rng rng) => Sun.LightDirRand(ref rng);
     public SampleDir? LightDir(Vec3 dir) => Sun.LightDir(dir);
 
-    public void Describe(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         fmt.WriteLine($"type=SkyProcedural");
         fmt.WriteLine($"top={RadianceTop} lum={RadianceTop.Luminance:G3}");
         fmt.WriteLine($"middle={RadianceMiddle} lum={RadianceMiddle.Luminance:G3}");
         fmt.WriteLine($"bottom={RadianceBottom} lum={RadianceBottom.Luminance:G3}");
-        fmt.WriteLine("sun");
-        fmt.IndentPush();
-        Sun.Describe(ref fmt);
-        fmt.IndentPop();
+        Sun.DescribeIndented("sun", fmt);
     }
 }
 
@@ -417,14 +383,14 @@ class SkyTexture : ISky
         return pdf > 0f ? new SampleDir(dir, pdf) : null;
     }
 
-    public void Describe(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         fmt.WriteLine("type=SkyTexture");
-        _texture.Describe(ref fmt);
+        _texture.Describe(fmt);
     }
 }
 
-class Scene
+class Scene : IDescribable
 {
     public ISky? Sky { get; set; }
 
@@ -603,15 +569,12 @@ class Scene
         return Sky.Radiance(light.Dir) * surfReflectance * misWeight / light.Pdf;
     }
 
-    public void Describe(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         if (!_built)
             throw new InvalidOperationException("Scene not built");
 
-        fmt.WriteLine("sky");
-        fmt.IndentPush();
-        Sky!.Describe(ref fmt);
-        fmt.IndentPop();
+        Sky?.DescribeIndented("sky", fmt);
         fmt.Separate();
 
         fmt.WriteLine("bvh");
@@ -631,7 +594,7 @@ class Scene
         foreach (Object obj in _objects)
         {
             fmt.Separate();
-            obj.Describe(ref fmt);
+            obj.Describe(fmt);
         }
     }
 
@@ -645,7 +608,7 @@ class Scene
         {
             Object obj = _objects[i];
             fmt.Clear();
-            obj.Describe(ref fmt);
+            obj.Describe(fmt);
             overlay.AddText(fmt.ToString(), obj.Bounds().Center, Color.ForIndex(i));
         }
     }

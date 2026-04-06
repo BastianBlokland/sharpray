@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-class Mesh : IShape
+class Mesh : IShape, IDescribable
 {
     private struct TriangleAttributes
     {
@@ -84,7 +84,7 @@ class Mesh : IShape
         }
     }
 
-    public void Describe(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         BvhStats bvhStats = _bvh.GetStats();
         fmt.WriteLine($"tris={new FormatNum(_triangles.Length)}");

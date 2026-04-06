@@ -1,13 +1,13 @@
 using System;
 using System.IO;
 
-void FlushToConsole(ref FormatWriter fmt)
+void FlushToConsole(FormatWriter fmt)
 {
     Console.Write(fmt.ToString());
     fmt.Clear();
 }
 
-void FlushToOverlay(ref FormatWriter fmt, Overlay overlay, Vec2i screenPos)
+void FlushToOverlay(FormatWriter fmt, Overlay overlay, Vec2i screenPos)
 {
     overlay.AddText(fmt.ToString(), screenPos, Color.White);
     fmt.Clear();
@@ -17,7 +17,7 @@ FormatWriter fmt = new FormatWriter();
 
 fmt.WriteLine("[SharpRay]");
 fmt.WriteLine("> Performing setup");
-FlushToConsole(ref fmt);
+FlushToConsole(fmt);
 
 const uint width = 512;
 const uint height = 512;
@@ -106,11 +106,9 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
 
 if (dumpScene)
 {
-    fmt.WriteLine("> Scene");
-    fmt.IndentPush();
-    scene.Describe(ref fmt);
+    scene.DescribeIndented("> Scene", fmt);
     fmt.Separate();
-    FlushToConsole(ref fmt);
+    FlushToConsole(fmt);
 }
 
 View view = new View(
@@ -124,7 +122,7 @@ Compositor compositor = new Compositor(tonemapper, exposure, denoiseSigmaSpace, 
 Image imageOut = new Image(width, height);
 
 fmt.WriteLine("> Starting render");
-FlushToConsole(ref fmt);
+FlushToConsole(fmt);
 
 using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
 {
@@ -149,7 +147,7 @@ using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
         fmt.Write($"> Rendering [{progress.Step,4} / {progress.Total}]");
         fmt.Write($" {timerRender.Elapsed,8} / {(estTotal?.ToString() ?? "?"),-8}");
         fmt.EndLine();
-        FlushToConsole(ref fmt);
+        FlushToConsole(fmt);
     } while (progress.Step != progress.Total);
 }
 
@@ -198,13 +196,13 @@ if (outputUv)
     imageOut.Save(Path.Combine(outputPath, "uv.bmp"));
 }
 
-counters.Dump(ref fmt);
-FlushToOverlay(ref fmt, overlay, new Vec2i(8, 8));
+counters.Describe(fmt);
+FlushToOverlay(fmt, overlay, new Vec2i(8, 8));
 
 if (outputImage)
 {
     fmt.WriteLine("> Compositing");
-    FlushToConsole(ref fmt);
+    FlushToConsole(fmt);
     using (counters.TimeScope(Counters.Type.TimeCompose))
     {
         compositor.Compose(renderer, overlay, imageOut);
@@ -214,11 +212,7 @@ if (outputImage)
 
 timerTotal.Dispose();
 
-fmt.WriteLine("> Counters");
-fmt.Separate();
-fmt.IndentPush();
-counters.Dump(ref fmt);
-fmt.IndentPop();
+counters.DescribeIndented("> Counters", fmt);
 fmt.Separate();
 fmt.WriteLine($"> Finished: {outputPath}");
-FlushToConsole(ref fmt);
+FlushToConsole(fmt);

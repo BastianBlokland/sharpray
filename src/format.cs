@@ -4,11 +4,6 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-interface IDescribable
-{
-    void Describe(ref FormatWriter fmt);
-}
-
 readonly struct FormatNum(long n) : ISpanFormattable
 {
     public string ToString(string? format, IFormatProvider? provider) => FormatUtils.FormatNum(n);
@@ -29,7 +24,7 @@ readonly struct FormatMem(long n) : ISpanFormattable
         FormatUtils.FormatMem(dest, out written, n);
 }
 
-struct FormatWriter
+class FormatWriter
 {
     [InterpolatedStringHandler]
     public struct Formatter
@@ -156,21 +151,33 @@ struct FormatWriter
             _sb.AppendLine();
     }
 
-    public void DescribeIndented(IDescribable? item)
-    {
-        if (item != null)
-        {
-            IndentPush();
-            item.Describe(ref this);
-            IndentPop();
-        }
-    }
-
     public override string ToString() => _sb.ToString();
+}
+
+interface IDescribable
+{
+    void Describe(FormatWriter fmt);
 }
 
 static class FormatUtils
 {
+    public static void DescribeIndented<T>(this T item, FormatWriter fmt)
+        where T : IDescribable
+    {
+        fmt.IndentPush();
+        item.Describe(fmt);
+        fmt.IndentPop();
+    }
+
+    public static void DescribeIndented<T>(this T item, string label, FormatWriter fmt)
+        where T : IDescribable
+    {
+        fmt.WriteLine(label);
+        fmt.IndentPush();
+        item.Describe(fmt);
+        fmt.IndentPop();
+    }
+
     public static string FormatNum(long n)
     {
         Span<char> buf = stackalloc char[32];

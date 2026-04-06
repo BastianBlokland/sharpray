@@ -19,7 +19,7 @@ readonly struct TimeScope : IDisposable
     public void Dispose() => _counters.Bump(_type, Timestamp.Now() - _start);
 }
 
-class Counters
+class Counters : IDescribable
 {
     public enum Type
     {
@@ -96,7 +96,7 @@ class Counters
         }
     }
 
-    public void Dump(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         Flush();
         FetchRuntimeValues();

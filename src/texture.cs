@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 enum TextureFilter { Bilinear, Point }
 
-class Texture
+class Texture : IDescribable
 {
     public readonly uint Width, Height;
     public TextureFilter Filter;
@@ -109,7 +109,7 @@ class Texture
         avgLum = (float)(totalLum / _texels.Length);
     }
 
-    public void Describe(ref FormatWriter fmt)
+    public void Describe(FormatWriter fmt)
     {
         Span<float> histThresholds = stackalloc float[] { 1f, 10f, 100f, 1000f };
         Span<int> hist = stackalloc int[histThresholds.Length + 1];
