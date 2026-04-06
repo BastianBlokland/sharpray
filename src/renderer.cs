@@ -5,7 +5,7 @@ using System.Threading;
 class Renderer
 {
     private readonly record struct RenderFragment(
-        Fragment Fragment, uint SampleCount);
+        Fragment Fragment, uint SampleCount, float Variance);
 
     public uint Width { get; }
     public uint Height { get; }
@@ -15,6 +15,7 @@ class Renderer
     public Vec2[] Uv { get; }
     public float[] Depth { get; }
     public uint[] Samples { get; }
+    public float[] Variance { get; }
 
     private Scene _scene;
     private float _aspect;
@@ -78,6 +79,7 @@ class Renderer
         Uv = new Vec2[Width * Height];
         Depth = new float[Width * Height];
         Samples = new uint[Width * Height];
+        Variance = new float[Width * Height];
 
         // Start the worker threads.
         for (int i = 0; i < Environment.ProcessorCount; ++i)
@@ -139,6 +141,7 @@ class Renderer
                 Uv[y * Width + x] = result.Fragment.Uv ?? Vec2.Zero;
                 Depth[y * Width + x] = result.Fragment.Depth ?? float.PositiveInfinity;
                 Samples[y * Width + x] = result.SampleCount;
+                Variance[y * Width + x] = result.Variance;
             }
         }
     }
@@ -199,12 +202,14 @@ class Renderer
 
         // Combine the fragments of the individual samples into a final combined fragment.
         uint sampleCount = sampleIndex + 1;
+        float lumMean = lumSum / sampleCount;
+        float lumVariance = MathF.Max(0f, lumSumSqr / sampleCount - lumMean * lumMean);
         Color radiance = radianceSum / sampleCount;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
         float? depth = depthCount > 0 ? depthSum / depthCount : null;
         Fragment combinedFrag = new Fragment(radiance, normal, uv, depth);
 
-        return new RenderFragment(combinedFrag, sampleCount);
+        return new RenderFragment(combinedFrag, sampleCount, lumVariance);
     }
 
     // Relative standard error of the mean: stddev(mean) / mean. Lower = more converged.

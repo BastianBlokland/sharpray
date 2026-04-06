@@ -19,6 +19,7 @@ class Compositor
     private float _sigmaColorSqr2;
     private float _sigmaNormalSqr2;
     private float _sigmaDepthSqr2;
+    private float _varianceScale;
     private Counters _counters;
 
     public Compositor(
@@ -28,6 +29,7 @@ class Compositor
         float sigmaColor,
         float sigmaNormal,
         float sigmaDepth,
+        float varianceScale,
         Counters counters)
     {
         Tonemapper = tonemapper;
@@ -43,6 +45,7 @@ class Compositor
         _sigmaColorSqr2 = sigmaColor * sigmaColor * 2f;
         _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
+        _varianceScale = varianceScale;
     }
 
     public Image Preview(Renderer rend, Overlay? overlay)
@@ -76,7 +79,15 @@ class Compositor
         {
             for (int x = 0; x != rend.Width; ++x)
             {
-                Color filtered = Filter(rend.Radiance, rend.Normals, rend.Depth, (int)rend.Width, (int)rend.Height, x, y);
+                Color filtered = Filter(
+                    rend.Radiance,
+                    rend.Normals,
+                    rend.Depth,
+                    rend.Variance,
+                    (int)rend.Width,
+                    (int)rend.Height,
+                    x,
+                    y);
                 result.Pixels[y * rend.Width + x] = Tonemap(filtered);
             }
             _counters.Flush();
@@ -85,7 +96,7 @@ class Compositor
         overlay?.Draw(result, rend.View, rend.Depth, _counters);
     }
 
-    private Color Filter(Color[] radiance, Vec3[] normals, float[] depth, int width, int height, int x, int y)
+    private Color Filter(Color[] radiance, Vec3[] normals, float[] depth, float[] variance, int width, int height, int x, int y)
     {
         // Joint bilateral filter with normal and depth guidance.
         // https://en.wikipedia.org/wiki/Bilateral_filter
@@ -95,6 +106,11 @@ class Compositor
         float centerDepth = depth[y * width + x];
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
+
+        // Widen color and normal sigmas for high-variance pixels.
+        float centerVariance = variance[y * width + x];
+        float effectiveSigmaColorSqr2 = _sigmaColorSqr2 + _varianceScale * centerVariance;
+        float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * centerVariance;
 
         float weightSum = 0f;
         Color radianceSum = Color.Black;
@@ -119,12 +135,12 @@ class Compositor
                 float weight = MathF.Exp(-spatialDist / _sigmaSpaceSqr2);
 
                 Color radianceDelta = centerRadiance - refRadiance;
-                weight *= MathF.Exp(-(radianceDelta.R * radianceDelta.R + radianceDelta.G * radianceDelta.G + radianceDelta.B * radianceDelta.B) / _sigmaColorSqr2);
+                weight *= MathF.Exp(-(radianceDelta.R * radianceDelta.R + radianceDelta.G * radianceDelta.G + radianceDelta.B * radianceDelta.B) / effectiveSigmaColorSqr2);
 
                 if (hasCenterNormal && refNormal.MagnitudeSqr() > 0f)
                 {
                     Vec3 normalDelta = centerNormal - refNormal;
-                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / _sigmaNormalSqr2);
+                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / effectiveSigmaNormalSqr2);
                 }
 
                 if (hasCenterDepth && !float.IsInfinity(refDepth))

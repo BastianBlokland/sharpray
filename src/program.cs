@@ -24,18 +24,19 @@ const uint height = 512;
 const uint blockSize = 32;
 const uint minSamples = 64;
 const uint maxSamples = 4096;
-const float varianceThreshold = 0.1f;
+const float varianceThreshold = 0.075f;
 const uint bounces = 4;
-const float indirectClamp = 5f;
+const float indirectClamp = 25f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
 const float exposure = 1.0f;
 const float denoiseSigmaSpace = 6.0f;
-const float denoiseSigmaColor = 0.05f;
+const float denoiseSigmaColor = 0.01f;
 const float denoiseSigmaNormal = 0.05f;
-const float denoiseSigmaDepth = 1.0f;
+const float denoiseSigmaDepth = 0.1f;
+const float denoiseVarianceScale = 0.25f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
-const bool outputUv = true, outputDepth = true, outputSamples = true;
+const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
 const uint previewInterval = 100;
 
 Counters counters = new Counters();
@@ -128,7 +129,7 @@ Renderer renderer = new Renderer(
 
 Compositor compositor = new Compositor(
     tonemapper, exposure,
-    denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth,
+    denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, denoiseVarianceScale,
     counters);
 
 Image imageOut = new Image(width, height);
@@ -195,6 +196,17 @@ if (outputDepth)
     imageOut.Save(Path.Combine(outputPath, "depth.bmp"));
 }
 
+if (outputVariance)
+{
+    for (uint i = 0; i != (width * height); ++i)
+    {
+        float t = MathF.Log2(1f + renderer.Variance[i]) / 6f;
+        byte v = (byte)(Math.Clamp(t, 0f, 1f) * 255f);
+        imageOut.Pixels[i] = new Pixel(0, v, 0);
+    }
+    imageOut.Save(Path.Combine(outputPath, "variance.bmp"));
+}
+
 if (outputSamples)
 {
     float logRange = MathF.Log2(maxSamples / (float)minSamples);
@@ -228,7 +240,7 @@ if (outputImage)
     FlushToConsole(fmt);
     using (counters.TimeScope(Counters.Type.TimeCompose))
     {
-        compositor.Preview(renderer, overlay, imageOut);
+        compositor.Compose(renderer, overlay, imageOut);
         imageOut.Save(Path.Combine(outputPath, "final.bmp"));
     }
 }
