@@ -22,7 +22,9 @@ FlushToConsole(fmt);
 const uint width = 512;
 const uint height = 512;
 const uint blockSize = 32;
-const uint samples = 128;
+const uint minSamples = 64;
+const uint maxSamples = 4096;
+const float varianceThreshold = 0.1f;
 const uint bounces = 4;
 const float indirectClamp = 5f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
@@ -32,7 +34,8 @@ const float denoiseSigmaColor = 0.05f;
 const float denoiseSigmaNormal = 0.05f;
 const float denoiseSigmaDepth = 1.0f;
 const bool dumpScene = true;
-const bool outputImage = true, outputPreview = true, outputNormal = true, outputUv = true, outputDepth = true;
+const bool outputImage = true, outputPreview = true, outputNormal = true;
+const bool outputUv = true, outputDepth = true, outputSamples = true;
 const uint previewInterval = 100;
 
 Counters counters = new Counters();
@@ -117,8 +120,17 @@ View view = new View(
         Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
     float.DegreesToRadians(75f));
 
-Renderer renderer = new Renderer(scene, view, width, height, blockSize, samples, bounces, indirectClamp, counters);
-Compositor compositor = new Compositor(tonemapper, exposure, denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth, counters);
+Renderer renderer = new Renderer(
+    scene, view,
+    width, height,
+    blockSize, minSamples, maxSamples, varianceThreshold, bounces, indirectClamp,
+    counters);
+
+Compositor compositor = new Compositor(
+    tonemapper, exposure,
+    denoiseSigmaSpace, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth,
+    counters);
+
 Image imageOut = new Image(width, height);
 
 fmt.WriteLine("> Starting render");
@@ -160,7 +172,7 @@ if (outputPreview)
 
 if (outputNormal)
 {
-    for (uint i = 0; i < width * height; ++i)
+    for (uint i = 0; i != (width * height); ++i)
     {
         imageOut.Pixels[i] = new Pixel(
             (byte)((renderer.Normals[i].X * 0.5f + 0.5f) * 255f),
@@ -172,7 +184,7 @@ if (outputNormal)
 
 if (outputDepth)
 {
-    for (uint i = 0; i < width * height; ++i)
+    for (uint i = 0; i != (width * height); ++i)
     {
         const float depthMaxInv = 1f / 25f;
         float depth = renderer.Depth[i];
@@ -181,6 +193,17 @@ if (outputDepth)
             : new Pixel((byte)(Math.Clamp(depth * depthMaxInv, 0f, 1f) * 255f));
     }
     imageOut.Save(Path.Combine(outputPath, "depth.bmp"));
+}
+
+if (outputSamples)
+{
+    float logRange = MathF.Log2(maxSamples / (float)minSamples);
+    for (uint i = 0; i != (width * height); ++i)
+    {
+        float frac = MathF.Log2(renderer.Samples[i] / (float)minSamples) / logRange;
+        imageOut.Pixels[i] = new Pixel((byte)(frac * 255f));
+    }
+    imageOut.Save(Path.Combine(outputPath, "samples.bmp"));
 }
 
 if (outputUv)
@@ -205,7 +228,7 @@ if (outputImage)
     FlushToConsole(fmt);
     using (counters.TimeScope(Counters.Type.TimeCompose))
     {
-        compositor.Compose(renderer, overlay, imageOut);
+        compositor.Preview(renderer, overlay, imageOut);
         imageOut.Save(Path.Combine(outputPath, "final.bmp"));
     }
 }

@@ -4,6 +4,9 @@ using System.Threading;
 
 class Renderer
 {
+    private readonly record struct RenderFragment(
+        Fragment Fragment, uint SampleCount);
+
     public uint Width { get; }
     public uint Height { get; }
     public View View { get; }
@@ -11,6 +14,7 @@ class Renderer
     public Vec3[] Normals { get; }
     public Vec2[] Uv { get; }
     public float[] Depth { get; }
+    public uint[] Samples { get; }
 
     private Scene _scene;
     private float _aspect;
@@ -22,9 +26,12 @@ class Renderer
     private volatile int _blockCompleted;
     private SemaphoreSlim _blockSignal;
 
-    private uint _samples;
+    private uint _minSamples;
+    private uint _maxSamples;
+    private float _varianceThreshold;
     private uint _bounces;
     private float _indirectClamp;
+
     private Counters _counters;
 
     public Renderer(
@@ -33,14 +40,16 @@ class Renderer
         uint width,
         uint height,
         uint blockSize,
-        uint samples,
+        uint minSamples,
+        uint maxSamples,
+        float varianceThreshold,
         uint bounces,
         float indirectClamp,
         Counters counters)
     {
         Debug.Assert(width > 0 && height > 0);
         Debug.Assert(blockSize > 0);
-        Debug.Assert(samples > 0);
+        Debug.Assert(minSamples > 0 && minSamples <= maxSamples);
 
         Width = width;
         Height = height;
@@ -55,7 +64,9 @@ class Renderer
         _blockCountTotal = _blockCountX * _blockCountY;
         _blockSignal = new SemaphoreSlim(0);
 
-        _samples = samples;
+        _minSamples = minSamples;
+        _maxSamples = maxSamples;
+        _varianceThreshold = varianceThreshold;
         _bounces = bounces;
         _indirectClamp = indirectClamp;
         _counters = counters;
@@ -66,6 +77,7 @@ class Renderer
         Normals = new Vec3[Width * Height];
         Uv = new Vec2[Width * Height];
         Depth = new float[Width * Height];
+        Samples = new uint[Width * Height];
 
         // Start the worker threads.
         for (int i = 0; i < Environment.ProcessorCount; ++i)
@@ -120,22 +132,24 @@ class Renderer
         {
             for (uint x = xMin; x != xMax; ++x)
             {
-                Fragment frag = Render(x, y);
+                RenderFragment result = Render(x, y);
 
-                Radiance[y * Width + x] = frag.Radiance;
-                Normals[y * Width + x] = frag.Normal ?? Vec3.Zero;
-                Uv[y * Width + x] = frag.Uv ?? Vec2.Zero;
-                Depth[y * Width + x] = frag.Depth ?? float.PositiveInfinity;
+                Radiance[y * Width + x] = result.Fragment.Radiance;
+                Normals[y * Width + x] = result.Fragment.Normal ?? Vec3.Zero;
+                Uv[y * Width + x] = result.Fragment.Uv ?? Vec2.Zero;
+                Depth[y * Width + x] = result.Fragment.Depth ?? float.PositiveInfinity;
+                Samples[y * Width + x] = result.SampleCount;
             }
         }
     }
 
-    private Fragment Render(uint x, uint y)
+    private RenderFragment Render(uint x, uint y)
     {
         _counters.Bump(Counters.Type.Pixel);
         Rng rng = new Rng(x, y);
 
         Color radianceSum = new Color(0f);
+        float lumSum = 0f, lumSumSqr = 0f;
 
         Vec3 normalSum = Vec3.Zero;
         Vec3 normalFallback = Vec3.Zero;
@@ -146,7 +160,8 @@ class Renderer
         float depthSum = 0f;
         uint depthCount = 0;
 
-        for (uint i = 0; i != _samples; ++i)
+        uint sampleIndex = 0;
+        for (; sampleIndex != _maxSamples; ++sampleIndex)
         {
             Vec2 pos = new Vec2((x + rng.NextFloat()) / Width, (y + rng.NextFloat()) / Height);
             Ray ray = View.Ray(pos, _aspect);
@@ -154,11 +169,16 @@ class Renderer
             Fragment frag = _scene.Sample(ray, ref rng, _bounces, _indirectClamp, _counters);
 
             radianceSum += frag.Radiance;
-            if (frag.Normal is Vec3 n)
+
+            float lum = frag.Radiance.Luminance;
+            lumSum += lum;
+            lumSumSqr += lum * lum;
+
+            if (frag.Normal is Vec3 norm)
             {
-                Debug.Assert(n.IsUnit, "Invalid normal");
-                normalSum += n;
-                normalFallback = n;
+                Debug.Assert(norm.IsUnit, "Invalid normal");
+                normalSum += norm;
+                normalFallback = norm;
                 normalCount++;
             }
             if (frag.Depth is float d)
@@ -167,11 +187,31 @@ class Renderer
                 depthCount++;
             }
             uv ??= frag.Uv;
+
+            if (sampleIndex >= _minSamples - 1)
+            {
+                if (RelativeStdErr(lumSum, lumSumSqr, sampleIndex + 1) < _varianceThreshold)
+                {
+                    break; // Converged enough.
+                }
+            }
         }
 
-        Color radiance = radianceSum / _samples;
+        // Combine the fragments of the individual samples into a final combined fragment.
+        uint sampleCount = sampleIndex + 1;
+        Color radiance = radianceSum / sampleCount;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
         float? depth = depthCount > 0 ? depthSum / depthCount : null;
-        return new Fragment(radiance, normal, uv, depth);
+        Fragment combinedFrag = new Fragment(radiance, normal, uv, depth);
+
+        return new RenderFragment(combinedFrag, sampleCount);
+    }
+
+    // Relative standard error of the mean: stddev(mean) / mean. Lower = more converged.
+    private static float RelativeStdErr(float sum, float sumSqr, uint n)
+    {
+        float mean = sum / n;
+        float variance = MathF.Max(0f, sumSqr / n - mean * mean);
+        return MathF.Sqrt(variance / n) / MathF.Max(mean, 1e-4f);
     }
 }
