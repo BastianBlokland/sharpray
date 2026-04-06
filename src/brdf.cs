@@ -51,13 +51,13 @@ static class Brdf
     }
 
     // Henyey-Greenstein phase function PDF.
-    // cosTheta: dot product of the incoming and scattered directions.
+    // rDotL: dot product of the incoming ray direction and the scattered direction.
     // https://en.wikipedia.org/wiki/Henyey%E2%80%93Greenstein_phase_function
-    public static float HgPdf(float cosTheta, float g)
+    public static float HgPdf(float rDotL, float g)
     {
         Debug.Assert(g > -1f && g < 1f);
         float gSqr = g * g;
-        float d = 1f + gSqr - 2f * g * cosTheta;
+        float d = 1f + gSqr - 2f * g * rDotL;
         return (1f - gSqr) / (4f * MathF.PI * d * MathF.Sqrt(d));
     }
 
