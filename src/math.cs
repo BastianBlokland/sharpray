@@ -837,6 +837,23 @@ readonly struct Ray
     public float Distance(Vec3 p) => Vec3.Dot(p - Origin, Dir);
 }
 
+readonly struct RaySegment
+{
+    public readonly Ray Ray;
+    public readonly float Start, End;
+
+    public RaySegment(Ray ray, float start, float end)
+    {
+        Ray = ray;
+        Start = start;
+        End = end;
+    }
+
+    public float Length => End - Start;
+    public Vec3 StartPos => Ray[Start];
+    public Vec3 EndPos => Ray[End];
+}
+
 readonly struct Line
 {
     public readonly Vec3 A, B;
