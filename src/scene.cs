@@ -541,7 +541,6 @@ class Scene : IDescribable
             if (mediumSeg is RaySegment seg && Medium!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
             {
                 // Scatter on the medium.
-
                 counters.Bump(Counters.Type.SampleMediumScatter);
 
                 Medium medium = Medium!.Value;
@@ -559,61 +558,55 @@ class Scene : IDescribable
                 lastScatter = new SampleDir(scatterDir, scatterPdf);
                 ray = new Ray(scatterPos, scatterDir);
             }
+            else if (hit is (Surface surf, float dist))
+            {
+                // Reached a surface.
+                counters.Bump(Counters.Type.SampleHit);
+
+                Vec3 viewDir = -ray.Dir;
+                Vec3 hitPos = ray[dist] + surf.NormalRaw * MathF.Max(1e-3f, dist * 1e-3f);
+
+                // Accumulate the surface radiance.
+                radiance += surf.Radiance * energy;
+
+                if (i == 0)
+                {
+                    // Save surface definition for the primary ray.
+                    normal = surf.Normal;
+                    uv = surf.Uv;
+                    depth = dist;
+                }
+
+                // Direct sky illumination.
+                radiance += SampleSkyDirect(surf, hitPos, viewDir, ref rng, counters) * energy;
+
+                if (RussianRoulette(ref energy, i, ref rng, counters))
+                    break;
+
+                // Compute a scatter ray and accumulate its weight.
+                SampleDir scatter = surf.Scatter(ray.Dir, viewDir, ref rng);
+                energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
+                energy = energy.ClampLuminance(indirectClamp); // Combat fireflies.
+                Debug.Assert(energy.IsFinite);
+
+                lastScatter = scatter;
+                ray = new Ray(hitPos, scatter.Dir);
+            }
             else
             {
-                // Reached the surface / sky.
+                // Reached the sky.
+                counters.Bump(Counters.Type.SampleMiss);
 
-                if (mediumSeg.HasValue)
-                    energy *= Medium!.Value.Transmittance(mediumSeg.Value.Length);
-
-                if (hit is (Surface surf, float dist))
-                {
-                    counters.Bump(Counters.Type.SampleHit);
-
-                    Vec3 viewDir = -ray.Dir;
-                    Vec3 hitPos = ray[dist] + surf.NormalRaw * MathF.Max(1e-3f, dist * 1e-3f);
-
-                    // Accumulate the surface radiance.
-                    radiance += surf.Radiance * energy;
-
-                    if (i == 0)
-                    {
-                        // Save surface definition for the primary ray.
-                        normal = surf.Normal;
-                        uv = surf.Uv;
-                        depth = dist;
-                    }
-
-                    // Direct sky illumination.
-                    radiance += SampleSkyDirect(surf, hitPos, viewDir, ref rng, counters) * energy;
-
-                    if (RussianRoulette(ref energy, i, ref rng, counters))
-                        break;
-
-                    // Compute a scatter ray and accumulate its weight.
-                    SampleDir scatter = surf.Scatter(ray.Dir, viewDir, ref rng);
-                    energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
-                    energy = energy.ClampLuminance(indirectClamp); // Combat fireflies.
-                    Debug.Assert(energy.IsFinite);
-
-                    lastScatter = scatter;
-                    ray = new Ray(hitPos, scatter.Dir);
-                }
+                // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
+                // the sky radiance we already added during the scatter.
+                float misWeight;
+                if (lastScatter is SampleDir scatter)
+                    misWeight = Brdf.PowerHeuristic(scatter.Pdf, Sky?.LightDir(ray.Dir)?.Pdf ?? 0f);
                 else
-                {
-                    counters.Bump(Counters.Type.SampleMiss);
+                    misWeight = 1f;
 
-                    // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
-                    // the sky radiance we already added during the scatter.
-                    float misWeight;
-                    if (lastScatter is SampleDir scatter)
-                        misWeight = Brdf.PowerHeuristic(scatter.Pdf, Sky?.LightDir(ray.Dir)?.Pdf ?? 0f);
-                    else
-                        misWeight = 1f;
-
-                    radiance += (Sky?.Radiance(ray.Dir) ?? Color.Black) * misWeight * energy;
-                    break;
-                }
+                radiance += (Sky?.Radiance(ray.Dir) ?? Color.Black) * misWeight * energy;
+                break;
             }
         }
         Debug.Assert(radiance.IsFinite);
