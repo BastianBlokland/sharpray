@@ -108,7 +108,7 @@ readonly record struct Surface(
 
         float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-4f);
         float pdfSpec = Brdf.GgxD(nDotH, roughnessSqr) * nDotH / (4f * hDotV);
-        float pdfDiff = nDotL * (1f - Metallic) / MathF.PI;
+        float pdfDiff = nDotL / MathF.PI;
 
         return specProbability * pdfSpec + (1f - specProbability) * pdfDiff;
     }
