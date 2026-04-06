@@ -55,7 +55,7 @@ static class Brdf
     // https://en.wikipedia.org/wiki/Henyey%E2%80%93Greenstein_phase_function
     public static float HgPdf(float cosTheta, float g)
     {
-        Debug.Assert(g >= -1f && g <= 1f);
+        Debug.Assert(g > -1f && g < 1f);
         float gSqr = g * g;
         float d = 1f + gSqr - 2f * g * cosTheta;
         return (1f - gSqr) / (4f * MathF.PI * d * MathF.Sqrt(d));
@@ -66,7 +66,7 @@ static class Brdf
     public static Vec3 HgScatterDir(Vec3 forward, float g, ref Rng rng)
     {
         Debug.Assert(forward.IsUnit);
-        Debug.Assert(g >= -1f && g <= 1f);
+        Debug.Assert(g > -1f && g < 1f);
 
         Vec2 u = Vec2.Rand(ref rng);
 
