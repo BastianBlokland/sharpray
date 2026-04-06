@@ -68,10 +68,8 @@ readonly record struct Surface(
         return specular + diffuse;
     }
 
-    public SampleDir Scatter(Vec3 incomingDir, ref Rng rng)
+    public SampleDir Scatter(Vec3 incomingDir, Vec3 viewDir, ref Rng rng)
     {
-        Vec3 viewDir = -incomingDir;
-
         Vec3 scatterDir;
         if (rng.NextFloat() < SpecularProbability(viewDir))
         {
@@ -520,7 +518,7 @@ class Scene : IDescribable
                 }
 
                 // Compute a scatter ray and accumulate its weight.
-                SampleDir scatter = surf.Scatter(ray.Dir, ref rng);
+                SampleDir scatter = surf.Scatter(ray.Dir, viewDir, ref rng);
                 energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
                 energy = energy.ClampLuminance(indirectClamp); // Combat fireflies.
                 Debug.Assert(energy.IsFinite);
