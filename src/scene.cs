@@ -345,8 +345,9 @@ class SkyTexture : ISky
     private readonly Texture _texture;
     private readonly Cdf2 _cdf;
     private readonly float _pdfScale;
+    private readonly float _multiplier;
 
-    public SkyTexture(Texture texture)
+    public SkyTexture(Texture texture, float multiplier = 1f)
     {
         float Weight(Vec2i pos)
         {
@@ -357,9 +358,10 @@ class SkyTexture : ISky
         _texture = texture;
         _cdf = new Cdf2(texture.Size, Weight);
         _pdfScale = texture.Size.X * texture.Size.Y / (_cdf.TotalWeight * 2f * MathF.PI * MathF.PI);
+        _multiplier = multiplier;
     }
 
-    public Color Radiance(Vec3 dir) => _texture.Sample(dir.EquirectUv());
+    public Color Radiance(Vec3 dir) => _texture.Sample(dir.EquirectUv()) * _multiplier;
 
     public SampleDir? LightDirRand(ref Rng rng)
     {
@@ -384,6 +386,7 @@ class SkyTexture : ISky
     public void Describe(FormatWriter fmt)
     {
         fmt.WriteLine("type=SkyTexture");
+        fmt.WriteLine($"multiplier={_multiplier:G3}");
         _texture.Describe(fmt);
     }
 }
