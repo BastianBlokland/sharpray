@@ -6,14 +6,8 @@ enum Tonemapper { Reinhard, LinearSmooth }
 
 class Compositor
 {
-    public Tonemapper Tonemapper;
-    public float Exposure;
-
-    public float SigmaSpace; // Blur radius in pixels; higher = smoother.
-    public float SigmaColor; // Radiance similarity threshold; lower = preserves more edges.
-    public float SigmaNormal; // Normal similarity threshold; lower = respects geometry boundaries more.
-    public float SigmaDepth; // Depth similarity threshold in world units; lower = sharper depth edges.
-
+    private Tonemapper _tonemapper;
+    private float _exposure;
     private int _radius;
     private float _sigmaSpaceSqr2;
     private float _sigmaColorSqr2;
@@ -26,22 +20,16 @@ class Compositor
     public Compositor(
         Tonemapper tonemapper,
         float exposure,
-        float sigmaSpace,
-        float sigmaColor,
-        float sigmaNormal,
-        float sigmaDepth,
+        float sigmaSpace, // Blur radius in pixels; higher = smoother.
+        float sigmaColor, // Radiance similarity threshold; lower = preserves more edges.
+        float sigmaNormal, // Normal similarity threshold; lower = respects geometry boundaries more.
+        float sigmaDepth, // Depth similarity threshold in world units; lower = sharper depth edges.
         float varianceScale,
         float varianceMax,
         Counters counters)
     {
-        Tonemapper = tonemapper;
-        Exposure = exposure;
-        SigmaSpace = sigmaSpace;
-        SigmaColor = sigmaColor;
-        SigmaNormal = sigmaNormal;
-        SigmaDepth = sigmaDepth;
-
-        _counters = counters;
+        _tonemapper = tonemapper;
+        _exposure = exposure;
         _radius = (int)MathF.Ceiling(sigmaSpace * 2f);
         _sigmaSpaceSqr2 = sigmaSpace * sigmaSpace * 2f;
         _sigmaColorSqr2 = sigmaColor * sigmaColor * 2f;
@@ -49,6 +37,7 @@ class Compositor
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
         _varianceScale = varianceScale;
         _varianceMax = varianceMax;
+        _counters = counters;
     }
 
     public Image Preview(Renderer rend, Overlay? overlay)
@@ -173,8 +162,8 @@ class Compositor
 
     private Pixel Tonemap(Color radiance)
     {
-        Color x = radiance * Exposure;
-        switch (Tonemapper)
+        Color x = radiance * _exposure;
+        switch (_tonemapper)
         {
             case Tonemapper.Reinhard:
                 return (x / (x + new Color(1f))).ToPixel();
@@ -188,7 +177,7 @@ class Compositor
                 const float d = 1.5f; // Mid.
                 return ((x * (a * x + new Color(b))) / (x * (a * x + new Color(c)) + new Color(d))).ToPixel();
             default:
-                throw new InvalidOperationException($"Unknown tonemapper: {Tonemapper}");
+                throw new InvalidOperationException($"Unknown tonemapper: {_tonemapper}");
         }
     }
 }
