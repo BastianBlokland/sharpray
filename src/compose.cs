@@ -9,7 +9,7 @@ class Compositor
     private Tonemapper _tonemapper;
     private float _exposure;
     private int _radius;
-    private float _sigmaSpaceSqr2;
+    private float _sigmaPixelsSqr2;
     private float _sigmaColorSqr2;
     private float _sigmaNormalSqr2;
     private float _sigmaDepthSqr2;
@@ -20,7 +20,7 @@ class Compositor
     public Compositor(
         Tonemapper tonemapper,
         float exposure,
-        float sigmaSpace, // Blur radius in pixels; higher = smoother.
+        float sigmaPixels, // Blur radius in pixels; higher = smoother.
         float sigmaColor, // Radiance similarity threshold; lower = preserves more edges.
         float sigmaNormal, // Normal similarity threshold; lower = respects geometry boundaries more.
         float sigmaDepth, // Depth similarity threshold in world units; lower = sharper depth edges.
@@ -30,8 +30,8 @@ class Compositor
     {
         _tonemapper = tonemapper;
         _exposure = exposure;
-        _radius = (int)MathF.Ceiling(sigmaSpace * 2f);
-        _sigmaSpaceSqr2 = sigmaSpace * sigmaSpace * 2f;
+        _radius = (int)MathF.Ceiling(sigmaPixels * 2f);
+        _sigmaPixelsSqr2 = sigmaPixels * sigmaPixels * 2f;
         _sigmaColorSqr2 = sigmaColor * sigmaColor * 2f;
         _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
@@ -137,7 +137,7 @@ class Compositor
                 float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * combinedVariance;
 
                 float kernelDist = kernelX * kernelX + kernelY * kernelY;
-                float weight = MathF.Exp(-kernelDist / _sigmaSpaceSqr2);
+                float weight = MathF.Exp(-kernelDist / _sigmaPixelsSqr2);
 
                 Color radianceDelta = centerRadiance - refRadiance;
                 weight *= MathF.Exp(-radianceDelta.MagnitudeSqr / effectiveSigmaColorSqr2);
