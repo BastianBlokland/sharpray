@@ -4,6 +4,11 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+interface IDescribable
+{
+    void Describe(ref FormatWriter fmt);
+}
+
 readonly struct FormatNum(long n) : ISpanFormattable
 {
     public string ToString(string? format, IFormatProvider? provider) => FormatUtils.FormatNum(n);
@@ -149,6 +154,16 @@ struct FormatWriter
         }
         while (remainingNewlines-- != 0)
             _sb.AppendLine();
+    }
+
+    public void DescribeIndented(IDescribable? item)
+    {
+        if (item != null)
+        {
+            IndentPush();
+            item.Describe(ref this);
+            IndentPop();
+        }
     }
 
     public override string ToString() => _sb.ToString();
