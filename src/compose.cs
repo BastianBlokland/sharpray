@@ -127,6 +127,10 @@ class Compositor
                 bool refHasNormal = refNormal.MagnitudeSqr() > 0f;
                 bool refHasDepth = !float.IsInfinity(refDepth);
 
+                // Reject neighbors that differ where not the same information is available.
+                if (hasCenterNormal != refHasNormal || hasCenterDepth != refHasDepth)
+                    continue;
+
                 // Widen color and normal sigmas based on combined variance of both pixels.
                 float combinedVariance = MathF.Min(centerVariance + refVariance, _varianceMax);
                 float effectiveSigmaColorSqr2 = _sigmaColorSqr2 + _varianceScale * combinedVariance;
@@ -138,12 +142,12 @@ class Compositor
                 Color radianceDelta = centerRadiance - refRadiance;
                 weight *= MathF.Exp(-radianceDelta.MagnitudeSqr / effectiveSigmaColorSqr2);
 
-                if (hasCenterNormal && refHasNormal)
+                if (hasCenterNormal)
                 {
                     Vec3 normalDelta = centerNormal - refNormal;
                     weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / effectiveSigmaNormalSqr2);
                 }
-                if (hasCenterDepth && refHasDepth)
+                if (hasCenterDepth)
                 {
                     float depthDelta = centerDepth - refDepth;
                     weight *= MathF.Exp(-(depthDelta * depthDelta) / _sigmaDepthSqr2);
