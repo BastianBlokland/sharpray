@@ -1285,8 +1285,8 @@ readonly struct Plane : IShape
     public ShapeHit? Intersect(Ray ray)
     {
         float dirDot = Vec3.Dot(ray.Dir, Normal);
-        if (dirDot >= 0f)
-            return null; // Parallel or back-facing.
+        if (MathF.Abs(dirDot) < 1e-7f)
+            return null; // Parallel.
         float t = (Distance - Vec3.Dot(ray.Origin, Normal)) / dirDot;
         if (t < 0f)
             return null; // Plane behind ray origin.
@@ -1388,27 +1388,27 @@ readonly struct TriangleLean : IShapeLean
         Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
         float det = Vec3.Dot(PosAToB, h);
 
-        if (det <= 1e-7f)
-            return null; // Parallel or backface.
+        if (MathF.Abs(det) <= 1e-7f)
+            return null; // Parallel.
 
+        float invDet = 1f / det;
         const float edgeEps = 1e-7f;
 
         Vec3 ao = ray.Origin - PosA;
-        float u = Vec3.Dot(ao, h);
-        if (u < -edgeEps || u > det + edgeEps)
+        float u = Vec3.Dot(ao, h) * invDet;
+        if (u < -edgeEps || u > (1f + edgeEps))
             return null;
 
         Vec3 q = Vec3.Cross(ao, PosAToB);
-        float v = Vec3.Dot(ray.Dir, q);
-        if (v < -edgeEps || u + v > det + edgeEps)
+        float v = Vec3.Dot(ray.Dir, q) * invDet;
+        if (v < -edgeEps || (u + v) > (1f + edgeEps))
             return null;
 
-        float tScaled = Vec3.Dot(PosAToC, q);
-        if (tScaled < 0f)
+        float t = Vec3.Dot(PosAToC, q) * invDet;
+        if (t < 0f)
             return null;
 
-        float invDet = 1f / det;
-        return new ShapeHitLean(tScaled * invDet, new Vec2(u * invDet, v * invDet));
+        return new ShapeHitLean(t, new Vec2(u, v));
     }
 
     public ShapeHit Inflate(
