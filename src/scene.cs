@@ -544,12 +544,11 @@ class Scene : IDescribable
                 Medium medium = Medium!.Value;
                 Vec3 scatterPos = ray[scatterDist];
 
+                energy *= medium.Color;
                 radiance += SampleSkyDirectMedium(scatterPos, ray.Dir, ref rng, counters) * energy;
 
                 if (RussianRoulette(ref energy, i, ref rng, counters))
                     break;
-
-                energy *= medium.Color;
 
                 Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, medium.Anisotropy, ref rng);
                 float scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), medium.Anisotropy);
