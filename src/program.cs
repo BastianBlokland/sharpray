@@ -25,7 +25,7 @@ const uint blockSize = 32;
 const uint minSamples = 64;
 const uint maxSamples = 4096;
 const float varianceThreshold = 0.075f;
-const uint bounces = 4;
+const uint bounces = 8;
 const float indirectClamp = 10f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
 const float exposure = 1.0f;
@@ -62,6 +62,13 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     //     new Vec3(0.5f, 1f, -0.5f).Normalize(),
     //     new Color(100000f, 90000f, 65000f), // ~5500K.
     //     float.DegreesToRadians(0.53f));
+
+    // Light dust filling the scene.
+    scene.Medium = new Medium(
+        Density: 0.04f,
+        Color: new Color(0.8f, 0.75f, 0.6f),
+        Anisotropy: 0.6f,
+        MaxY: 10f);
 
     // Floor.
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));

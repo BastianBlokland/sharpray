@@ -388,9 +388,57 @@ class SkyTexture : ISky
     }
 }
 
+// Participating medium (fog, dust).
+readonly record struct Medium(
+    float Density,
+    Color Color,
+    float Anisotropy, // [-1 to 1] exclusive. Positive for forward-scattering (fog / dust), negative for back-scattering (snow).
+    float MaxY)
+    : IDescribable
+{
+    // Segment of the ray that passes through the medium.
+    public RaySegment? Overlap(Ray ray, float maxDist = float.PositiveInfinity)
+    {
+        float tStart, tEnd;
+        if (ray.Origin.Y >= MaxY)
+        {
+            if (ray.Dir.Y >= 0f)
+                return null; // Above and going up: never in medium.
+            tStart = (MaxY - ray.Origin.Y) / ray.Dir.Y; // Enter going down.
+            tEnd = maxDist;
+        }
+        else
+        {
+            tStart = 0f;
+            if (ray.Dir.Y > 0f)
+                tEnd = MathF.Min((MaxY - ray.Origin.Y) / ray.Dir.Y, maxDist); // Exit going up.
+            else
+                tEnd = maxDist;
+        }
+        return tStart < tEnd ? new RaySegment(ray, tStart, tEnd) : null;
+    }
+
+    public float Transmittance(float distance) => MathF.Exp(-Density * distance);
+
+    public float? ScatterDistance(RaySegment seg, ref Rng rng)
+    {
+        float t = seg.Start + (-MathF.Log(rng.NextFloat()) / Density);
+        return t < seg.End ? t : null;
+    }
+
+    public void Describe(FormatWriter fmt)
+    {
+        fmt.WriteLine($"density={Density:G3}");
+        fmt.WriteLine($"color={Color}");
+        fmt.WriteLine($"anisotropy={Anisotropy:G3}");
+        fmt.WriteLine($"maxY={MaxY:G3}");
+    }
+}
+
 class Scene : IDescribable
 {
     public ISky? Sky { get; set; }
+    public Medium? Medium { get; set; }
 
     private List<Object> _objects = new List<Object>();
     private readonly object _lock = new object();
@@ -484,81 +532,131 @@ class Scene : IDescribable
         {
             counters.Bump(Counters.Type.SampleBounce);
 
-            if (Trace(ray, counters) is (Surface surf, float dist))
+            (Surface, float Dist)? hit = Trace(ray, counters);
+
+            RaySegment? mediumSeg = Medium?.Overlap(ray, hit?.Dist ?? float.PositiveInfinity);
+            if (mediumSeg is RaySegment seg && Medium!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
             {
-                counters.Bump(Counters.Type.SampleHit);
+                // Scatter on the medium.
 
-                Vec3 viewDir = -ray.Dir;
-                Vec3 hitPos = ray[dist] + surf.NormalRaw * MathF.Max(1e-3f, dist * 1e-3f);
+                counters.Bump(Counters.Type.SampleMediumScatter);
 
-                // Accumulate radiance.
-                radiance += surf.Radiance * energy;
+                Medium medium = Medium!.Value;
+                Vec3 scatterPos = ray[scatterDist];
 
-                if (i == 0)
-                {
-                    // Save surface definition for the primary ray.
-                    normal = surf.Normal;
-                    uv = surf.Uv;
-                    depth = dist;
-                }
+                radiance += SampleSkyDirectMedium(scatterPos, ray.Dir, ref rng, counters) * energy;
 
-                // Direct sky illumination.
-                radiance += SampleSkyDirect(surf, hitPos, viewDir, ref rng, counters) * energy;
+                if (RussianRoulette(ref energy, i, ref rng, counters))
+                    break;
 
-                // Russian roulette: terminate low-energy paths, compensate survivors.
-                if (i >= 3)
-                {
-                    float survive = MathF.Min(1f, MathF.Max(energy.R, MathF.Max(energy.G, energy.B)));
-                    if (rng.NextFloat() >= survive)
-                    {
-                        counters.Bump(Counters.Type.SampleTerminate);
-                        break;
-                    }
-                    energy /= survive;
-                }
+                energy *= medium.Color;
 
-                // Compute a scatter ray and accumulate its weight.
-                SampleDir scatter = surf.Scatter(ray.Dir, viewDir, ref rng);
-                energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
-                energy = energy.ClampLuminance(indirectClamp); // Combat fireflies.
-                Debug.Assert(energy.IsFinite);
+                Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, medium.Anisotropy, ref rng);
+                float scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), medium.Anisotropy);
 
-                lastScatter = scatter;
-                ray = new Ray(hitPos, scatter.Dir);
+                lastScatter = new SampleDir(scatterDir, scatterPdf);
+                ray = new Ray(scatterPos, scatterDir);
             }
             else
             {
-                counters.Bump(Counters.Type.SampleMiss);
+                // Reached the surface / sky.
 
-                // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
-                // the sky radiance we already added during the scatter.
-                float misWeight;
-                if (lastScatter is SampleDir scatter)
-                    misWeight = Brdf.PowerHeuristic(scatter.Pdf, Sky?.LightDir(ray.Dir)?.Pdf ?? 0f);
+                if (mediumSeg.HasValue)
+                    energy *= Medium!.Value.Transmittance(mediumSeg.Value.Length);
+
+                if (hit is (Surface surf, float dist))
+                {
+                    counters.Bump(Counters.Type.SampleHit);
+
+                    Vec3 viewDir = -ray.Dir;
+                    Vec3 hitPos = ray[dist] + surf.NormalRaw * MathF.Max(1e-3f, dist * 1e-3f);
+
+                    // Accumulate the surface radiance.
+                    radiance += surf.Radiance * energy;
+
+                    if (i == 0)
+                    {
+                        // Save surface definition for the primary ray.
+                        normal = surf.Normal;
+                        uv = surf.Uv;
+                        depth = dist;
+                    }
+
+                    // Direct sky illumination.
+                    radiance += SampleSkyDirect(surf, hitPos, viewDir, ref rng, counters) * energy;
+
+                    if (RussianRoulette(ref energy, i, ref rng, counters))
+                        break;
+
+                    // Compute a scatter ray and accumulate its weight.
+                    SampleDir scatter = surf.Scatter(ray.Dir, viewDir, ref rng);
+                    energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
+                    energy = energy.ClampLuminance(indirectClamp); // Combat fireflies.
+                    Debug.Assert(energy.IsFinite);
+
+                    lastScatter = scatter;
+                    ray = new Ray(hitPos, scatter.Dir);
+                }
                 else
-                    misWeight = 1f;
+                {
+                    counters.Bump(Counters.Type.SampleMiss);
 
-                radiance += (Sky?.Radiance(ray.Dir) ?? Color.Black) * misWeight * energy;
-                break;
+                    // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
+                    // the sky radiance we already added during the scatter.
+                    float misWeight;
+                    if (lastScatter is SampleDir scatter)
+                        misWeight = Brdf.PowerHeuristic(scatter.Pdf, Sky?.LightDir(ray.Dir)?.Pdf ?? 0f);
+                    else
+                        misWeight = 1f;
+
+                    radiance += (Sky?.Radiance(ray.Dir) ?? Color.Black) * misWeight * energy;
+                    break;
+                }
             }
         }
         Debug.Assert(radiance.IsFinite);
         return new Fragment(radiance, normal, uv, depth);
     }
 
-    // Sample the sky radiance contribution at the surface.
+    // Russian roulette: terminate low-energy paths, compensate survivors.
+    private bool RussianRoulette(ref Color energy, uint bounce, ref Rng rng, Counters counters)
+    {
+        if (bounce < 3)
+            return false;
+        float survive = MathF.Min(1f, energy.MaxComponent);
+        if (rng.NextFloat() >= survive)
+        {
+            counters.Bump(Counters.Type.SampleTerminate);
+            return true;
+        }
+        energy /= survive;
+        return false;
+    }
+
+    private (SampleDir Light, float Transmittance)? SampleSkyLight(Vec3 pos, ref Rng rng, Counters counters)
+    {
+        if (Sky?.LightDirRand(ref rng) is not SampleDir light || light.Pdf <= 0f)
+            return null;
+        if (Occluded(new Ray(pos, light.Dir), counters))
+            return null;
+
+        float transmittance = 1f;
+        if (Medium is Medium med && med.Overlap(new Ray(pos, light.Dir)) is RaySegment seg)
+        {
+            transmittance = med.Transmittance(seg.Length);
+        }
+
+        return (light, transmittance);
+    }
+
     private Color SampleSkyDirect(Surface surf, Vec3 hitPos, Vec3 viewDir, ref Rng rng, Counters counters)
     {
-        if (Sky?.LightDirRand(ref rng) is not SampleDir light)
-            return Color.Black; // Sky has no light.
-        if (light.Pdf <= 0f)
-            return Color.Black; // Zero probability direction (rare due to rng).
+        if (SampleSkyLight(hitPos, ref rng, counters) is not (var light, var transmittance))
+            return Color.Black;
         if (Vec3.Dot(surf.NormalRaw, light.Dir) <= 0f)
             return Color.Black; // Light is behind the geometric surface (excluding normal-mapping).
         if (Vec3.Dot(surf.Normal, light.Dir) <= 0f)
             return Color.Black; // Light is behind the surface (including normal-mapping).
-        if (Occluded(new Ray(hitPos, light.Dir), counters))
-            return Color.Black; // Shadowed.
 
         Color surfReflectance = surf.Eval(viewDir, light.Dir);
         float surfPdf = surf.Pdf(viewDir, light.Dir);
@@ -566,7 +664,24 @@ class Scene : IDescribable
         // Compute the weight by combining the light dir probability and the surface probability
         // using MIS (Multiple Importance Sampling).
         float misWeight = Brdf.PowerHeuristic(light.Pdf, surfPdf);
-        return Sky.Radiance(light.Dir) * surfReflectance * misWeight / light.Pdf;
+
+        return Sky!.Radiance(light.Dir) * transmittance * surfReflectance * misWeight / light.Pdf;
+    }
+
+    private Color SampleSkyDirectMedium(Vec3 pos, Vec3 rayDir, ref Rng rng, Counters counters)
+    {
+        Debug.Assert(Medium != null);
+        if (SampleSkyLight(pos, ref rng, counters) is not (SampleDir light, float transmittance))
+            return Color.Black;
+
+        float rDotL = Vec3.Dot(rayDir, light.Dir);
+        float mediumPdf = Brdf.HgPdf(rDotL, Medium!.Value.Anisotropy);
+
+        // Compute the weight by combining the light dir probability and the medium probability
+        // using MIS (Multiple Importance Sampling).
+        float misWeight = Brdf.PowerHeuristic(light.Pdf, mediumPdf);
+
+        return Sky!.Radiance(light.Dir) * transmittance * mediumPdf * misWeight / light.Pdf;
     }
 
     public void Describe(FormatWriter fmt)
@@ -576,6 +691,12 @@ class Scene : IDescribable
 
         Sky?.DescribeIndented("sky", fmt);
         fmt.Separate();
+
+        if (Medium is Medium med)
+        {
+            med.DescribeIndented("medium", fmt);
+            fmt.Separate();
+        }
 
         fmt.WriteLine("bvh");
         fmt.IndentPush();

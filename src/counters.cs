@@ -31,6 +31,7 @@ class Counters : IDescribable
         SampleHit,
         SampleMiss,
         SampleTerminate,
+        SampleMediumScatter,
         SceneObject,
         SceneBvhNodes,
         SceneBvhDepth,
