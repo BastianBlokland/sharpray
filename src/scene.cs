@@ -555,8 +555,10 @@ class Scene : IDescribable
             return Color.Black; // Sky has no light.
         if (light.Pdf <= 0f)
             return Color.Black; // Zero probability direction (rare due to rng).
+        if (Vec3.Dot(surf.NormalRaw, light.Dir) <= 0f)
+            return Color.Black; // Light is behind the geometric surface (excluding normal-mapping).
         if (Vec3.Dot(surf.Normal, light.Dir) <= 0f)
-            return Color.Black; // Light is behind the surface.
+            return Color.Black; // Light is behind the surface (including normal-mapping).
         if (Occluded(new Ray(hitPos, light.Dir), counters))
             return Color.Black; // Shadowed.
 
