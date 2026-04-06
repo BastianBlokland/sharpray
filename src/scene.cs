@@ -421,7 +421,7 @@ readonly record struct Medium(
         return tStart < tEnd ? new RaySegment(ray, tStart, tEnd) : null;
     }
 
-    public float Transmittance(float distance) => MathF.Exp(-Density * distance);
+    public float Transmittance(float distance) => Brdf.BeerLawTransmittance(Density, distance);
 
     public float? ScatterDistance(RaySegment seg, ref Rng rng)
     {

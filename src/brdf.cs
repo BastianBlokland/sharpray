@@ -61,6 +61,11 @@ static class Brdf
         return (1f - gSqr) / (4f * MathF.PI * d * MathF.Sqrt(d));
     }
 
+    // Beer-Lambert law: transmittance of light through an absorbing medium.
+    // https://en.wikipedia.org/wiki/Beer%E2%80%93Lambert_law
+    public static float BeerLawTransmittance(float density, float distance) =>
+        MathF.Exp(-density * distance);
+
     // Henyey-Greenstein phase function for scattering media.
     // https://en.wikipedia.org/wiki/Henyey%E2%80%93Greenstein_phase_function
     public static Vec3 HgScatterDir(Vec3 forward, float g, ref Rng rng)
