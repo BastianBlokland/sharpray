@@ -65,7 +65,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
 
     // Light dust filling the scene.
     scene.Medium = new Medium(
-        Density: 0.04f,
+        Density: 0.01f,
         Color: new Color(0.8f, 0.75f, 0.6f),
         Anisotropy: 0.6f,
         MaxY: 10f);
