@@ -99,6 +99,7 @@ readonly struct Color : ISpanFormattable
     }
 
     public float Luminance => 0.2126f * R + 0.7152f * G + 0.0722f * B;
+    public float MaxComponent => MathF.Max(R, MathF.Max(G, B));
     public float MagnitudeSqr => R * R + G * G + B * B;
     public bool IsFinite => float.IsFinite(R) && float.IsFinite(G) && float.IsFinite(B);
 
