@@ -49,4 +49,45 @@ static class Brdf
         float p2 = pdf2 * pdf2;
         return p1 + p2 > 0f ? p1 / (p1 + p2) : 0f;
     }
+
+    // Henyey-Greenstein phase function PDF.
+    // cosTheta: dot product of the incoming and scattered directions.
+    // https://en.wikipedia.org/wiki/Henyey%E2%80%93Greenstein_phase_function
+    public static float HgPdf(float cosTheta, float g)
+    {
+        Debug.Assert(g >= -1f && g <= 1f);
+        float gSqr = g * g;
+        float d = 1f + gSqr - 2f * g * cosTheta;
+        return (1f - gSqr) / (4f * MathF.PI * d * MathF.Sqrt(d));
+    }
+
+    // Henyey-Greenstein phase function for scattering media.
+    // https://en.wikipedia.org/wiki/Henyey%E2%80%93Greenstein_phase_function
+    public static Vec3 HgScatterDir(Vec3 forward, float g, ref Rng rng)
+    {
+        Debug.Assert(forward.IsUnit);
+        Debug.Assert(g >= -1f && g <= 1f);
+
+        Vec2 u = Vec2.Rand(ref rng);
+
+        float cosTheta;
+        if (MathF.Abs(g) < 1e-3f)
+        {
+            cosTheta = 1f - 2f * u.X; // Isotropic.
+        }
+        else
+        {
+            float s = (1f - g * g) / (1f - g + 2f * g * u.X);
+            cosTheta = (1f + g * g - s * s) / (2f * g);
+        }
+        cosTheta = float.Clamp(cosTheta, -1f, 1f);
+
+        float sinTheta = MathF.Sqrt(1f - cosTheta * cosTheta);
+        float phi = 2f * MathF.PI * u.Y;
+
+        Vec3 tangent = forward.Perp();
+        Vec3 bitangent = Vec3.Cross(forward, tangent);
+
+        return cosTheta * forward + sinTheta * MathF.Cos(phi) * tangent + sinTheta * MathF.Sin(phi) * bitangent;
+    }
 }
