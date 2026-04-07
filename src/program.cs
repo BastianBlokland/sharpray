@@ -68,7 +68,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
         Density: 0.01f,
         Color: new Color(0.8f, 0.75f, 0.6f),
         Anisotropy: 0.6f,
-        MaxY: 10f);
+        HeightFalloff: 1f);
 
     // Floor.
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));

@@ -396,36 +396,59 @@ readonly record struct Medium(
     float Density,
     Color Color,
     float Anisotropy, // [-1 to 1] exclusive. Positive for forward-scattering (fog / dust), negative for back-scattering (snow).
-    float MaxY)
+    float HeightFalloff) // Exponential density falloff with height.
     : IDescribable
 {
-    // Segment of the ray that passes through the medium.
-    public RaySegment? Overlap(Ray ray, float maxDist = float.PositiveInfinity)
+    public float DensityAtHeight(float y) => Density * MathF.Exp(-HeightFalloff * y);
+
+    public float Transmittance(RaySegment seg)
     {
-        float tStart, tEnd;
-        if (ray.Origin.Y >= MaxY)
-        {
-            if (ray.Dir.Y >= 0f)
-                return null; // Above and going up: never in medium.
-            tStart = (MaxY - ray.Origin.Y) / ray.Dir.Y; // Enter going down.
-            tEnd = maxDist;
-        }
-        else
-        {
-            tStart = 0f;
-            if (ray.Dir.Y > 0f)
-                tEnd = MathF.Min((MaxY - ray.Origin.Y) / ray.Dir.Y, maxDist); // Exit going up.
-            else
-                tEnd = maxDist;
-        }
-        return tStart < tEnd ? new RaySegment(ray, tStart, tEnd) : null;
+        return MathF.Exp(-OpticalDepth(seg)); // Beer-Lambert law.
     }
 
-    public float Transmittance(float distance) => Brdf.BeerLawTransmittance(Density, distance);
+    public float OpticalDepth(RaySegment seg)
+    {
+        Debug.Assert(HeightFalloff > 0f);
+
+        float heightDelta = seg.Ray.Dir.Y;
+        float heightStart = seg.Ray.Origin.Y + seg.Start * heightDelta;
+        float heightEnd = seg.Ray.Origin.Y + seg.End * heightDelta;
+
+        float densityStart = DensityAtHeight(heightStart);
+        float densityEnd = DensityAtHeight(heightEnd);
+
+        if (MathF.Abs(heightDelta) < 1e-6f)
+        {
+            return densityStart * seg.Length; // Horizontal ray; constant density.
+        }
+        return (densityStart - densityEnd) / (HeightFalloff * heightDelta);
+    }
 
     public float? ScatterDistance(RaySegment seg, ref Rng rng)
     {
-        float t = seg.Start + (-MathF.Log(rng.NextFloat()) / Density);
+        float heightDelta = seg.Ray.Dir.Y;
+        float heightOrigin = seg.Ray.Origin.Y;
+        float heightStart = heightOrigin + seg.Start * heightDelta;
+
+        float u = rng.NextExponential(); // Optical depth budget.
+
+        // Find out how far into the medium.
+        float t;
+        if (MathF.Abs(heightDelta) < 1e-6f)
+        {
+            float densityStart = DensityAtHeight(heightStart);
+            if (densityStart <= 0f)
+                return null; // Ray escapes.
+            t = seg.Start + u / densityStart;
+        }
+        else
+        {
+            float rhs = MathF.Exp(-HeightFalloff * heightStart) - u * HeightFalloff * heightDelta / Density;
+            if (rhs <= 0f)
+                return null; // Ray escapes.
+            float yt = -MathF.Log(rhs) / HeightFalloff;
+            t = (yt - heightOrigin) / heightDelta;
+        }
         return t < seg.End ? t : null;
     }
 
@@ -434,7 +457,7 @@ readonly record struct Medium(
         fmt.WriteLine($"density={Density:G3}");
         fmt.WriteLine($"color={Color}");
         fmt.WriteLine($"anisotropy={Anisotropy:G3}");
-        fmt.WriteLine($"maxY={MaxY:G3}");
+        fmt.WriteLine($"heightFalloff={HeightFalloff:G3}");
     }
 }
 
@@ -537,7 +560,7 @@ class Scene : IDescribable
 
             (Surface, float Dist)? hit = Trace(ray, counters);
 
-            RaySegment? mediumSeg = Medium?.Overlap(ray, hit?.Dist ?? float.PositiveInfinity);
+            RaySegment? mediumSeg = Medium is Medium ? new RaySegment(ray, end: hit?.Dist ?? float.PositiveInfinity) : null;
             if (mediumSeg is RaySegment seg && Medium!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
             {
                 // Scatter on the medium.
@@ -636,9 +659,9 @@ class Scene : IDescribable
             return null;
 
         float transmittance = 1f;
-        if (Medium is Medium med && med.Overlap(new Ray(pos, light.Dir)) is RaySegment seg)
+        if (Medium is Medium med)
         {
-            transmittance = med.Transmittance(seg.Length);
+            transmittance = med.Transmittance(new RaySegment(new Ray(pos, light.Dir)));
         }
 
         return (light, transmittance);
