@@ -565,6 +565,7 @@ class Scene : IDescribable
         {
             counters.Bump(Counters.Type.SampleBounce);
 
+            bool primaryRay = i == 0;
             (Surface, float Dist)? hit = Trace(ray, counters);
 
             RaySegment? fogSeg = Fog is Fog ? new RaySegment(ray, end: hit?.Dist ?? float.PositiveInfinity) : null;
@@ -596,7 +597,7 @@ class Scene : IDescribable
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
 
-                if (depth == null)
+                if (primaryRay)
                 {
                     // Save surface definition for the primary surface.
                     normal = surf.Normal;
