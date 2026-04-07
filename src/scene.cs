@@ -346,8 +346,11 @@ class SkyTexture : ISky
     private readonly Cdf2 _cdf;
     private readonly float _pdfScale;
     private readonly float _multiplier;
+    private readonly float _rotYaw;
+    private readonly Quat _rot;
+    private readonly Quat _rotInv;
 
-    public SkyTexture(Texture texture, float multiplier = 1f)
+    public SkyTexture(Texture texture, float multiplier = 1f, float rotYaw = 0f)
     {
         float Weight(Vec2i pos)
         {
@@ -359,16 +362,19 @@ class SkyTexture : ISky
         _cdf = new Cdf2(texture.Size, Weight);
         _pdfScale = texture.Size.X * texture.Size.Y / (_cdf.TotalWeight * 2f * MathF.PI * MathF.PI);
         _multiplier = multiplier;
+        _rotYaw = rotYaw;
+        _rot = Quat.AngleAxis(rotYaw, Vec3.Up);
+        _rotInv = _rot.Inverse();
     }
 
-    public Color Radiance(Vec3 dir) => _texture.Sample(dir.EquirectUv()) * _multiplier;
+    public Color Radiance(Vec3 dir) => _texture.Sample((_rotInv * dir).EquirectUv()) * _multiplier;
 
     public SampleDir? LightDirRand(ref Rng rng)
     {
         if (_cdf.TotalWeight <= 0f)
             return null;
         Vec2i texel = _cdf.SampleRand(ref rng);
-        Vec3 dir = Vec3.FromEquirectUv((texel + 0.5f) / _texture.Size.ToFloat());
+        Vec3 dir = _rot * Vec3.FromEquirectUv((texel + 0.5f) / _texture.Size.ToFloat());
         float pdf = _texture.Get(texel).Luminance * _pdfScale;
         return pdf > 0f ? new SampleDir(dir, pdf) : null;
     }
@@ -377,7 +383,7 @@ class SkyTexture : ISky
     {
         if (_cdf.TotalWeight <= 0f)
             return null;
-        Vec2 uv = dir.EquirectUv();
+        Vec2 uv = (_rotInv * dir).EquirectUv();
         Vec2i coord = (uv * _texture.Size.ToFloat()).ToInt() % _texture.Size;
         float pdf = _texture.Get(coord).Luminance * _pdfScale;
         return pdf > 0f ? new SampleDir(dir, pdf) : null;
@@ -387,6 +393,7 @@ class SkyTexture : ISky
     {
         fmt.WriteLine("type=SkyTexture");
         fmt.WriteLine($"multiplier={_multiplier:G3}");
+        fmt.WriteLine($"yaw={float.RadiansToDegrees(_rotYaw):G3}deg");
         _texture.Describe(fmt);
     }
 }
