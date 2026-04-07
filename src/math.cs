@@ -70,9 +70,10 @@ static class ShapeExtensions
         if (shape.Intersect(localRay) is ShapeHit hit)
         {
             Vec3 worldNorm = (trans.Rot * (hit.Norm / trans.Scale)).Normalize();
+            Vec3 worldNormGeo = (trans.Rot * (hit.NormGeo / trans.Scale)).Normalize();
             Vec3 worldTan = (trans.Rot * hit.Tan.Xyz).Normalize();
             Vec4 hitTan = new Vec4(worldTan, hit.Tan.W);
-            return new ShapeHit(hit.Dist / localRayScale, worldNorm, hitTan, hit.Uv);
+            return new ShapeHit(hit.Dist / localRayScale, worldNorm, worldNormGeo, hitTan, hit.Uv);
         }
         return null;
     }
