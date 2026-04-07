@@ -1689,6 +1689,13 @@ struct Rng
         return NextUInt() * toFloat;
     }
 
+    public float NextExponential() // 0.0 (inclusive) to inf (exclusive).
+    {
+        float u;
+        do { u = NextFloat(); } while (u <= 1e-8f);
+        return -MathF.Log(u);
+    }
+
     public (float A, float B) NextGauss()
     {
         // Box-Muller transform: https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
