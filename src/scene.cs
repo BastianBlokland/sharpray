@@ -391,8 +391,8 @@ class SkyTexture : ISky
     }
 }
 
-// Participating medium (fog, dust).
-readonly record struct Medium(
+// Participating medium (exponential height density).
+readonly record struct Fog(
     float Density,
     Color Color,
     float Anisotropy, // [-1 to 1] exclusive. Positive for forward-scattering (fog / dust), negative for back-scattering (snow).
@@ -432,7 +432,7 @@ readonly record struct Medium(
 
         float u = rng.NextExponential(); // Optical depth budget.
 
-        // Find out how far into the medium.
+        // Find out how far into the fog.
         float t;
         if (MathF.Abs(heightDelta) < 1e-6f)
         {
@@ -464,7 +464,7 @@ readonly record struct Medium(
 class Scene : IDescribable
 {
     public ISky? Sky { get; set; }
-    public Medium? Medium { get; set; }
+    public Fog? Fog { get; set; }
 
     private List<Object> _objects = new List<Object>();
     private readonly object _lock = new object();
@@ -560,26 +560,23 @@ class Scene : IDescribable
 
             (Surface, float Dist)? hit = Trace(ray, counters);
 
-            RaySegment? mediumSeg = Medium is Medium ? new RaySegment(ray, end: hit?.Dist ?? float.PositiveInfinity) : null;
-            if (mediumSeg is RaySegment seg && Medium!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
+            RaySegment? fogSeg = Fog is Fog ? new RaySegment(ray, end: hit?.Dist ?? float.PositiveInfinity) : null;
+            if (fogSeg is RaySegment seg && Fog!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
             {
-                // Scatter on the medium.
-                counters.Bump(Counters.Type.SampleMediumScatter);
+                // Scatter on the fog.
+                counters.Bump(Counters.Type.SampleFogScatter);
 
-                Medium medium = Medium!.Value;
-                Vec3 scatterPos = ray[scatterDist];
-
-                energy *= medium.Color;
-                radiance += SampleSkyDirectMedium(scatterPos, ray.Dir, ref rng, counters) * energy;
+                energy *= Fog!.Value.Color;
+                radiance += SampleSkyDirectFog(ray[scatterDist], ray.Dir, ref rng, counters) * energy;
 
                 if (RussianRoulette(ref energy, i, ref rng, counters))
                     break;
 
-                Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, medium.Anisotropy, ref rng);
-                float scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), medium.Anisotropy);
+                Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, Fog!.Value.Anisotropy, ref rng);
+                float scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), Fog!.Value.Anisotropy);
 
                 lastScatter = new SampleDir(scatterDir, scatterPdf);
-                ray = new Ray(scatterPos, scatterDir);
+                ray = new Ray(ray[scatterDist], scatterDir);
             }
             else if (hit is (Surface surf, float dist))
             {
@@ -659,9 +656,9 @@ class Scene : IDescribable
             return null;
 
         float transmittance = 1f;
-        if (Medium is Medium med)
+        if (Fog is Fog fog)
         {
-            transmittance = med.Transmittance(new RaySegment(new Ray(pos, light.Dir)));
+            transmittance = fog.Transmittance(new RaySegment(new Ray(pos, light.Dir)));
         }
 
         return (light, transmittance);
@@ -686,20 +683,20 @@ class Scene : IDescribable
         return Sky!.Radiance(light.Dir) * transmittance * surfReflectance * misWeight / light.Pdf;
     }
 
-    private Color SampleSkyDirectMedium(Vec3 pos, Vec3 rayDir, ref Rng rng, Counters counters)
+    private Color SampleSkyDirectFog(Vec3 pos, Vec3 rayDir, ref Rng rng, Counters counters)
     {
-        Debug.Assert(Medium != null);
+        Debug.Assert(Fog != null);
         if (SampleSkyLight(pos, ref rng, counters) is not (SampleDir light, float transmittance))
             return Color.Black;
 
         float rDotL = Vec3.Dot(rayDir, light.Dir);
-        float mediumPdf = Brdf.HgPdf(rDotL, Medium!.Value.Anisotropy);
+        float fogPdf = Brdf.HgPdf(rDotL, Fog!.Value.Anisotropy);
 
-        // Compute the weight by combining the light dir probability and the medium probability
+        // Compute the weight by combining the light dir probability and the fog probability
         // using MIS (Multiple Importance Sampling).
-        float misWeight = Brdf.PowerHeuristic(light.Pdf, mediumPdf);
+        float misWeight = Brdf.PowerHeuristic(light.Pdf, fogPdf);
 
-        return Sky!.Radiance(light.Dir) * transmittance * mediumPdf * misWeight / light.Pdf;
+        return Sky!.Radiance(light.Dir) * transmittance * fogPdf * misWeight / light.Pdf;
     }
 
     public void Describe(FormatWriter fmt)
@@ -710,9 +707,9 @@ class Scene : IDescribable
         Sky?.DescribeIndented("sky", fmt);
         fmt.Separate();
 
-        if (Medium is Medium med)
+        if (Fog is Fog fog)
         {
-            med.DescribeIndented("medium", fmt);
+            fog.DescribeIndented("fog", fmt);
             fmt.Separate();
         }
 

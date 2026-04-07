@@ -64,7 +64,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     //     float.DegreesToRadians(0.53f));
 
     // Light dust filling the scene.
-    scene.Medium = new Medium(
+    scene.Fog = new Fog(
         Density: 0.01f,
         Color: new Color(0.8f, 0.75f, 0.6f),
         Anisotropy: 0.6f,
