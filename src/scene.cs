@@ -9,7 +9,7 @@ readonly record struct Surface(
     float Roughness,
     float Metallic,
     Vec3 Normal,
-    Vec3 NormalRaw, // Uneffect by normal-mapping.
+    Vec3 NormalGeo,
     Vec4 Tangent,
     Vec2 Uv)
 {
@@ -83,9 +83,9 @@ readonly record struct Surface(
         }
 
         // Clamp scatter ray to stay above the geometric surface.
-        if (Vec3.Dot(scatterDir, NormalRaw) <= 0f)
+        if (Vec3.Dot(scatterDir, NormalGeo) <= 0f)
         {
-            scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, NormalRaw) * NormalRaw).NormalizeOr(NormalRaw);
+            scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, NormalGeo) * NormalGeo).NormalizeOr(NormalGeo);
         }
 
         return new SampleDir(scatterDir, Pdf(viewDir, scatterDir));
@@ -541,7 +541,7 @@ class Scene : IDescribable
             Vec3 tangentDir = (hit.Tan.Xyz - Vec3.Dot(hit.Tan.Xyz, normal) * normal).NormalizeOr(hit.Tan.Xyz);
             Vec4 tangent = new Vec4(tangentDir, hit.Tan.W);
 
-            Surface surf = new Surface(mat.Radiance, color, roughness, metallic, normal, hit.Norm, tangent, hit.Uv);
+            Surface surf = new Surface(mat.Radiance, color, roughness, metallic, normal, hit.NormGeo, tangent, hit.Uv);
             return (surf, hit.Dist);
         }
 
@@ -592,7 +592,7 @@ class Scene : IDescribable
                 counters.Bump(Counters.Type.SampleHit);
 
                 Vec3 viewDir = -ray.Dir;
-                Vec3 hitPos = ray[dist] + surf.NormalRaw * MathF.Max(1e-3f, dist * 1e-3f);
+                Vec3 hitPos = ray[dist] + surf.NormalGeo * MathF.Max(0.005f, dist * 0.001f);
 
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
@@ -676,7 +676,7 @@ class Scene : IDescribable
     {
         if (SampleSkyLight(hitPos, ref rng, counters) is not (var light, var transmittance))
             return Color.Black;
-        if (Vec3.Dot(surf.NormalRaw, light.Dir) <= 0f)
+        if (Vec3.Dot(surf.NormalGeo, light.Dir) <= 0f)
             return Color.Black; // Light is behind the geometric surface (excluding normal-mapping).
         if (Vec3.Dot(surf.Normal, light.Dir) <= 0f)
             return Color.Black; // Light is behind the surface (including normal-mapping).
