@@ -23,6 +23,7 @@ readonly struct ShapeHit : IShapeHit
 {
     public float Dist { get; }
     public readonly Vec3 Norm;
+    public readonly Vec3 NormGeo; // True geometric normal.
     public readonly Vec4 Tan; // xyz = tangent direction, w = bitangent handedness (+1/-1).
     public readonly Vec2 Uv;
 
@@ -32,6 +33,18 @@ readonly struct ShapeHit : IShapeHit
         Debug.Assert(tan.Xyz.IsUnit, "ShapeHit tangent must be normalized");
         Dist = dist;
         Norm = norm;
+        NormGeo = norm;
+        Tan = tan;
+        Uv = uv;
+    }
+
+    public ShapeHit(float dist, Vec3 norm, Vec3 normGeo, Vec4 tan, Vec2 uv)
+    {
+        Debug.Assert(norm.IsUnit && normGeo.IsUnit, "ShapeHit normal must be normalized");
+        Debug.Assert(tan.Xyz.IsUnit, "ShapeHit tangent must be normalized");
+        Dist = dist;
+        Norm = norm;
+        NormGeo = normGeo;
         Tan = tan;
         Uv = uv;
     }
@@ -1423,6 +1436,7 @@ readonly struct TriangleLean : IShapeLean
 
         Vec3 normInterp = normA * w + normB * u + normC * v;
         Vec3 norm = normInterp.MagnitudeSqr() >= 1e-12f ? normInterp.Normalize() : Normal;
+        Vec3 normFace = Normal;
 
         // Interpolate tangent and re-orthogonalize against interpolated normal.
         Vec4 tanInterp = tanA * w + tanB * u + tanC * v;
@@ -1431,7 +1445,7 @@ readonly struct TriangleLean : IShapeLean
 
         Vec2 uv = uvA * w + uvB * u + uvC * v;
 
-        return new ShapeHit(leanHit.Dist, norm, tan, uv);
+        return new ShapeHit(leanHit.Dist, norm, normFace, tan, uv);
     }
 
     public bool IntersectAny(Ray ray)
