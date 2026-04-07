@@ -843,7 +843,7 @@ readonly struct RaySegment
     public readonly Ray Ray;
     public readonly float Start, End;
 
-    public RaySegment(Ray ray, float start, float end)
+    public RaySegment(Ray ray, float start = 0f, float end = float.PositiveInfinity)
     {
         Ray = ray;
         Start = start;
