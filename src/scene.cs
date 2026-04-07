@@ -596,9 +596,9 @@ class Scene : IDescribable
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
 
-                if (i == 0)
+                if (depth == null)
                 {
-                    // Save surface definition for the primary ray.
+                    // Save surface definition for the primary surface.
                     normal = surf.Normal;
                     uv = surf.Uv;
                     depth = dist;
