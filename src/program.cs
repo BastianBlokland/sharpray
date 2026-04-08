@@ -74,7 +74,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
     Texture floorRough = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_rough.tga"));
     Texture floorNormal = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_nor.tga"));
-    floorColor.Tiling = floorRough.Tiling = floorNormal.Tiling = new Vec2(6f, 1.5f);
+    floorColor.Tiling = floorRough.Tiling = floorNormal.Tiling = new Vec2(6f, 1.7f);
     scene.AddObject(new Object(
         "floor",
         Transform.Identity(),
