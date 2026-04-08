@@ -592,7 +592,8 @@ class Scene : IDescribable
                 counters.Bump(Counters.Type.SampleHit);
 
                 Vec3 viewDir = -ray.Dir;
-                Vec3 hitPos = ray[dist] + surf.NormalGeo * MathF.Max(0.005f, dist * 0.001f);
+                float distBias = MathF.Max(1e-4f, dist * 1e-4f); // Move the hit-point slightly back from the surface.
+                Vec3 hitPos = ray[dist - distBias];
 
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
