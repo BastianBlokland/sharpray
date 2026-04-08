@@ -14,6 +14,8 @@ class Compositor
     private float _sigmaDepthSqr2;
     private float _varianceScale;
     private float _varianceMax;
+    private float _luminanceScale;
+    private float _luminanceExponent;
     private Counters _counters;
 
     public Compositor(
@@ -24,6 +26,8 @@ class Compositor
         float sigmaDepth, // Depth similarity threshold in world units; lower = sharper depth edges.
         float varianceScale,
         float varianceMax,
+        float luminanceScale,
+        float luminanceExponent,
         Counters counters)
     {
         _tonemapper = tonemapper;
@@ -34,6 +38,8 @@ class Compositor
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
         _varianceScale = varianceScale;
         _varianceMax = varianceMax;
+        _luminanceScale = luminanceScale;
+        _luminanceExponent = luminanceExponent;
         _counters = counters;
     }
 
@@ -103,7 +109,9 @@ class Compositor
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
 
-        float varianceWeight = MathF.Min(variance[centerIndex] * centerRadiance.Luminance, _varianceMax);
+        float luminance = centerRadiance.Luminance;
+        float luminanceBoost = 1f + MathF.Pow(luminance, _luminanceExponent) * _luminanceScale;
+        float varianceWeight = MathF.Min(variance[centerIndex] * luminanceBoost, _varianceMax);
         float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * varianceWeight;
         float effectiveSigmaDepthSqr2 = _sigmaDepthSqr2 + _varianceScale * varianceWeight;
 
