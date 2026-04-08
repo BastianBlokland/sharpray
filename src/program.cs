@@ -33,12 +33,12 @@ const float denoiseSigmaPixels = 6.0f;
 const float denoiseSigmaColor = 0.01f;
 const float denoiseSigmaNormal = 0.1f;
 const float denoiseSigmaDepth = 0.1f;
-const float denoiseVarianceScale = 0.1f;
-const float denoiseVarianceMax = 500f;
+const float denoiseVarianceScale = 50f;
+const float denoiseVarianceMax = 1.5f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
-const uint previewInterval = 100;
+const uint previewInterval = 10;
 
 Counters counters = new Counters();
 var timerTotal = counters.TimeScope(Counters.Type.TimeTotal);
@@ -208,7 +208,7 @@ if (outputVariance)
 {
     for (uint i = 0; i != (width * height); ++i)
     {
-        float t = MathF.Log2(1f + renderer.Variance[i]) / 6f;
+        float t = renderer.Variance[i] / varianceThreshold;
         byte v = (byte)(Math.Clamp(t, 0f, 1f) * 255f);
         imageOut.Pixels[i] = new Pixel(0, v, 0);
     }
@@ -221,7 +221,7 @@ if (outputSamples)
     for (uint i = 0; i != (width * height); ++i)
     {
         float frac = MathF.Log2(renderer.Samples[i] / (float)minSamples) / logRange;
-        imageOut.Pixels[i] = new Pixel((byte)(frac * 255f));
+        imageOut.Pixels[i] = new Pixel(0, 0, (byte)(frac * 255f));
     }
     imageOut.Save(Path.Combine(outputPath, "samples.bmp"));
 }
