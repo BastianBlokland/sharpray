@@ -1337,7 +1337,7 @@ readonly struct TriangleLean : IShapeLean
 
     public Vec3 PosB => PosA + PosAToB;
     public Vec3 PosC => PosA + PosAToC;
-    public Vec3 Normal => Vec3.Cross(PosAToB, PosAToC).Normalize();
+    public Vec3 Normal => Vec3.Cross(PosAToB, PosAToC).NormalizeOr(Vec3.Up);
     public Vec3 Center => (PosA + PosB + PosC) / 3f;
 
     public AABox Bounds()
