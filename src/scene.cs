@@ -568,7 +568,7 @@ class Scene : IDescribable
             bool primaryRay = i == 0;
             (Surface, float Dist)? hit = Trace(ray, counters);
 
-            RaySegment? fogSeg = Fog is Fog ? new RaySegment(ray, end: hit?.Dist ?? float.PositiveInfinity) : null;
+            RaySegment? fogSeg = Fog.HasValue ? new RaySegment(ray, end: hit?.Dist ?? float.PositiveInfinity) : null;
             if (fogSeg is RaySegment seg && Fog!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
             {
                 // Scatter on the fog.
