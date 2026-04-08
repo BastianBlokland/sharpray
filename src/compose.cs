@@ -111,9 +111,7 @@ class Compositor
 
         float luminance = centerRadiance.Luminance;
         float luminanceBoost = 1f + MathF.Pow(luminance, _luminanceExponent) * _luminanceScale;
-        float varianceWeight = MathF.Min(variance[centerIndex] * luminanceBoost, _varianceMax);
-        float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * varianceWeight;
-        float effectiveSigmaDepthSqr2 = _sigmaDepthSqr2 + _varianceScale * varianceWeight;
+        float varianceWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _varianceScale, _varianceMax);
 
         float weightSum = 0f;
         Color radianceSum = Color.Black;
@@ -151,12 +149,12 @@ class Compositor
                 if (hasCenterNormal)
                 {
                     Vec3 normalDelta = centerNormal - refNormal;
-                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / effectiveSigmaNormalSqr2);
+                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / _sigmaNormalSqr2);
                 }
                 if (hasCenterDepth)
                 {
                     float depthDelta = centerDepth - refDepth;
-                    weight *= MathF.Exp(-(depthDelta * depthDelta) / effectiveSigmaDepthSqr2);
+                    weight *= MathF.Exp(-(depthDelta * depthDelta) / _sigmaDepthSqr2);
                 }
 
                 weightSum += weight;
