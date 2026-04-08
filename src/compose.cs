@@ -114,6 +114,14 @@ class Compositor
         {
             for (int kernelX = -_radius; kernelX <= _radius; ++kernelX)
             {
+                if (kernelX == 0 && kernelY == 0)
+                {
+                    // Center pixel always contributes fully.
+                    weightSum += 1f;
+                    radianceSum += centerRadiance;
+                    continue;
+                }
+
                 int refX = coord.X + kernelX;
                 int refY = coord.Y + kernelY;
                 if (refX < 0 || refX >= size.X || refY < 0 || refY >= size.Y)
@@ -130,7 +138,7 @@ class Compositor
                     continue;
 
                 float kernelDist = kernelX * kernelX + kernelY * kernelY;
-                float weight = MathF.Exp(-kernelDist / _sigmaPixelsSqr2);
+                float weight = varianceWeight * MathF.Exp(-kernelDist / _sigmaPixelsSqr2);
 
                 if (hasCenterNormal)
                 {
