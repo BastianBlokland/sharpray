@@ -10,7 +10,6 @@ class Compositor
     private float _exposure;
     private int _radius;
     private float _sigmaPixelsSqr2;
-    private float _sigmaColorSqr2;
     private float _sigmaNormalSqr2;
     private float _sigmaDepthSqr2;
     private float _varianceScale;
@@ -21,7 +20,6 @@ class Compositor
         Tonemapper tonemapper,
         float exposure,
         float sigmaPixels, // Blur radius in pixels; higher = smoother.
-        float sigmaColor, // Radiance similarity threshold; lower = preserves more edges.
         float sigmaNormal, // Normal similarity threshold; lower = respects geometry boundaries more.
         float sigmaDepth, // Depth similarity threshold in world units; lower = sharper depth edges.
         float varianceScale,
@@ -32,7 +30,6 @@ class Compositor
         _exposure = exposure;
         _radius = (int)MathF.Ceiling(sigmaPixels * 2f);
         _sigmaPixelsSqr2 = sigmaPixels * sigmaPixels * 2f;
-        _sigmaColorSqr2 = sigmaColor * sigmaColor * 2f;
         _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
         _varianceScale = varianceScale;
@@ -97,18 +94,21 @@ class Compositor
         // Joint bilateral filter with normal and depth guidance.
         // https://en.wikipedia.org/wiki/Bilateral_filter
 
+        long[] counterData = _counters.GetLocalData();
+
         int centerIndex = coord.Y * size.X + coord.X;
         Color centerRadiance = radiance[centerIndex];
         Vec3 centerNormal = normals[centerIndex];
         float centerDepth = depth[centerIndex];
-        float centerVariance = variance[centerIndex];
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
 
+        float varianceWeight = MathF.Min(variance[centerIndex] * centerRadiance.Luminance, _varianceMax);
+        float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * varianceWeight;
+        float effectiveSigmaDepthSqr2 = _sigmaDepthSqr2 + _varianceScale * varianceWeight;
+
         float weightSum = 0f;
         Color radianceSum = Color.Black;
-
-        long[] counterData = _counters.GetLocalData();
 
         for (int kernelY = -_radius; kernelY <= _radius; ++kernelY)
         {
@@ -120,10 +120,8 @@ class Compositor
                     continue; // Outside bounds.
 
                 int refIndex = refY * size.X + refX;
-                Color refRadiance = radiance[refIndex];
                 Vec3 refNormal = normals[refIndex];
                 float refDepth = depth[refIndex];
-                float refVariance = variance[refIndex];
                 bool refHasNormal = refNormal.MagnitudeSqr() > 0f;
                 bool refHasDepth = !float.IsInfinity(refDepth);
 
@@ -131,16 +129,8 @@ class Compositor
                 if (hasCenterNormal != refHasNormal || hasCenterDepth != refHasDepth)
                     continue;
 
-                // Widen color and normal sigmas based on combined variance of both pixels.
-                float combinedVariance = MathF.Min(centerVariance + refVariance, _varianceMax);
-                float effectiveSigmaColorSqr2 = _sigmaColorSqr2 + _varianceScale * combinedVariance;
-                float effectiveSigmaNormalSqr2 = _sigmaNormalSqr2 + _varianceScale * combinedVariance;
-
                 float kernelDist = kernelX * kernelX + kernelY * kernelY;
                 float weight = MathF.Exp(-kernelDist / _sigmaPixelsSqr2);
-
-                Color radianceDelta = centerRadiance - refRadiance;
-                weight *= MathF.Exp(-radianceDelta.MagnitudeSqr / effectiveSigmaColorSqr2);
 
                 if (hasCenterNormal)
                 {
@@ -150,11 +140,11 @@ class Compositor
                 if (hasCenterDepth)
                 {
                     float depthDelta = centerDepth - refDepth;
-                    weight *= MathF.Exp(-(depthDelta * depthDelta) / _sigmaDepthSqr2);
+                    weight *= MathF.Exp(-(depthDelta * depthDelta) / effectiveSigmaDepthSqr2);
                 }
 
                 weightSum += weight;
-                radianceSum += refRadiance * weight;
+                radianceSum += radiance[refIndex] * weight;
 
                 ++counterData[(int)Counters.Type.ComposeFilterSample];
             }
