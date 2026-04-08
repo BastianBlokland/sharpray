@@ -470,8 +470,8 @@ readonly record struct Fog(
 
 class Scene : IDescribable
 {
-    public ISky? Sky { get; set; }
-    public Fog? Fog { get; set; }
+    private ISky? _sky;
+    private Fog? _fog;
 
     private List<Object> _objects = new List<Object>();
     private readonly object _lock = new object();
@@ -486,7 +486,8 @@ class Scene : IDescribable
                 return;
             _built = true;
         }
-        Debug.Assert(Sky != null, "Sky missing");
+        if (_sky == null)
+            throw new InvalidOperationException("Scene sky is required");
 
         using (counters?.TimeScope(Counters.Type.TimeSceneBvhBuild))
         {
@@ -496,10 +497,30 @@ class Scene : IDescribable
         }
         if (counters != null)
         {
-            BvhStats stats = _bvh.GetStats();
+            BvhStats stats = _bvh!.GetStats();
             counters.Bump(Counters.Type.SceneObject, _objects.Count);
             counters.Bump(Counters.Type.SceneBvhNodes, stats.NodeCount);
             counters.Bump(Counters.Type.SceneBvhDepth, stats.DepthMax);
+        }
+    }
+
+    public void SetSky(ISky sky)
+    {
+        lock (_lock)
+        {
+            if (_built)
+                throw new InvalidOperationException("Scene already built");
+            _sky = sky;
+        }
+    }
+
+    public void SetFog(Fog fog)
+    {
+        lock (_lock)
+        {
+            if (_built)
+                throw new InvalidOperationException("Scene already built");
+            _fog = fog;
         }
     }
 
@@ -568,20 +589,20 @@ class Scene : IDescribable
             bool primaryRay = i == 0;
             (Surface, float Dist)? hit = Trace(ray, counters);
 
-            RaySegment? fogSeg = Fog.HasValue ? new RaySegment(ray, end: hit?.Dist ?? float.PositiveInfinity) : null;
-            if (fogSeg is RaySegment seg && Fog!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
+            RaySegment? fogSeg = _fog.HasValue ? new RaySegment(ray, end: hit?.Dist ?? float.PositiveInfinity) : null;
+            if (fogSeg is RaySegment seg && _fog!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
             {
                 // Scatter on the fog.
                 counters.Bump(Counters.Type.SampleFogScatter);
 
-                energy *= Fog!.Value.Color;
+                energy *= _fog!.Value.Color;
                 radiance += SampleSkyDirectFog(ray[scatterDist], ray.Dir, ref rng, counters) * energy;
 
                 if (RussianRoulette(ref energy, i, ref rng, counters))
                     break;
 
-                Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, Fog!.Value.Anisotropy, ref rng);
-                float scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), Fog!.Value.Anisotropy);
+                Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, _fog!.Value.Anisotropy, ref rng);
+                float scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), _fog!.Value.Anisotropy);
 
                 lastScatter = new SampleDir(scatterDir, scatterPdf);
                 ray = new Ray(ray[scatterDist], scatterDir);
@@ -630,11 +651,11 @@ class Scene : IDescribable
                 // the sky radiance we already added during the scatter.
                 float misWeight;
                 if (lastScatter is SampleDir scatter)
-                    misWeight = Brdf.PowerHeuristic(scatter.Pdf, Sky?.LightDir(ray.Dir)?.Pdf ?? 0f);
+                    misWeight = Brdf.PowerHeuristic(scatter.Pdf, _sky?.LightDir(ray.Dir)?.Pdf ?? 0f);
                 else
                     misWeight = 1f;
 
-                radiance += (Sky?.Radiance(ray.Dir) ?? Color.Black) * misWeight * energy;
+                radiance += (_sky?.Radiance(ray.Dir) ?? Color.Black) * misWeight * energy;
                 break;
             }
         }
@@ -659,13 +680,13 @@ class Scene : IDescribable
 
     private (SampleDir Light, float Transmittance)? SampleSkyLight(Vec3 pos, ref Rng rng, Counters counters)
     {
-        if (Sky?.LightDirRand(ref rng) is not SampleDir light || light.Pdf <= 0f)
+        if (_sky?.LightDirRand(ref rng) is not SampleDir light || light.Pdf <= 0f)
             return null;
         if (Occluded(new Ray(pos, light.Dir), counters))
             return null;
 
         float transmittance = 1f;
-        if (Fog is Fog fog)
+        if (_fog is Fog fog)
         {
             transmittance = fog.Transmittance(new RaySegment(new Ray(pos, light.Dir)));
         }
@@ -689,23 +710,23 @@ class Scene : IDescribable
         // using MIS (Multiple Importance Sampling).
         float misWeight = Brdf.PowerHeuristic(light.Pdf, surfPdf);
 
-        return Sky!.Radiance(light.Dir) * transmittance * surfReflectance * misWeight / light.Pdf;
+        return _sky!.Radiance(light.Dir) * transmittance * surfReflectance * misWeight / light.Pdf;
     }
 
     private Color SampleSkyDirectFog(Vec3 pos, Vec3 rayDir, ref Rng rng, Counters counters)
     {
-        Debug.Assert(Fog != null);
+        Debug.Assert(_fog != null);
         if (SampleSkyLight(pos, ref rng, counters) is not (SampleDir light, float transmittance))
             return Color.Black;
 
         float rDotL = Vec3.Dot(rayDir, light.Dir);
-        float fogPdf = Brdf.HgPdf(rDotL, Fog!.Value.Anisotropy);
+        float fogPdf = Brdf.HgPdf(rDotL, _fog!.Value.Anisotropy);
 
         // Compute the weight by combining the light dir probability and the fog probability
         // using MIS (Multiple Importance Sampling).
         float misWeight = Brdf.PowerHeuristic(light.Pdf, fogPdf);
 
-        return Sky!.Radiance(light.Dir) * transmittance * fogPdf * misWeight / light.Pdf;
+        return _sky!.Radiance(light.Dir) * transmittance * fogPdf * misWeight / light.Pdf;
     }
 
     public void Describe(FormatWriter fmt)
@@ -713,10 +734,10 @@ class Scene : IDescribable
         if (!_built)
             throw new InvalidOperationException("Scene not built");
 
-        Sky?.DescribeIndented("sky", fmt);
+        _sky?.DescribeIndented("sky", fmt);
         fmt.Separate();
 
-        if (Fog is Fog fog)
+        if (_fog is Fog fog)
         {
             fog.DescribeIndented("fog", fmt);
             fmt.Separate();

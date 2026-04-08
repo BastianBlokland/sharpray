@@ -208,7 +208,7 @@ if (outputVariance)
 {
     for (uint i = 0; i != (width * height); ++i)
     {
-        float t = renderer.Variance[i] / varianceThreshold;
+        float t = renderer.Variance[i] / (varianceThreshold * 2f);
         byte v = (byte)(Math.Clamp(t, 0f, 1f) * 255f);
         imageOut.Pixels[i] = new Pixel(0, v, 0);
     }
