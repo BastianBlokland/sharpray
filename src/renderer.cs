@@ -203,14 +203,13 @@ class Renderer
 
         // Combine the fragments of the individual samples into a final combined fragment.
         uint sampleCount = sampleIndex + 1;
-        float lumMean = lumSum / sampleCount;
-        float lumVariance = MathF.Max(0f, lumSumSqr / sampleCount - lumMean * lumMean);
+        float varianceStdErr = RelativeStdErr(lumSum, lumSumSqr, sampleCount);
         Color radiance = radianceSum / sampleCount;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
         float? depth = depthCount > 0 ? depthSum / depthCount : null;
         Fragment combinedFrag = new Fragment(radiance, normal, uv, depth);
 
-        return new RenderFragment(combinedFrag, sampleCount, lumVariance);
+        return new RenderFragment(combinedFrag, sampleCount, varianceStdErr);
     }
 
     // Relative standard error of the mean: stddev(mean) / mean. Lower = more converged.
