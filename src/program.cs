@@ -30,7 +30,6 @@ const float indirectClamp = 10f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
 const float exposure = 1.0f;
 const float denoiseSigmaPixels = 6.0f;
-const float denoiseSigmaColor = 0.01f;
 const float denoiseSigmaNormal = 0.1f;
 const float denoiseSigmaDepth = 0.1f;
 const float denoiseVarianceScale = 0.1f;
@@ -137,7 +136,7 @@ Renderer renderer = new Renderer(
 
 Compositor compositor = new Compositor(
     tonemapper, exposure,
-    denoiseSigmaPixels, denoiseSigmaColor, denoiseSigmaNormal, denoiseSigmaDepth,
+    denoiseSigmaPixels, denoiseSigmaNormal, denoiseSigmaDepth,
     denoiseVarianceScale, denoiseVarianceMax, counters);
 
 Image imageOut = new Image(width, height);
