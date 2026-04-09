@@ -113,7 +113,10 @@ class Compositor
 
         float luminance = centerRadiance.Luminance;
         float luminanceBoost = 1f + luminance * _denoiseLuminanceBoost;
-        float varianceWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax);
+        float denoiseWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax);
+
+        if (denoiseWeight < 1e-4f)
+            return centerRadiance;
 
         float weightSum = 0f;
         Color radianceSum = Color.Black;
@@ -147,7 +150,7 @@ class Compositor
                     continue;
 
                 float kernelDist = kernelX * kernelX + kernelY * kernelY;
-                float weight = varianceWeight * MathF.Exp(-kernelDist / radiusPixelsSqr2);
+                float weight = denoiseWeight * MathF.Exp(-kernelDist / radiusPixelsSqr2);
 
                 if (hasCenterNormal)
                 {
