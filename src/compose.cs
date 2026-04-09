@@ -95,7 +95,7 @@ class Compositor
         Vec2i size,
         Vec2i coord)
     {
-        // Joint bilateral filter with normal and depth guidance.
+        // Joint bilateral filter driven by variance with normal and depth limits.
         // https://en.wikipedia.org/wiki/Bilateral_filter
 
         long[] counterData = _counters.GetLocalData();
@@ -118,20 +118,16 @@ class Compositor
         if (denoiseWeight < 1e-4f)
             return centerRadiance;
 
-        float weightSum = 0f;
-        Color radianceSum = Color.Black;
+        float weightSum = 1f;
+        Color radianceSum = centerRadiance;
 
         for (int kernelY = -kernelRadius; kernelY <= kernelRadius; ++kernelY)
         {
+            int kernelYSqr = kernelY * kernelY;
             for (int kernelX = -kernelRadius; kernelX <= kernelRadius; ++kernelX)
             {
                 if (kernelX == 0 && kernelY == 0)
-                {
-                    // Center pixel always contributes fully.
-                    weightSum += 1f;
-                    radianceSum += centerRadiance;
                     continue;
-                }
 
                 int neighborX = coord.X + kernelX;
                 int neighborY = coord.Y + kernelY;
@@ -149,7 +145,7 @@ class Compositor
                 if (hasCenterNormal != neighborHasNormal || hasCenterDepth != neighborHasDepth)
                     continue;
 
-                float kernelDist = kernelX * kernelX + kernelY * kernelY;
+                float kernelDist = kernelX * kernelX + kernelYSqr;
                 float weight = denoiseWeight * MathF.Exp(-kernelDist * radiusPixelsInv);
 
                 if (hasCenterNormal)
