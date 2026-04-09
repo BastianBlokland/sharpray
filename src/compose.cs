@@ -117,13 +117,13 @@ class Compositor
 
         if (denoiseWeight < 1e-3f)
         {
-            ++counterData[(int)Counters.Type.ComposeDenoiseEarlyOut];
+            ++counterData[(int)Counters.Type.DenoiseEarlyOut];
             return centerRadiance;
         }
 
-        Counters.BumpMax(counterData, Counters.Type.ComposeDenoiseWeightMax, denoiseWeight);
-        Counters.BumpMax(counterData, Counters.Type.ComposeDenoiseMaxLuminance, luminance);
-        Counters.BumpMax(counterData, Counters.Type.ComposeDenoiseMaxLuminanceBoost, luminanceBoost);
+        Counters.BumpMax(counterData, Counters.Type.DenoiseWeightMax, denoiseWeight);
+        Counters.BumpMax(counterData, Counters.Type.DenoiseMaxLum, luminance);
+        Counters.BumpMax(counterData, Counters.Type.DenoiseMaxLumBoost, luminanceBoost);
 
         float weightSum = 1f;
         Color radianceSum = centerRadiance;
@@ -151,7 +151,7 @@ class Compositor
                 // Reject neighbors that differ where not the same information is available.
                 if (hasCenterNormal != neighborHasNormal || hasCenterDepth != neighborHasDepth)
                 {
-                    ++counterData[(int)Counters.Type.ComposeDenoiseRejectMissing];
+                    ++counterData[(int)Counters.Type.DenoiseRejectMissing];
                     continue;
                 }
 
@@ -164,7 +164,7 @@ class Compositor
                     weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv);
                     if (weight < 1e-4f)
                     {
-                        ++counterData[(int)Counters.Type.ComposeDenoiseRejectNormal];
+                        ++counterData[(int)Counters.Type.DenoiseRejectNormal];
                     }
                 }
                 if (hasCenterDepth)
@@ -173,7 +173,7 @@ class Compositor
                     weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv);
                     if (weight < 1e-4f)
                     {
-                        ++counterData[(int)Counters.Type.ComposeDenoiseRejectDepth];
+                        ++counterData[(int)Counters.Type.DenoiseRejectDepth];
                     }
                 }
 
@@ -184,7 +184,7 @@ class Compositor
                 weightSum += weight;
                 radianceSum += neighborRadiance * weight;
 
-                ++counterData[(int)Counters.Type.ComposeFilterSample];
+                ++counterData[(int)Counters.Type.FilterSample];
             }
         }
 
