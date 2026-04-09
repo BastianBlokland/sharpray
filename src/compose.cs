@@ -150,7 +150,10 @@ class Compositor
 
                 // Reject neighbors that differ where not the same information is available.
                 if (hasCenterNormal != neighborHasNormal || hasCenterDepth != neighborHasDepth)
+                {
+                    ++counterData[(int)Counters.Type.ComposeDenoiseRejectMissing];
                     continue;
+                }
 
                 float kernelDist = kernelX * kernelX + kernelYSqr;
                 float weight = denoiseWeight * MathF.Exp(-kernelDist * radiusPixelsInv);
@@ -159,11 +162,19 @@ class Compositor
                 {
                     Vec3 normalDelta = centerNormal - neighborNormal;
                     weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv);
+                    if (weight < 1e-4f)
+                    {
+                        ++counterData[(int)Counters.Type.ComposeDenoiseRejectNormal];
+                    }
                 }
                 if (hasCenterDepth)
                 {
                     float depthDelta = centerDepth - neighborDepth;
                     weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv);
+                    if (weight < 1e-4f)
+                    {
+                        ++counterData[(int)Counters.Type.ComposeDenoiseRejectDepth];
+                    }
                 }
 
                 // Suppress neighbors that are much brighter than the center (firefly rejection).
