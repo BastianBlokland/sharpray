@@ -612,6 +612,9 @@ class Scene : IDescribable
                 // Reached a surface.
                 counters.Bump(Counters.Type.SampleHit);
 
+                if (fogSeg.HasValue)
+                    counters.Bump(Counters.Type.SampleFogEscape);
+
                 Vec3 viewDir = -ray.Dir;
                 float distBias = MathF.Max(1e-4f, dist * 1e-4f); // Move the hit-point slightly back from the surface.
                 Vec3 hitPos = ray[dist - distBias];
@@ -646,6 +649,9 @@ class Scene : IDescribable
             {
                 // Reached the sky.
                 counters.Bump(Counters.Type.SampleMiss);
+
+                if (fogSeg.HasValue)
+                    counters.Bump(Counters.Type.SampleFogEscape);
 
                 // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
                 // the sky radiance we already added during the scatter.

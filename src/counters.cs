@@ -32,6 +32,11 @@ class Counters : IDescribable
         SampleMiss,
         SampleTerminate,
         SampleFogScatter,
+        SampleFogEscape,
+        SamplePixelConverged,
+        SamplePixelMaxed,
+        SampleCountMin,
+        SampleCountMax,
         SceneObject,
         SceneBvhNodes,
         SceneBvhDepth,
@@ -88,7 +93,9 @@ class Counters : IDescribable
     public void Bump(Type c) => _dataLocal.Value![(int)c]++;
     public void Bump(Type c, long n) => _dataLocal.Value![(int)c] += n;
     public void Bump(Type c, Timestamp duration) => _dataLocal.Value![(int)c] += (long)duration.Micros;
-
+    public void BumpMin(Type c, long value) => BumpMin(_dataLocal.Value!, c, value);
+    public void BumpMax(Type c, long value) => BumpMax(_dataLocal.Value!, c, value);
+    public void BumpMin(Type c, float value) => BumpMin(_dataLocal.Value!, c, value);
     public void BumpMax(Type c, float value) => BumpMax(_dataLocal.Value!, c, value);
 
     // Directly retrieve the thread-local data array for direct access in hot loops.
@@ -166,7 +173,7 @@ class Counters : IDescribable
             {
                 case Category.Memory: fmt.WriteLine($"{name}: {new FormatMem(value)}"); break;
                 case Category.Time: fmt.WriteLine($"{name}: {Timestamp.FromMicros(value)}"); break;
-                case Category.Decimal: fmt.WriteLine($"{name}: {value / _decimalFactor:F4}"); break;
+                case Category.Decimal: fmt.WriteLine($"{name}: {value / _decimalFactor:F2}"); break;
                 default: fmt.WriteLine($"{name}: {new FormatNum(value)}"); break;
             }
         }
@@ -183,6 +190,25 @@ class Counters : IDescribable
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen0], GC.CollectionCount(0));
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen1], GC.CollectionCount(1));
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen2], GC.CollectionCount(2));
+    }
+
+    public static void BumpMin(long[] localData, Type c, long value)
+    {
+        if (value < localData[(int)c])
+            localData[(int)c] = value;
+    }
+
+    public static void BumpMin(long[] localData, Type c, float value)
+    {
+        long scaled = (long)(value * _decimalFactor);
+        if (scaled < localData[(int)c])
+            localData[(int)c] = scaled;
+    }
+
+    public static void BumpMax(long[] localData, Type c, long value)
+    {
+        if (value > localData[(int)c])
+            localData[(int)c] = value;
     }
 
     public static void BumpMax(long[] localData, Type c, float value)
@@ -205,6 +231,8 @@ class Counters : IDescribable
         r[(int)Type.DenoiseWeightMax] = Reduction.Max;
         r[(int)Type.DenoiseMaxLum] = Reduction.Max;
         r[(int)Type.DenoiseMaxLumBoost] = Reduction.Max;
+        r[(int)Type.SampleCountMin] = Reduction.Min;
+        r[(int)Type.SampleCountMax] = Reduction.Max;
         return r;
     }
 
