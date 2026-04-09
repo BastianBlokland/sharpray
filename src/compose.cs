@@ -115,8 +115,15 @@ class Compositor
         float luminanceBoost = 1f + luminance * _denoiseLuminanceBoost;
         float denoiseWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax);
 
-        if (denoiseWeight < 1e-4f)
+        if (denoiseWeight < 1e-3f)
+        {
+            ++counterData[(int)Counters.Type.ComposeDenoiseEarlyOut];
             return centerRadiance;
+        }
+
+        Counters.BumpMax(counterData, Counters.Type.ComposeDenoiseWeightMax, denoiseWeight);
+        Counters.BumpMax(counterData, Counters.Type.ComposeDenoiseMaxLuminance, luminance);
+        Counters.BumpMax(counterData, Counters.Type.ComposeDenoiseMaxLuminanceBoost, luminanceBoost);
 
         float weightSum = 1f;
         Color radianceSum = centerRadiance;
