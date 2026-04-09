@@ -12,11 +12,13 @@ class Texture : IDescribable
     public Vec2i Size => new Vec2i((int)Width, (int)Height);
 
     private readonly Color[] _texels;
+    private readonly bool _hdr;
 
     private Texture(
         Color[] pixels,
         uint width,
-        uint height)
+        uint height,
+        bool hdr)
     {
         Width = width;
         Height = height;
@@ -24,6 +26,7 @@ class Texture : IDescribable
         Tiling = Vec2.One;
 
         _texels = pixels;
+        _hdr = hdr;
     }
 
     public Color Get(Vec2i pos)
@@ -111,7 +114,10 @@ class Texture : IDescribable
 
     public void Describe(FormatWriter fmt)
     {
-        Span<float> histThresholds = stackalloc float[] { 1f, 10f, 100f, 1000f };
+        Span<float> histThresholds = _hdr
+            ? stackalloc float[] { 1f, 10f, 100f, 1000f }
+            : stackalloc float[] { 0.1f, 0.25f, 0.5f, 0.75f };
+
         Span<int> hist = stackalloc int[histThresholds.Length + 1];
         Analyze(histThresholds, hist, out float peakLum, out Color peakColor, out float avgLum);
 
@@ -123,9 +129,9 @@ class Texture : IDescribable
         fmt.IndentPush();
         for (int i = 0; i < histThresholds.Length; ++i)
         {
-            fmt.WriteLine($"[<{histThresholds[i]:F0}]={hist[i]}");
+            fmt.WriteLine($"[<{histThresholds[i]:G}]={hist[i]}");
         }
-        fmt.WriteLine($"[>={histThresholds[^1]:F0}]={hist[histThresholds.Length]}");
+        fmt.WriteLine($"[>={histThresholds[^1]:G}]={hist[histThresholds.Length]}");
         fmt.IndentPop();
     }
 
@@ -134,7 +140,7 @@ class Texture : IDescribable
         Color[] texels = new Color[image.Pixels.Length];
         for (int i = 0; i != texels.Length; ++i)
             texels[i] = Color.FromPixel(image.Pixels[i]);
-        return new Texture(texels, image.Width, image.Height);
+        return new Texture(texels, image.Width, image.Height, hdr: false);
     }
 
     public static Texture FromLinear(Image image)
@@ -142,7 +148,7 @@ class Texture : IDescribable
         Color[] texels = new Color[image.Pixels.Length];
         for (int i = 0; i != texels.Length; ++i)
             texels[i] = Color.FromPixelLinear(image.Pixels[i]);
-        return new Texture(texels, image.Width, image.Height);
+        return new Texture(texels, image.Width, image.Height, hdr: false);
     }
 
     public static Texture FromHdr(ImageHdr image, float maxLuminance = float.MaxValue)
@@ -153,7 +159,7 @@ class Texture : IDescribable
             Color c = Color.FromPixel(image.Pixels[i]).ClampLuminance(maxLuminance);
             texels[i] = c;
         }
-        return new Texture(texels, image.Width, image.Height);
+        return new Texture(texels, image.Width, image.Height, hdr: true);
     }
 
     public static Texture Checker(Color a, Color b, uint size = 8)
@@ -166,7 +172,7 @@ class Texture : IDescribable
                 texels[y * size + x] = ((x + y) % 2 == 0) ? a : b;
             }
         }
-        Texture res = new Texture(texels, size, size);
+        Texture res = new Texture(texels, size, size, hdr: false);
         res.Filter = TextureFilter.Point;
         return res;
     }
