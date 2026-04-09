@@ -158,31 +158,26 @@ class Compositor
                 float kernelDist = kernelX * kernelX + kernelYSqr;
                 float weight = denoiseWeight * MathF.Exp(-kernelDist * radiusPixelsInv);
 
-                if (hasCenterNormal)
+                if (hasCenterNormal && weight > 1e-4f) // Reject neighbors where the normal differs too much.
                 {
                     Vec3 normalDelta = centerNormal - neighborNormal;
                     weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv);
                     if (weight < 1e-4f)
-                    {
                         ++counterData[(int)Counters.Type.DenoiseRejectNormal];
-                    }
                 }
-                if (hasCenterDepth)
+                if (hasCenterDepth && weight > 1e-4f) // Reject neighbors where the depth differs too much.
                 {
                     float depthDelta = centerDepth - neighborDepth;
                     weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv);
                     if (weight < 1e-4f)
-                    {
                         ++counterData[(int)Counters.Type.DenoiseRejectDepth];
-                    }
                 }
-
-                // Suppress neighbors that are much brighter than the center (firefly rejection).
-                float luminanceDelta = MathF.Max(0f, neighborRadiance.Luminance - luminance);
-                weight *= MathF.Exp(-(luminanceDelta * luminanceDelta) * _denoiseLuminanceLimitInv);
-                if (weight < 1e-4f)
+                if (weight > 1e-4f) // Reject neighbors that are much brighter (firefly rejection).
                 {
-                    ++counterData[(int)Counters.Type.DenoiseRejectLum];
+                    float luminanceDelta = MathF.Max(0f, neighborRadiance.Luminance - luminance);
+                    weight *= MathF.Exp(-(luminanceDelta * luminanceDelta) * _denoiseLuminanceLimitInv);
+                    if (weight < 1e-4f)
+                        ++counterData[(int)Counters.Type.DenoiseRejectLum];
                 }
 
                 weightSum += weight;
