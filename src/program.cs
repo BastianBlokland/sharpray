@@ -29,14 +29,13 @@ const uint bounces = 8;
 const float indirectClamp = 10f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
 const float exposure = 1.0f;
-const float denoiseSigmaPixels = 0.01f;
-const float denoiseSigmaNormal = 0.125f;
-const float denoiseSigmaDepth = 0.1f;
-const float denoiseVarianceScale = 0.25f;
-const float denoiseVarianceMax = 1.75f;
-const float denoiseLuminanceScale = 0.5f;
-const float denoiseLuminanceExponent = 1f;
-const float denoiseFirefly = 2f;
+const float denoiseRadius = 0.01f;
+const float denoiseStrength = 0.25f;
+const float denoiseStrengthMax = 1.75f;
+const float denoiseLuminanceBoost = 0.5f;
+const float denoiseLuminanceLimit = 2f;
+const float denoiseNormalLimit = 0.125f;
+const float denoiseDepthLimit = 0.1f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
@@ -139,9 +138,9 @@ Renderer renderer = new Renderer(
 
 Compositor compositor = new Compositor(
     tonemapper, exposure,
-    denoiseSigmaPixels, denoiseSigmaNormal, denoiseSigmaDepth,
-    denoiseVarianceScale, denoiseVarianceMax,
-    denoiseLuminanceScale, denoiseLuminanceExponent, denoiseFirefly, counters);
+    denoiseRadius, denoiseStrength, denoiseStrengthMax,
+    denoiseLuminanceBoost, denoiseLuminanceLimit,
+    denoiseNormalLimit, denoiseDepthLimit, counters);
 
 Image imageOut = new Image(width, height);
 
