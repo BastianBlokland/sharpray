@@ -32,7 +32,7 @@ class Compositor
     {
         _tonemapper = tonemapper;
         _exposure = exposure;
-        _radius = (int)MathF.Ceiling(sigmaPixels * 2f);
+        _radius = (int)MathF.Ceiling(sigmaPixels * 3f);
         _sigmaPixelsSqr2 = sigmaPixels * sigmaPixels * 2f;
         _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
