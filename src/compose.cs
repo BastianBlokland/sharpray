@@ -8,8 +8,7 @@ class Compositor
 {
     private Tonemapper _tonemapper;
     private float _exposure;
-    private int _radius;
-    private float _sigmaPixelsSqr2;
+    private float _sigmaPixels;
     private float _sigmaNormalSqr2;
     private float _sigmaDepthSqr2;
     private float _varianceScale;
@@ -21,7 +20,7 @@ class Compositor
     public Compositor(
         Tonemapper tonemapper,
         float exposure,
-        float sigmaPixels, // Blur radius in pixels; higher = smoother.
+        float sigmaPixels,
         float sigmaNormal, // Normal similarity threshold; lower = respects geometry boundaries more.
         float sigmaDepth, // Depth similarity threshold in world units; lower = sharper depth edges.
         float varianceScale,
@@ -32,8 +31,7 @@ class Compositor
     {
         _tonemapper = tonemapper;
         _exposure = exposure;
-        _radius = (int)MathF.Ceiling(sigmaPixels * 3f);
-        _sigmaPixelsSqr2 = sigmaPixels * sigmaPixels * 2f;
+        _sigmaPixels = sigmaPixels;
         _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
         _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
         _varianceScale = varianceScale;
@@ -100,6 +98,10 @@ class Compositor
         // Joint bilateral filter with normal and depth guidance.
         // https://en.wikipedia.org/wiki/Bilateral_filter
 
+        float sigmaPixels = _sigmaPixels * MathF.Sqrt((float)(size.X * size.Y));
+        int radius = (int)MathF.Ceiling(sigmaPixels * 3f);
+        float sigmaPixelsSqr2 = sigmaPixels * sigmaPixels * 2f;
+
         long[] counterData = _counters.GetLocalData();
 
         int centerIndex = coord.Y * size.X + coord.X;
@@ -116,9 +118,9 @@ class Compositor
         float weightSum = 0f;
         Color radianceSum = Color.Black;
 
-        for (int kernelY = -_radius; kernelY <= _radius; ++kernelY)
+        for (int kernelY = -radius; kernelY <= radius; ++kernelY)
         {
-            for (int kernelX = -_radius; kernelX <= _radius; ++kernelX)
+            for (int kernelX = -radius; kernelX <= radius; ++kernelX)
             {
                 if (kernelX == 0 && kernelY == 0)
                 {
@@ -144,7 +146,7 @@ class Compositor
                     continue;
 
                 float kernelDist = kernelX * kernelX + kernelY * kernelY;
-                float weight = varianceWeight * MathF.Exp(-kernelDist / _sigmaPixelsSqr2);
+                float weight = varianceWeight * MathF.Exp(-kernelDist / sigmaPixelsSqr2);
 
                 if (hasCenterNormal)
                 {
