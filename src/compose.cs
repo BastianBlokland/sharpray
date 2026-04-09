@@ -12,9 +12,9 @@ class Compositor
     private float _denoiseStrength;
     private float _denoiseStrengthMax;
     private float _denoiseLuminanceBoost;
-    private float _denoiseLuminanceLimitSqr2;
-    private float _denoiseNormalLimitSqr2;
-    private float _denoiseDepthLimitSqr2;
+    private float _denoiseLuminanceLimitInv;
+    private float _denoiseNormalLimitInv;
+    private float _denoiseDepthLimitInv;
     private Counters _counters;
 
     public Compositor(
@@ -35,9 +35,9 @@ class Compositor
         _denoiseStrength = denoiseStrength;
         _denoiseStrengthMax = denoiseStrengthMax;
         _denoiseLuminanceBoost = denoiseLuminanceBoost;
-        _denoiseLuminanceLimitSqr2 = denoiseLuminanceLimit * denoiseLuminanceLimit * 2f;
-        _denoiseNormalLimitSqr2 = denoiseNormalLimit * denoiseNormalLimit * 2f;
-        _denoiseDepthLimitSqr2 = denoiseDepthLimit * denoiseDepthLimit * 2f;
+        _denoiseLuminanceLimitInv = 1f / (denoiseLuminanceLimit * denoiseLuminanceLimit * 2f);
+        _denoiseNormalLimitInv = 1f / (denoiseNormalLimit * denoiseNormalLimit * 2f);
+        _denoiseDepthLimitInv = 1f / (denoiseDepthLimit * denoiseDepthLimit * 2f);
         _counters = counters;
     }
 
@@ -101,7 +101,7 @@ class Compositor
         long[] counterData = _counters.GetLocalData();
 
         float radiusPixels = _denoiseRadius * MathF.Sqrt((float)(size.X * size.Y));
-        float radiusPixelsSqr2 = radiusPixels * radiusPixels * 2f;
+        float radiusPixelsInv = 1f / (radiusPixels * radiusPixels * 2f);
         int kernelRadius = (int)MathF.Ceiling(radiusPixels * 3f);
 
         int centerIndex = coord.Y * size.X + coord.X;
@@ -150,22 +150,22 @@ class Compositor
                     continue;
 
                 float kernelDist = kernelX * kernelX + kernelY * kernelY;
-                float weight = denoiseWeight * MathF.Exp(-kernelDist / radiusPixelsSqr2);
+                float weight = denoiseWeight * MathF.Exp(-kernelDist * radiusPixelsInv);
 
                 if (hasCenterNormal)
                 {
                     Vec3 normalDelta = centerNormal - neighborNormal;
-                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / _denoiseNormalLimitSqr2);
+                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv);
                 }
                 if (hasCenterDepth)
                 {
                     float depthDelta = centerDepth - neighborDepth;
-                    weight *= MathF.Exp(-(depthDelta * depthDelta) / _denoiseDepthLimitSqr2);
+                    weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv);
                 }
 
                 // Suppress neighbors that are much brighter than the center (firefly rejection).
                 float luminanceDelta = MathF.Max(0f, neighborRadiance.Luminance - luminance);
-                weight *= MathF.Exp(-(luminanceDelta * luminanceDelta) / _denoiseLuminanceLimitSqr2);
+                weight *= MathF.Exp(-(luminanceDelta * luminanceDelta) * _denoiseLuminanceLimitInv);
 
                 weightSum += weight;
                 radianceSum += neighborRadiance * weight;
