@@ -180,6 +180,10 @@ class Compositor
                 // Suppress neighbors that are much brighter than the center (firefly rejection).
                 float luminanceDelta = MathF.Max(0f, neighborRadiance.Luminance - luminance);
                 weight *= MathF.Exp(-(luminanceDelta * luminanceDelta) * _denoiseLuminanceLimitInv);
+                if (weight < 1e-4f)
+                {
+                    ++counterData[(int)Counters.Type.DenoiseRejectLum];
+                }
 
                 weightSum += weight;
                 radianceSum += neighborRadiance * weight;
