@@ -64,18 +64,24 @@ class Counters : IDescribable
         _Count
     }
 
-    private enum Category { Raw, Memory, Time }
+    private enum Reduction { Sum, Min, Max }
+    private enum Category { Raw, Memory, Time, Decimal }
 
-    private readonly long[] _data = new long[(int)Type._Count];
-    private readonly ThreadLocal<long[]> _dataLocal = new ThreadLocal<long[]>(() => new long[(int)Type._Count]);
+    private const float _decimalFactor = 1e4f;
 
+    private static readonly Reduction[] _reductions = BuildReductions();
     private static readonly string[] _typeNames = Enum.GetNames<Type>();
+
+    private readonly long[] _data = BuildStorage();
+    private readonly ThreadLocal<long[]> _dataLocal = new ThreadLocal<long[]>(BuildStorage);
 
     public TimeScope TimeScope(Type c) => new TimeScope(this, c);
 
     public void Bump(Type c) => _dataLocal.Value![(int)c]++;
     public void Bump(Type c, long n) => _dataLocal.Value![(int)c] += n;
     public void Bump(Type c, Timestamp duration) => _dataLocal.Value![(int)c] += (long)duration.Micros;
+
+    public void BumpMax(Type c, float value) => BumpMax(_dataLocal.Value!, c, value);
 
     // Directly retrieve the thread-local data array for direct access in hot loops.
     // Caller must not cache this across threads.
@@ -89,11 +95,42 @@ class Counters : IDescribable
         long[] local = _dataLocal.Value!;
         for (int i = 0; i < local.Length; ++i)
         {
-            if (local[i] != 0)
+            long localVal = local[i];
+            long initial = InitialValue(_reductions[i]);
+            if (localVal == initial)
+                continue;
+
+            switch (_reductions[i])
             {
-                Interlocked.Add(ref _data[i], local[i]);
-                local[i] = 0;
+                case Reduction.Sum:
+                    Interlocked.Add(ref _data[i], localVal);
+                    break;
+                case Reduction.Max:
+                    {
+                        long current = Interlocked.Read(ref _data[i]);
+                        while (localVal > current)
+                        {
+                            long prev = Interlocked.CompareExchange(ref _data[i], localVal, current);
+                            if (prev == current)
+                                break;
+                            current = prev;
+                        }
+                        break;
+                    }
+                case Reduction.Min:
+                    {
+                        long current = Interlocked.Read(ref _data[i]);
+                        while (localVal < current)
+                        {
+                            long prev = Interlocked.CompareExchange(ref _data[i], localVal, current);
+                            if (prev == current)
+                                break;
+                            current = prev;
+                        }
+                        break;
+                    }
             }
+            local[i] = initial; // Reset to initial value for next flush.
         }
     }
 
@@ -105,28 +142,30 @@ class Counters : IDescribable
         int nameLenMax = 0;
         for (int i = 0; i != (int)Type._Count; ++i)
         {
-            if (GetFlushed((Type)i) != 0)
+            if (IsSet((Type)i))
                 nameLenMax = Math.Max(nameLenMax, _typeNames[i].Length);
         }
 
         for (int i = 0; i != (int)Type._Count; ++i)
         {
-            long value = GetFlushed((Type)i);
-            if (value == 0)
+            if (!IsSet((Type)i))
                 continue;
 
+            long value = GetFlushed((Type)i);
             fmt.Separate(0);
             string name = _typeNames[i].PadRight(nameLenMax);
             switch (GetCategory((Type)i))
             {
                 case Category.Memory: fmt.WriteLine($"{name}: {new FormatMem(value)}"); break;
                 case Category.Time: fmt.WriteLine($"{name}: {Timestamp.FromMicros(value)}"); break;
+                case Category.Decimal: fmt.WriteLine($"{name}: {value / _decimalFactor:F4}"); break;
                 default: fmt.WriteLine($"{name}: {new FormatNum(value)}"); break;
             }
         }
     }
 
     private long GetFlushed(Type c) => Interlocked.Read(ref _data[(int)c]);
+    private bool IsSet(Type c) => GetFlushed(c) != InitialValue(_reductions[(int)c]);
 
     private void FetchRuntimeValues()
     {
@@ -136,6 +175,36 @@ class Counters : IDescribable
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen0], GC.CollectionCount(0));
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen1], GC.CollectionCount(1));
         Interlocked.Exchange(ref _data[(int)Type.RtGcGen2], GC.CollectionCount(2));
+    }
+
+    public static void BumpMax(long[] localData, Type c, float value)
+    {
+        long scaled = (long)(value * _decimalFactor);
+        if (scaled > localData[(int)c])
+            localData[(int)c] = scaled;
+    }
+
+    private static long InitialValue(Reduction reduction) => reduction switch
+    {
+        Reduction.Max => long.MinValue,
+        Reduction.Min => long.MaxValue,
+        _ => 0L
+    };
+
+    private static Reduction[] BuildReductions()
+    {
+        Reduction[] r = new Reduction[(int)Type._Count]; // Default: Sum.
+        return r;
+    }
+
+    private static long[] BuildStorage()
+    {
+        long[] d = new long[(int)Type._Count];
+        for (int i = 0; i < d.Length; ++i)
+        {
+            d[i] = InitialValue(_reductions[i]);
+        }
+        return d;
     }
 
     private static Category GetCategory(Type c)
