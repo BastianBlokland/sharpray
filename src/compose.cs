@@ -8,39 +8,36 @@ class Compositor
 {
     private Tonemapper _tonemapper;
     private float _exposure;
-    private float _sigmaPixels;
-    private float _sigmaNormalSqr2;
-    private float _sigmaDepthSqr2;
-    private float _varianceScale;
-    private float _varianceMax;
-    private float _luminanceScale;
-    private float _luminanceExponent;
-    private float _sigmaFireflySqr2;
+    private float _denoiseRadius;
+    private float _denoiseStrength;
+    private float _denoiseStrengthMax;
+    private float _denoiseLuminanceBoost;
+    private float _denoiseLuminanceLimitSqr2;
+    private float _denoiseNormalLimitSqr2;
+    private float _denoiseDepthLimitSqr2;
     private Counters _counters;
 
     public Compositor(
         Tonemapper tonemapper,
         float exposure,
-        float sigmaPixels,
-        float sigmaNormal, // Normal similarity threshold; lower = respects geometry boundaries more.
-        float sigmaDepth, // Depth similarity threshold in world units; lower = sharper depth edges.
-        float varianceScale,
-        float varianceMax,
-        float luminanceScale,
-        float luminanceExponent,
-        float sigmaFirefly,
+        float denoiseRadius,        // Blur radius as a fraction of screen size.
+        float denoiseStrength,      // How much to blur (driven by variance).
+        float denoiseStrengthMax,   // Upper cap on blur strength.
+        float denoiseLuminanceBoost, // Extra blur strength for bright pixels.
+        float denoiseLuminanceLimit, // Suppresses neighbors much brighter than center (firefly suppression).
+        float denoiseNormalLimit,   // Rejects neighbors with differing normals.
+        float denoiseDepthLimit,    // Rejects neighbors with differing depth.
         Counters counters)
     {
         _tonemapper = tonemapper;
         _exposure = exposure;
-        _sigmaPixels = sigmaPixels;
-        _sigmaNormalSqr2 = sigmaNormal * sigmaNormal * 2f;
-        _sigmaDepthSqr2 = sigmaDepth * sigmaDepth * 2f;
-        _varianceScale = varianceScale;
-        _varianceMax = varianceMax;
-        _luminanceScale = luminanceScale;
-        _luminanceExponent = luminanceExponent;
-        _sigmaFireflySqr2 = sigmaFirefly * sigmaFirefly * 2f;
+        _denoiseRadius = denoiseRadius;
+        _denoiseStrength = denoiseStrength;
+        _denoiseStrengthMax = denoiseStrengthMax;
+        _denoiseLuminanceBoost = denoiseLuminanceBoost;
+        _denoiseLuminanceLimitSqr2 = denoiseLuminanceLimit * denoiseLuminanceLimit * 2f;
+        _denoiseNormalLimitSqr2 = denoiseNormalLimit * denoiseNormalLimit * 2f;
+        _denoiseDepthLimitSqr2 = denoiseDepthLimit * denoiseDepthLimit * 2f;
         _counters = counters;
     }
 
@@ -101,11 +98,11 @@ class Compositor
         // Joint bilateral filter with normal and depth guidance.
         // https://en.wikipedia.org/wiki/Bilateral_filter
 
-        float sigmaPixels = _sigmaPixels * MathF.Sqrt((float)(size.X * size.Y));
-        int radius = (int)MathF.Ceiling(sigmaPixels * 3f);
-        float sigmaPixelsSqr2 = sigmaPixels * sigmaPixels * 2f;
-
         long[] counterData = _counters.GetLocalData();
+
+        float radiusPixels = _denoiseRadius * MathF.Sqrt((float)(size.X * size.Y));
+        float radiusPixelsSqr2 = radiusPixels * radiusPixels * 2f;
+        int kernelRadius = (int)MathF.Ceiling(radiusPixels * 3f);
 
         int centerIndex = coord.Y * size.X + coord.X;
         Color centerRadiance = radiance[centerIndex];
@@ -115,15 +112,15 @@ class Compositor
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
 
         float luminance = centerRadiance.Luminance;
-        float luminanceBoost = 1f + MathF.Pow(luminance, _luminanceExponent) * _luminanceScale;
-        float varianceWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _varianceScale, _varianceMax);
+        float luminanceBoost = 1f + luminance * _denoiseLuminanceBoost;
+        float varianceWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax);
 
         float weightSum = 0f;
         Color radianceSum = Color.Black;
 
-        for (int kernelY = -radius; kernelY <= radius; ++kernelY)
+        for (int kernelY = -kernelRadius; kernelY <= kernelRadius; ++kernelY)
         {
-            for (int kernelX = -radius; kernelX <= radius; ++kernelX)
+            for (int kernelX = -kernelRadius; kernelX <= kernelRadius; ++kernelX)
             {
                 if (kernelX == 0 && kernelY == 0)
                 {
@@ -133,41 +130,42 @@ class Compositor
                     continue;
                 }
 
-                int refX = coord.X + kernelX;
-                int refY = coord.Y + kernelY;
-                if (refX < 0 || refX >= size.X || refY < 0 || refY >= size.Y)
+                int neighborX = coord.X + kernelX;
+                int neighborY = coord.Y + kernelY;
+                if (neighborX < 0 || neighborX >= size.X || neighborY < 0 || neighborY >= size.Y)
                     continue; // Outside bounds.
 
-                int refIndex = refY * size.X + refX;
-                Vec3 refNormal = normals[refIndex];
-                float refDepth = depth[refIndex];
-                bool refHasNormal = refNormal.MagnitudeSqr() > 0f;
-                bool refHasDepth = !float.IsInfinity(refDepth);
+                int neighborIndex = neighborY * size.X + neighborX;
+                Color neighborRadiance = radiance[neighborIndex];
+                Vec3 neighborNormal = normals[neighborIndex];
+                float neighborDepth = depth[neighborIndex];
+                bool neighborHasNormal = neighborNormal.MagnitudeSqr() > 0f;
+                bool neighborHasDepth = !float.IsInfinity(neighborDepth);
 
                 // Reject neighbors that differ where not the same information is available.
-                if (hasCenterNormal != refHasNormal || hasCenterDepth != refHasDepth)
+                if (hasCenterNormal != neighborHasNormal || hasCenterDepth != neighborHasDepth)
                     continue;
 
                 float kernelDist = kernelX * kernelX + kernelY * kernelY;
-                float weight = varianceWeight * MathF.Exp(-kernelDist / sigmaPixelsSqr2);
+                float weight = varianceWeight * MathF.Exp(-kernelDist / radiusPixelsSqr2);
 
                 if (hasCenterNormal)
                 {
-                    Vec3 normalDelta = centerNormal - refNormal;
-                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / _sigmaNormalSqr2);
+                    Vec3 normalDelta = centerNormal - neighborNormal;
+                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() / _denoiseNormalLimitSqr2);
                 }
                 if (hasCenterDepth)
                 {
-                    float depthDelta = centerDepth - refDepth;
-                    weight *= MathF.Exp(-(depthDelta * depthDelta) / _sigmaDepthSqr2);
+                    float depthDelta = centerDepth - neighborDepth;
+                    weight *= MathF.Exp(-(depthDelta * depthDelta) / _denoiseDepthLimitSqr2);
                 }
 
                 // Suppress neighbors that are much brighter than the center (firefly rejection).
-                float brightDelta = MathF.Max(0f, radiance[refIndex].Luminance - luminance);
-                weight *= MathF.Exp(-(brightDelta * brightDelta) / _sigmaFireflySqr2);
+                float luminanceDelta = MathF.Max(0f, neighborRadiance.Luminance - luminance);
+                weight *= MathF.Exp(-(luminanceDelta * luminanceDelta) / _denoiseLuminanceLimitSqr2);
 
                 weightSum += weight;
-                radianceSum += radiance[refIndex] * weight;
+                radianceSum += neighborRadiance * weight;
 
                 ++counterData[(int)Counters.Type.ComposeFilterSample];
             }
