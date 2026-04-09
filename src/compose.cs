@@ -15,6 +15,7 @@ class Compositor
     private float _varianceMax;
     private float _luminanceScale;
     private float _luminanceExponent;
+    private float _sigmaFireflySqr2;
     private Counters _counters;
 
     public Compositor(
@@ -27,6 +28,7 @@ class Compositor
         float varianceMax,
         float luminanceScale,
         float luminanceExponent,
+        float sigmaFirefly,
         Counters counters)
     {
         _tonemapper = tonemapper;
@@ -38,6 +40,7 @@ class Compositor
         _varianceMax = varianceMax;
         _luminanceScale = luminanceScale;
         _luminanceExponent = luminanceExponent;
+        _sigmaFireflySqr2 = sigmaFirefly * sigmaFirefly * 2f;
         _counters = counters;
     }
 
@@ -158,6 +161,10 @@ class Compositor
                     float depthDelta = centerDepth - refDepth;
                     weight *= MathF.Exp(-(depthDelta * depthDelta) / _sigmaDepthSqr2);
                 }
+
+                // Suppress neighbors that are much brighter than the center (firefly rejection).
+                float brightDelta = MathF.Max(0f, radiance[refIndex].Luminance - luminance);
+                weight *= MathF.Exp(-(brightDelta * brightDelta) / _sigmaFireflySqr2);
 
                 weightSum += weight;
                 radianceSum += radiance[refIndex] * weight;
