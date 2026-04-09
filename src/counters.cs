@@ -33,6 +33,7 @@ class Counters : IDescribable
         SampleTerminate,
         SampleFogScatter,
         SampleFogEscape,
+        SampleVarianceMax,
         SamplePixelConverged,
         SamplePixelMaxed,
         SampleCountMin,
@@ -231,6 +232,7 @@ class Counters : IDescribable
         r[(int)Type.DenoiseWeightMax] = Reduction.Max;
         r[(int)Type.DenoiseMaxLum] = Reduction.Max;
         r[(int)Type.DenoiseMaxLumBoost] = Reduction.Max;
+        r[(int)Type.SampleVarianceMax] = Reduction.Max;
         r[(int)Type.SampleCountMin] = Reduction.Min;
         r[(int)Type.SampleCountMax] = Reduction.Max;
         return r;
@@ -265,6 +267,7 @@ class Counters : IDescribable
             case Type.DenoiseWeightMax:
             case Type.DenoiseMaxLum:
             case Type.DenoiseMaxLumBoost:
+            case Type.SampleVarianceMax:
                 return Category.Decimal;
             default:
                 return Category.Raw;

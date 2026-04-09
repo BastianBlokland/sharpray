@@ -201,17 +201,18 @@ class Renderer
             }
         }
 
-        uint sampleCount = sampleIndex + 1;
-        _counters.Bump(sampleCount < _maxSamples ? Counters.Type.SamplePixelConverged : Counters.Type.SamplePixelMaxed);
-        _counters.BumpMin(Counters.Type.SampleCountMin, (long)sampleCount);
-        _counters.BumpMax(Counters.Type.SampleCountMax, (long)sampleCount);
-
         // Combine the fragments of the individual samples into a final combined fragment.
+        uint sampleCount = sampleIndex + 1;
         float varianceStdErr = RelativeStdErr(lumSum, lumSumSqr, sampleCount);
         Color radiance = radianceSum / sampleCount;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
         float? depth = depthCount > 0 ? depthSum / depthCount : null;
         Fragment combinedFrag = new Fragment(radiance, normal, uv, depth);
+
+        _counters.Bump(sampleCount < _maxSamples ? Counters.Type.SamplePixelConverged : Counters.Type.SamplePixelMaxed);
+        _counters.BumpMin(Counters.Type.SampleCountMin, (long)sampleCount);
+        _counters.BumpMax(Counters.Type.SampleCountMax, (long)sampleCount);
+        _counters.BumpMax(Counters.Type.SampleVarianceMax, varianceStdErr);
 
         return new RenderFragment(combinedFrag, sampleCount, varianceStdErr);
     }
