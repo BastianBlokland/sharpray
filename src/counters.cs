@@ -52,6 +52,7 @@ class Counters : IDescribable
         DenoiseRejectMissing,
         DenoiseRejectNormal,
         DenoiseRejectDepth,
+        DenoiseRejectLum,
         OverlayLine,
         OverlayText,
         RtPeakWorkingSet,
