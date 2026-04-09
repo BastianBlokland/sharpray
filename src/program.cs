@@ -36,6 +36,7 @@ const float denoiseVarianceScale = 0.25f;
 const float denoiseVarianceMax = 1.75f;
 const float denoiseLuminanceScale = 0.5f;
 const float denoiseLuminanceExponent = 1f;
+const float denoiseFirefly = 2f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
@@ -140,7 +141,7 @@ Compositor compositor = new Compositor(
     tonemapper, exposure,
     denoiseSigmaPixels, denoiseSigmaNormal, denoiseSigmaDepth,
     denoiseVarianceScale, denoiseVarianceMax,
-    denoiseLuminanceScale, denoiseLuminanceExponent, counters);
+    denoiseLuminanceScale, denoiseLuminanceExponent, denoiseFirefly, counters);
 
 Image imageOut = new Image(width, height);
 
