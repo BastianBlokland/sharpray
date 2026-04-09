@@ -44,14 +44,14 @@ class Counters : IDescribable
         BvhIntersectShape,
         BvhOverlapNode,
         BvhOverlapShape,
-        ComposeFilterSample,
-        ComposeDenoiseEarlyOut,
-        ComposeDenoiseWeightMax,
-        ComposeDenoiseMaxLuminance,
-        ComposeDenoiseMaxLuminanceBoost,
-        ComposeDenoiseRejectMissing,
-        ComposeDenoiseRejectNormal,
-        ComposeDenoiseRejectDepth,
+        FilterSample,
+        DenoiseEarlyOut,
+        DenoiseWeightMax,
+        DenoiseMaxLum,
+        DenoiseMaxLumBoost,
+        DenoiseRejectMissing,
+        DenoiseRejectNormal,
+        DenoiseRejectDepth,
         OverlayLine,
         OverlayText,
         RtPeakWorkingSet,
@@ -201,9 +201,9 @@ class Counters : IDescribable
     private static Reduction[] BuildReductions()
     {
         Reduction[] r = new Reduction[(int)Type._Count]; // Default: Sum.
-        r[(int)Type.ComposeDenoiseWeightMax] = Reduction.Max;
-        r[(int)Type.ComposeDenoiseMaxLuminance] = Reduction.Max;
-        r[(int)Type.ComposeDenoiseMaxLuminanceBoost] = Reduction.Max;
+        r[(int)Type.DenoiseWeightMax] = Reduction.Max;
+        r[(int)Type.DenoiseMaxLum] = Reduction.Max;
+        r[(int)Type.DenoiseMaxLumBoost] = Reduction.Max;
         return r;
     }
 
@@ -233,9 +233,9 @@ class Counters : IDescribable
             case Type.TimeCompose:
             case Type.TimeTotal:
                 return Category.Time;
-            case Type.ComposeDenoiseWeightMax:
-            case Type.ComposeDenoiseMaxLuminance:
-            case Type.ComposeDenoiseMaxLuminanceBoost:
+            case Type.DenoiseWeightMax:
+            case Type.DenoiseMaxLum:
+            case Type.DenoiseMaxLumBoost:
                 return Category.Decimal;
             default:
                 return Category.Raw;
