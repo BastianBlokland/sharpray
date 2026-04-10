@@ -115,7 +115,7 @@ class Compositor
         float luminanceBoost = 1f + luminance * _denoiseLuminanceBoost;
         float denoiseWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax);
 
-        if (denoiseWeight < 1e-3f)
+        if (denoiseWeight < 1e-4f)
         {
             ++counterData[(int)Counters.Type.DenoiseEarlyOut];
             return centerRadiance;
@@ -161,21 +161,21 @@ class Compositor
 
                 float weight = denoiseWeight * MathF.Exp(-kernelDistSqr * radiusPixelsInv);
 
-                if (hasCenterNormal && weight > 1e-4f) // Reject neighbors where the normal differs too much.
+                if (hasCenterNormal && weight > 0f) // Reject neighbors where the normal differs too much.
                 {
                     Vec3 normalDelta = centerNormal - neighborNormal;
                     weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv);
                     if (weight < 1e-4f)
                         ++counterData[(int)Counters.Type.DenoiseRejectNormal];
                 }
-                if (hasCenterDepth && weight > 1e-4f) // Reject neighbors where the depth differs too much.
+                if (hasCenterDepth && weight > 0f) // Reject neighbors where the depth differs too much.
                 {
                     float depthDelta = centerDepth - neighborDepth;
                     weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv);
                     if (weight < 1e-4f)
                         ++counterData[(int)Counters.Type.DenoiseRejectDepth];
                 }
-                if (weight > 1e-4f) // Reject neighbors that are much brighter (firefly rejection).
+                if (weight > 0f) // Reject neighbors that are much brighter (firefly rejection).
                 {
                     float luminanceDelta = MathF.Max(0f, neighborRadiance.Luminance - luminance);
                     weight *= MathF.Exp(-(luminanceDelta * luminanceDelta) * _denoiseLuminanceLimitInv);
