@@ -660,7 +660,11 @@ class Scene : IDescribable
                 counters.Bump(Counters.Type.SampleMiss);
 
                 if (fogSeg.HasValue)
+                {
                     counters.Bump(Counters.Type.SampleFogEscape);
+                    if (primaryRay)
+                        transmittance = _fog!.Value.Transmittance(fogSeg.Value);
+                }
 
                 // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
                 // the sky radiance we already added during the scatter.
