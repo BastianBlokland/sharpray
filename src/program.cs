@@ -40,7 +40,7 @@ const float denoiseTransmittanceLimit = 0.1f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true, outputTransmittance = true;
-const uint previewInterval = 10;
+const uint previewInterval = 100;
 
 Counters counters = new Counters();
 var timerTotal = counters.TimeScope(Counters.Type.TimeTotal);
