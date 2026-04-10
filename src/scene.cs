@@ -114,6 +114,7 @@ readonly record struct Surface(
 
 readonly record struct Fragment(
     Color Radiance,
+    float Transmittance, // Fraction of light that made it from the primary hit to the view (through fog).
     Vec3? Normal,
     Vec2? Uv,
     float? Depth);
@@ -580,6 +581,7 @@ class Scene : IDescribable
         Vec3? normal = null;
         Vec2? uv = null;
         float? depth = null;
+        float transmittance = 1f;
         SampleDir? lastScatter = null;
 
         for (uint i = 0; i != (bounces + 1); ++i)
@@ -594,6 +596,9 @@ class Scene : IDescribable
             {
                 // Scatter on the fog.
                 counters.Bump(Counters.Type.SampleFogScatter);
+
+                if (primaryRay)
+                    transmittance = _fog!.Value.Transmittance(new RaySegment(seg.Ray, end: scatterDist));
 
                 energy *= _fog!.Value.Color;
                 radiance += SampleSkyDirectFog(ray[scatterDist], ray.Dir, ref rng, counters) * energy;
@@ -613,7 +618,11 @@ class Scene : IDescribable
                 counters.Bump(Counters.Type.SampleHit);
 
                 if (fogSeg.HasValue)
+                {
                     counters.Bump(Counters.Type.SampleFogEscape);
+                    if (primaryRay)
+                        transmittance = _fog!.Value.Transmittance(fogSeg.Value);
+                }
 
                 Vec3 viewDir = -ray.Dir;
                 float distBias = MathF.Max(1e-4f, dist * 1e-4f); // Move the hit-point slightly back from the surface.
@@ -666,7 +675,7 @@ class Scene : IDescribable
             }
         }
         Debug.Assert(radiance.IsFinite);
-        return new Fragment(radiance, normal, uv, depth);
+        return new Fragment(radiance, transmittance, normal, uv, depth);
     }
 
     // Russian roulette: terminate low-energy paths, compensate survivors.

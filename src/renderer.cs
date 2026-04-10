@@ -164,6 +164,8 @@ class Renderer
         float depthSum = 0f;
         uint depthCount = 0;
 
+        float transmittanceSum = 0f;
+
         uint sampleIndex = 0;
         for (; sampleIndex != _maxSamples; ++sampleIndex)
         {
@@ -190,6 +192,7 @@ class Renderer
                 depthSum += d;
                 depthCount++;
             }
+            transmittanceSum += frag.Transmittance;
             uv ??= frag.Uv;
 
             if (sampleIndex >= _minSamples - 1)
@@ -207,7 +210,8 @@ class Renderer
         Color radiance = radianceSum / sampleCount;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
         float? depth = depthCount > 0 ? depthSum / depthCount : null;
-        Fragment combinedFrag = new Fragment(radiance, normal, uv, depth);
+        float transmittance = transmittanceSum / sampleCount;
+        Fragment combinedFrag = new Fragment(radiance, transmittance, normal, uv, depth);
 
         _counters.Bump(sampleCount < _maxSamples ? Counters.Type.SamplePixelConverged : Counters.Type.SamplePixelMaxed);
         _counters.BumpMin(Counters.Type.SampleCountMin, (long)sampleCount);
