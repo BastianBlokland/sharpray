@@ -57,6 +57,7 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
     scene.SetSky(new SkyTexture(skyTexture));
 
+    // Procedural sky.
     // scene.SetSky(new SkyProcedural(
     //     new Color(0.08f, 0.17f, 0.70f),
     //     new Color(0.50f, 0.65f, 0.90f),
@@ -65,12 +66,28 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     //     new Color(100000f, 90000f, 65000f), // ~5500K.
     //     float.DegreesToRadians(0.53f)));
 
+    // Dramatic low sun.
+    // scene.SetSky(new SkyProcedural(
+    //     new Color(0.10f, 0.13f, 0.22f),
+    //     new Color(0.55f, 0.40f, 0.28f),
+    //     new Color(0.20f, 0.14f, 0.10f),
+    //     new Vec3(0.55f, 0.1f, 1f).Normalize(),
+    //     new Color(80000, 65000f, 40000f) * 2f,
+    //     float.DegreesToRadians(0.53f)));
+
     // Light dust filling the scene.
-    scene.SetFog(new Fog(
-        Density: 0.01f,
-        Color: new Color(0.8f, 0.75f, 0.6f),
-        Anisotropy: 0.6f,
-        HeightFalloff: 0.2f));
+    // scene.SetFog(new Fog(
+    //     Density: 0.01f,
+    //     Color: new Color(0.8f, 0.75f, 0.6f),
+    //     Anisotropy: 0.6f,
+    //     HeightFalloff: 0.2f));
+
+    // Thick white fog.
+    // scene.SetFog(new Fog(
+    //     Density: 0.1f,
+    //     Color: new Color(0.85f, 0.82f, 0.78f),
+    //     Anisotropy: 0.75f,
+    //     HeightFalloff: 0.75f));
 
     // Floor.
     Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
@@ -130,6 +147,13 @@ View view = new View(
         new Vec3(1f, 5f, -2f),
         Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
     float.DegreesToRadians(75f));
+
+// Dramatic low view.
+// View view = new View(
+//     new Transform(
+//         new Vec3(-3.5f, 1.2f, -4f),
+//         Quat.AngleAxis(float.DegreesToRadians(30f), Vec3.Up) * Quat.AngleAxis(float.DegreesToRadians(-5f), Vec3.Right)),
+//     float.DegreesToRadians(65f));
 
 Renderer renderer = new Renderer(
     scene, view,
