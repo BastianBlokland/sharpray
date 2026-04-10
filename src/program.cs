@@ -36,7 +36,7 @@ const float denoiseLuminanceBoost = 0.25f;
 const float denoiseLuminanceLimit = 2f;
 const float denoiseNormalLimit = 0.125f;
 const float denoiseDepthLimit = 0.2f;
-const float denoiseTransmittanceLimit = 0.1f;
+const float denoiseTransmittancePower = 2f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true, outputTransmittance = true;
@@ -141,7 +141,7 @@ Compositor compositor = new Compositor(
     tonemapper, exposure,
     denoiseRadius, denoiseStrength, denoiseStrengthMax,
     denoiseLuminanceBoost, denoiseLuminanceLimit,
-    denoiseNormalLimit, denoiseDepthLimit, denoiseTransmittanceLimit, counters);
+    denoiseNormalLimit, denoiseDepthLimit, denoiseTransmittancePower, counters);
 
 Image imageOut = new Image(width, height);
 

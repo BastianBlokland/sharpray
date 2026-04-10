@@ -59,7 +59,6 @@ class Counters : IDescribable
         DenoiseRejectNormal,
         DenoiseRejectDepth,
         DenoiseRejectLum,
-        DenoiseRejectTransmittance,
         OverlayLine,
         OverlayText,
         RtPeakWorkingSet,
