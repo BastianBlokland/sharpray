@@ -136,6 +136,10 @@ class Compositor
                 if (kernelX == 0 && kernelY == 0)
                     continue;
 
+                float kernelDist = kernelX * kernelX + kernelYSqr;
+                if (kernelDist > kernelRadius * kernelRadius)
+                    continue; // Outside circular kernel.
+
                 int neighborX = coord.X + kernelX;
                 int neighborY = coord.Y + kernelY;
                 if (neighborX < 0 || neighborX >= size.X || neighborY < 0 || neighborY >= size.Y)
@@ -154,10 +158,6 @@ class Compositor
                     ++counterData[(int)Counters.Type.DenoiseRejectMissing];
                     continue;
                 }
-
-                float kernelDist = kernelX * kernelX + kernelYSqr;
-                if (kernelDist > kernelRadius * kernelRadius)
-                    continue; // Outside circular kernel.
 
                 float weight = denoiseWeight * MathF.Exp(-kernelDist * radiusPixelsInv);
 
