@@ -114,7 +114,7 @@ readonly record struct Surface(
 
 readonly record struct Fragment(
     Color Radiance,
-    float? Transmittance, // Fraction of light that made it from the primary hit to the view.
+    Color FogRadiance, // Fog scatter bounce radiance for the primary ray.
     Vec3? Normal,
     Vec2? Uv,
     float? Depth);
@@ -577,8 +577,7 @@ class Scene : IDescribable
 
         counters.Bump(Counters.Type.Sample);
 
-        Color radiance = Color.Black, energy = Color.White;
-        float? transmittance = null;
+        Color radiance = Color.Black, fogRadiance = Color.Black, energy = Color.White;
         Vec3? normal = null;
         Vec2? uv = null;
         float? depth = null;
@@ -598,7 +597,12 @@ class Scene : IDescribable
                 counters.Bump(Counters.Type.SampleFogScatter);
 
                 energy *= _fog!.Value.Color;
-                radiance += SampleSkyDirectFog(ray[scatterDist], ray.Dir, ref rng, counters) * energy;
+
+                Color scatterRadiance = SampleSkyDirectFog(ray[scatterDist], ray.Dir, ref rng, counters) * energy;
+                if (primaryRay)
+                    fogRadiance += scatterRadiance;
+                else
+                    radiance += scatterRadiance;
 
                 if (RussianRoulette(ref energy, i, ref rng, counters))
                     break;
@@ -616,9 +620,6 @@ class Scene : IDescribable
 
                 if (fogSeg.HasValue)
                     counters.Bump(Counters.Type.SampleFogEscape);
-
-                if (primaryRay)
-                    transmittance = fogSeg.HasValue ? _fog!.Value.Transmittance(fogSeg.Value) : 1f;
 
                 Vec3 viewDir = -ray.Dir;
                 float distBias = MathF.Max(1e-4f, dist * 1e-4f); // Move the hit-point slightly back from the surface.
@@ -658,9 +659,6 @@ class Scene : IDescribable
                 if (fogSeg.HasValue)
                     counters.Bump(Counters.Type.SampleFogEscape);
 
-                if (primaryRay)
-                    transmittance = fogSeg.HasValue ? _fog!.Value.Transmittance(fogSeg.Value) : 1f;
-
                 // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
                 // the sky radiance we already added during the scatter.
                 float misWeight;
@@ -674,7 +672,8 @@ class Scene : IDescribable
             }
         }
         Debug.Assert(radiance.IsFinite);
-        return new Fragment(radiance, transmittance, normal, uv, depth);
+        Debug.Assert(fogRadiance.IsFinite);
+        return new Fragment(radiance, fogRadiance, normal, uv, depth);
     }
 
     // Russian roulette: terminate low-energy paths, compensate survivors.
