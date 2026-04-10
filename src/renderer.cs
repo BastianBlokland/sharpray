@@ -12,7 +12,7 @@ class Renderer
     public Vec2i Size => new Vec2i((int)Width, (int)Height);
     public View View { get; }
     public Color[] Radiance { get; }
-    public float[] Transmittance { get; }
+    public Color[] RadianceFog { get; }
     public Vec3[] Normals { get; }
     public Vec2[] Uv { get; }
     public float[] Depth { get; }
@@ -77,7 +77,7 @@ class Renderer
         scene.Build(counters);
 
         Radiance = new Color[Width * Height];
-        Transmittance = new float[Width * Height];
+        RadianceFog = new Color[Width * Height];
         Normals = new Vec3[Width * Height];
         Uv = new Vec2[Width * Height];
         Depth = new float[Width * Height];
@@ -140,7 +140,7 @@ class Renderer
                 RenderFragment result = Render(x, y);
 
                 Radiance[y * Width + x] = result.Fragment.Radiance;
-                Transmittance[y * Width + x] = result.Fragment.Transmittance ?? 0f;
+                RadianceFog[y * Width + x] = result.Fragment.RadianceFog;
                 Normals[y * Width + x] = result.Fragment.Normal ?? Vec3.Zero;
                 Uv[y * Width + x] = result.Fragment.Uv ?? Vec2.Zero;
                 Depth[y * Width + x] = result.Fragment.Depth ?? float.PositiveInfinity;
@@ -156,10 +156,8 @@ class Renderer
         Rng rng = new Rng(x, y);
 
         Color radianceSum = new Color(0f);
+        Color radianceFogSum = new Color(0f);
         float lumSum = 0f, lumSumSqr = 0f;
-
-        float transmittanceSum = 0f;
-        uint transmittanceCount = 0;
 
         Vec3 normalSum = Vec3.Zero;
         Vec3 normalFallback = Vec3.Zero;
@@ -179,16 +177,12 @@ class Renderer
             Fragment frag = _scene.Sample(ray, ref rng, _bounces, _indirectClamp, _counters);
 
             radianceSum += frag.Radiance;
+            radianceFogSum += frag.RadianceFog;
 
-            float lum = frag.Radiance.Luminance;
+            float lum = frag.Radiance.Luminance + frag.RadianceFog.Luminance;
             lumSum += lum;
             lumSumSqr += lum * lum;
 
-            if (frag.Transmittance is float t)
-            {
-                transmittanceSum += t;
-                transmittanceCount++;
-            }
             if (frag.Normal is Vec3 norm)
             {
                 Debug.Assert(norm.IsUnit, "Invalid normal");
@@ -216,10 +210,10 @@ class Renderer
         uint sampleCount = sampleIndex + 1;
         float varianceStdErr = RelativeStdErr(lumSum, lumSumSqr, sampleCount);
         Color radiance = radianceSum / sampleCount;
-        float transmittance = transmittanceCount > 0 ? transmittanceSum / transmittanceCount : 0f;
+        Color radianceFog = radianceFogSum / sampleCount;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
         float? depth = depthCount > 0 ? depthSum / depthCount : null;
-        Fragment combinedFrag = new Fragment(radiance, transmittance, normal, uv, depth);
+        Fragment combinedFrag = new Fragment(radiance, radianceFog, normal, uv, depth);
 
         _counters.Bump(sampleCount < _maxSamples ? Counters.Type.SamplePixelConverged : Counters.Type.SamplePixelMaxed);
         _counters.BumpMin(Counters.Type.SampleCountMin, (long)sampleCount);
