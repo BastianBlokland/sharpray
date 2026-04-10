@@ -38,7 +38,7 @@ const float denoiseNormalLimit = 0.125f;
 const float denoiseDepthLimit = 0.2f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
-const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
+const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true, outputTransmittance = true;
 const uint previewInterval = 10;
 
 Counters counters = new Counters();
@@ -226,6 +226,16 @@ if (outputSamples)
         imageOut.Pixels[i] = new Pixel(0, 0, (byte)(frac * 255f));
     }
     imageOut.Save(Path.Combine(outputPath, "samples.bmp"));
+}
+
+if (outputTransmittance)
+{
+    for (uint i = 0; i != (width * height); ++i)
+    {
+        byte v = (byte)(Math.Clamp(renderer.Transmittance[i], 0f, 1f) * 255f);
+        imageOut.Pixels[i] = new Pixel(v);
+    }
+    imageOut.Save(Path.Combine(outputPath, "transmittance.bmp"));
 }
 
 if (outputUv)

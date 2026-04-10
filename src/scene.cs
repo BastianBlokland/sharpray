@@ -578,10 +578,10 @@ class Scene : IDescribable
         counters.Bump(Counters.Type.Sample);
 
         Color radiance = Color.Black, energy = Color.White;
+        float transmittance = 1f;
         Vec3? normal = null;
         Vec2? uv = null;
         float? depth = null;
-        float transmittance = 1f;
         SampleDir? lastScatter = null;
 
         for (uint i = 0; i != (bounces + 1); ++i)
