@@ -15,7 +15,6 @@ class Compositor
     private float _denoiseLuminanceLimitInv;
     private float _denoiseNormalLimitInv;
     private float _denoiseDepthLimitInv;
-    private float _denoiseTransmittancePower;
     private Counters _counters;
 
     public Compositor(
@@ -28,7 +27,6 @@ class Compositor
         float denoiseLuminanceLimit, // Suppresses neighbors much brighter than center (firefly suppression).
         float denoiseNormalLimit,   // Rejects neighbors with differing normals.
         float denoiseDepthLimit,    // Rejects neighbors with differing depth.
-        float denoiseTransmittancePower, // Controls how aggressively fog suppresses denoising (0 = disabled, 1 = linear, 2 = quadratic, etc).
         Counters counters)
     {
         _tonemapper = tonemapper;
@@ -40,7 +38,6 @@ class Compositor
         _denoiseLuminanceLimitInv = 1f / (denoiseLuminanceLimit * denoiseLuminanceLimit * 2f);
         _denoiseNormalLimitInv = 1f / (denoiseNormalLimit * denoiseNormalLimit * 2f);
         _denoiseDepthLimitInv = 1f / (denoiseDepthLimit * denoiseDepthLimit * 2f);
-        _denoiseTransmittancePower = denoiseTransmittancePower;
         _counters = counters;
     }
 
@@ -56,7 +53,7 @@ class Compositor
         Debug.Assert(result.Width == rend.Width && result.Height == rend.Height);
         for (uint i = 0; i != rend.Width * rend.Height; ++i)
         {
-            result.Pixels[i] = Tonemap(rend.Radiance[i]);
+            result.Pixels[i] = Tonemap(rend.Radiance[i] + rend.RadianceFog[i]);
         }
         overlay?.Draw(result, rend.View, rend.Depth, _counters);
     }
@@ -79,11 +76,10 @@ class Compositor
                     rend.Radiance,
                     rend.Normals,
                     rend.Depth,
-                    rend.Transmittance,
                     rend.Variance,
                     rend.Size,
                     new Vec2i(x, y));
-                result.Pixels[y * rend.Width + x] = Tonemap(filtered);
+                result.Pixels[y * rend.Width + x] = Tonemap(filtered + rend.RadianceFog[y * rend.Width + x]);
             }
             _counters.Flush();
         });
@@ -95,12 +91,11 @@ class Compositor
         Color[] radiance,
         Vec3[] normals,
         float[] depth,
-        float[] transmittance,
         float[] variance,
         Vec2i size,
         Vec2i coord)
     {
-        // Joint bilateral filter driven by variance with normal and depth limits.
+        // Joint bilateral filter for surface radiance, guided by variance, normals, depth, and firefly rejection.
         // https://en.wikipedia.org/wiki/Bilateral_filter
 
         long[] counterData = _counters.GetLocalData();
@@ -113,16 +108,12 @@ class Compositor
         Color centerRadiance = radiance[centerIndex];
         Vec3 centerNormal = normals[centerIndex];
         float centerDepth = depth[centerIndex];
-        float centerTransmittance = transmittance[centerIndex];
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
 
-        // Reduce the weight and relax depth/normal guides when there is low transmittance (fog).
-        float transmittanceFactor = MathF.Pow(centerTransmittance, _denoiseTransmittancePower);
-
         float luminance = centerRadiance.Luminance;
         float luminanceBoost = 1f + luminance * _denoiseLuminanceBoost;
-        float denoiseWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax) * transmittanceFactor;
+        float denoiseWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax);
 
         if (denoiseWeight < 1e-3f)
         {
@@ -170,14 +161,14 @@ class Compositor
                 if (hasCenterNormal && weight > 1e-4f) // Reject neighbors where the normal differs too much.
                 {
                     Vec3 normalDelta = centerNormal - neighborNormal;
-                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv * transmittanceFactor);
+                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv);
                     if (weight < 1e-4f)
                         ++counterData[(int)Counters.Type.DenoiseRejectNormal];
                 }
                 if (hasCenterDepth && weight > 1e-4f) // Reject neighbors where the depth differs too much.
                 {
                     float depthDelta = centerDepth - neighborDepth;
-                    weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv * transmittanceFactor);
+                    weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv);
                     if (weight < 1e-4f)
                         ++counterData[(int)Counters.Type.DenoiseRejectDepth];
                 }
