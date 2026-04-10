@@ -15,6 +15,7 @@ class Compositor
     private float _denoiseLuminanceLimitInv;
     private float _denoiseNormalLimitInv;
     private float _denoiseDepthLimitInv;
+    private float _denoiseTransmittanceLimitInv;
     private Counters _counters;
 
     public Compositor(
@@ -27,6 +28,7 @@ class Compositor
         float denoiseLuminanceLimit, // Suppresses neighbors much brighter than center (firefly suppression).
         float denoiseNormalLimit,   // Rejects neighbors with differing normals.
         float denoiseDepthLimit,    // Rejects neighbors with differing depth.
+        float denoiseTransmittanceLimit, // Rejects neighbors with differing transmittance.
         Counters counters)
     {
         _tonemapper = tonemapper;
@@ -38,6 +40,7 @@ class Compositor
         _denoiseLuminanceLimitInv = 1f / (denoiseLuminanceLimit * denoiseLuminanceLimit * 2f);
         _denoiseNormalLimitInv = 1f / (denoiseNormalLimit * denoiseNormalLimit * 2f);
         _denoiseDepthLimitInv = 1f / (denoiseDepthLimit * denoiseDepthLimit * 2f);
+        _denoiseTransmittanceLimitInv = 1f / (denoiseTransmittanceLimit * denoiseTransmittanceLimit * 2f);
         _counters = counters;
     }
 
@@ -76,6 +79,7 @@ class Compositor
                     rend.Radiance,
                     rend.Normals,
                     rend.Depth,
+                    rend.Transmittance,
                     rend.Variance,
                     rend.Size,
                     new Vec2i(x, y));
@@ -91,6 +95,7 @@ class Compositor
         Color[] radiance,
         Vec3[] normals,
         float[] depth,
+        float[] transmittance,
         float[] variance,
         Vec2i size,
         Vec2i coord)
@@ -108,6 +113,7 @@ class Compositor
         Color centerRadiance = radiance[centerIndex];
         Vec3 centerNormal = normals[centerIndex];
         float centerDepth = depth[centerIndex];
+        float centerTransmittance = transmittance[centerIndex];
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
 
@@ -145,6 +151,7 @@ class Compositor
                 Color neighborRadiance = radiance[neighborIndex];
                 Vec3 neighborNormal = normals[neighborIndex];
                 float neighborDepth = depth[neighborIndex];
+                float neighborTransmittance = transmittance[neighborIndex];
                 bool neighborHasNormal = neighborNormal.MagnitudeSqr() > 0f;
                 bool neighborHasDepth = !float.IsInfinity(neighborDepth);
 
@@ -171,6 +178,13 @@ class Compositor
                     weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv);
                     if (weight < 1e-4f)
                         ++counterData[(int)Counters.Type.DenoiseRejectDepth];
+                }
+                if (weight > 1e-4f) // Reject neighbors with differing transmittance (preserve fog edges).
+                {
+                    float transmittanceDelta = centerTransmittance - neighborTransmittance;
+                    weight *= MathF.Exp(-(transmittanceDelta * transmittanceDelta) * _denoiseTransmittanceLimitInv);
+                    if (weight < 1e-4f)
+                        ++counterData[(int)Counters.Type.DenoiseRejectTransmittance];
                 }
                 if (weight > 1e-4f) // Reject neighbors that are much brighter (firefly rejection).
                 {

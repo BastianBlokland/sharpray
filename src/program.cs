@@ -29,13 +29,14 @@ const uint bounces = 8;
 const float indirectClamp = 10f;
 const Tonemapper tonemapper = Tonemapper.Reinhard;
 const float exposure = 1.0f;
-const float denoiseRadius = 0.01f;
+const float denoiseRadius = 0.0075f;
 const float denoiseStrength = 0.25f;
 const float denoiseStrengthMax = 1.75f;
 const float denoiseLuminanceBoost = 0.25f;
 const float denoiseLuminanceLimit = 2f;
 const float denoiseNormalLimit = 0.125f;
 const float denoiseDepthLimit = 0.2f;
+const float denoiseTransmittanceLimit = 0.1f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true, outputTransmittance = true;
@@ -140,7 +141,7 @@ Compositor compositor = new Compositor(
     tonemapper, exposure,
     denoiseRadius, denoiseStrength, denoiseStrengthMax,
     denoiseLuminanceBoost, denoiseLuminanceLimit,
-    denoiseNormalLimit, denoiseDepthLimit, counters);
+    denoiseNormalLimit, denoiseDepthLimit, denoiseTransmittanceLimit, counters);
 
 Image imageOut = new Image(width, height);
 
@@ -212,7 +213,7 @@ if (outputVariance)
     {
         float t = renderer.Variance[i] / (varianceThreshold * 2f);
         byte v = (byte)(Math.Clamp(t, 0f, 1f) * 255f);
-        imageOut.Pixels[i] = new Pixel(0, v, 0);
+        imageOut.Pixels[i] = new Pixel(v);
     }
     imageOut.Save(Path.Combine(outputPath, "variance.bmp"));
 }
@@ -223,7 +224,7 @@ if (outputSamples)
     for (uint i = 0; i != (width * height); ++i)
     {
         float frac = MathF.Log2(renderer.Samples[i] / (float)minSamples) / logRange;
-        imageOut.Pixels[i] = new Pixel(0, 0, (byte)(frac * 255f));
+        imageOut.Pixels[i] = new Pixel((byte)(frac * 255f));
     }
     imageOut.Save(Path.Combine(outputPath, "samples.bmp"));
 }
