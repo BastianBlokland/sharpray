@@ -117,12 +117,12 @@ class Compositor
         bool hasCenterNormal = centerNormal.MagnitudeSqr() > 0f;
         bool hasCenterDepth = !float.IsInfinity(centerDepth);
 
+        // Reduce the weight and relax depth/normal guides when there is low transmittance (fog).
+        float transmittanceFactor = MathF.Pow(centerTransmittance, _denoiseTransmittancePower);
+
         float luminance = centerRadiance.Luminance;
         float luminanceBoost = 1f + luminance * _denoiseLuminanceBoost;
-        float denoiseWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax);
-
-        // Reduce the weight when there is low transmittance (fog) as our depth/normal guides only work for the surface.
-        denoiseWeight *= MathF.Pow(centerTransmittance, _denoiseTransmittancePower);
+        float denoiseWeight = MathF.Min(variance[centerIndex] * luminanceBoost * _denoiseStrength, _denoiseStrengthMax) * transmittanceFactor;
 
         if (denoiseWeight < 1e-3f)
         {
@@ -170,14 +170,14 @@ class Compositor
                 if (hasCenterNormal && weight > 1e-4f) // Reject neighbors where the normal differs too much.
                 {
                     Vec3 normalDelta = centerNormal - neighborNormal;
-                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv);
+                    weight *= MathF.Exp(-normalDelta.MagnitudeSqr() * _denoiseNormalLimitInv * transmittanceFactor);
                     if (weight < 1e-4f)
                         ++counterData[(int)Counters.Type.DenoiseRejectNormal];
                 }
                 if (hasCenterDepth && weight > 1e-4f) // Reject neighbors where the depth differs too much.
                 {
                     float depthDelta = centerDepth - neighborDepth;
-                    weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv);
+                    weight *= MathF.Exp(-(depthDelta * depthDelta) * _denoiseDepthLimitInv * transmittanceFactor);
                     if (weight < 1e-4f)
                         ++counterData[(int)Counters.Type.DenoiseRejectDepth];
                 }
