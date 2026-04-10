@@ -204,9 +204,13 @@ static class FormatUtils
         {
             scaled = n / 1_000_000.0; suffix = "M"; fmt = "F1";
         }
-        else
+        else if (n < 1_000_000_000_000L)
         {
             scaled = n / 1_000_000_000.0; suffix = "B"; fmt = "F2";
+        }
+        else
+        {
+            scaled = n / 1_000_000_000_000.0; suffix = "T"; fmt = "F2";
         }
         return scaled.TryFormat(dst, out written, fmt, CultureInfo.InvariantCulture)
             && Push(dst, ref written, suffix);
