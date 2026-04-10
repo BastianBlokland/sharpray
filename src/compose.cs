@@ -156,6 +156,9 @@ class Compositor
                 }
 
                 float kernelDist = kernelX * kernelX + kernelYSqr;
+                if (kernelDist > kernelRadius * kernelRadius)
+                    continue; // Outside circular kernel.
+
                 float weight = denoiseWeight * MathF.Exp(-kernelDist * radiusPixelsInv);
 
                 if (hasCenterNormal && weight > 1e-4f) // Reject neighbors where the normal differs too much.
