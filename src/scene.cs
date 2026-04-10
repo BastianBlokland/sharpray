@@ -114,7 +114,7 @@ readonly record struct Surface(
 
 readonly record struct Fragment(
     Color Radiance,
-    float Transmittance, // Fraction of light that made it from the primary hit to the view (through fog).
+    float? Transmittance, // Fraction of light that made it from the primary hit to the view.
     Vec3? Normal,
     Vec2? Uv,
     float? Depth);
@@ -578,7 +578,7 @@ class Scene : IDescribable
         counters.Bump(Counters.Type.Sample);
 
         Color radiance = Color.Black, energy = Color.White;
-        float transmittance = 1f;
+        float? transmittance = null;
         Vec3? normal = null;
         Vec2? uv = null;
         float? depth = null;
@@ -596,9 +596,6 @@ class Scene : IDescribable
             {
                 // Scatter on the fog.
                 counters.Bump(Counters.Type.SampleFogScatter);
-
-                if (primaryRay)
-                    transmittance = _fog!.Value.Transmittance(new RaySegment(seg.Ray, end: scatterDist));
 
                 energy *= _fog!.Value.Color;
                 radiance += SampleSkyDirectFog(ray[scatterDist], ray.Dir, ref rng, counters) * energy;
@@ -618,11 +615,10 @@ class Scene : IDescribable
                 counters.Bump(Counters.Type.SampleHit);
 
                 if (fogSeg.HasValue)
-                {
                     counters.Bump(Counters.Type.SampleFogEscape);
-                    if (primaryRay)
-                        transmittance = _fog!.Value.Transmittance(fogSeg.Value);
-                }
+
+                if (primaryRay)
+                    transmittance = fogSeg.HasValue ? _fog!.Value.Transmittance(fogSeg.Value) : 1f;
 
                 Vec3 viewDir = -ray.Dir;
                 float distBias = MathF.Max(1e-4f, dist * 1e-4f); // Move the hit-point slightly back from the surface.
@@ -660,11 +656,10 @@ class Scene : IDescribable
                 counters.Bump(Counters.Type.SampleMiss);
 
                 if (fogSeg.HasValue)
-                {
                     counters.Bump(Counters.Type.SampleFogEscape);
-                    if (primaryRay)
-                        transmittance = _fog!.Value.Transmittance(fogSeg.Value);
-                }
+
+                if (primaryRay)
+                    transmittance = fogSeg.HasValue ? _fog!.Value.Transmittance(fogSeg.Value) : 1f;
 
                 // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
                 // the sky radiance we already added during the scatter.

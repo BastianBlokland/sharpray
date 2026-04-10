@@ -140,7 +140,7 @@ class Renderer
                 RenderFragment result = Render(x, y);
 
                 Radiance[y * Width + x] = result.Fragment.Radiance;
-                Transmittance[y * Width + x] = result.Fragment.Transmittance;
+                Transmittance[y * Width + x] = result.Fragment.Transmittance ?? 0f;
                 Normals[y * Width + x] = result.Fragment.Normal ?? Vec3.Zero;
                 Uv[y * Width + x] = result.Fragment.Uv ?? Vec2.Zero;
                 Depth[y * Width + x] = result.Fragment.Depth ?? float.PositiveInfinity;
@@ -157,7 +157,9 @@ class Renderer
 
         Color radianceSum = new Color(0f);
         float lumSum = 0f, lumSumSqr = 0f;
+
         float transmittanceSum = 0f;
+        uint transmittanceCount = 0;
 
         Vec3 normalSum = Vec3.Zero;
         Vec3 normalFallback = Vec3.Zero;
@@ -177,12 +179,16 @@ class Renderer
             Fragment frag = _scene.Sample(ray, ref rng, _bounces, _indirectClamp, _counters);
 
             radianceSum += frag.Radiance;
-            transmittanceSum += frag.Transmittance;
 
             float lum = frag.Radiance.Luminance;
             lumSum += lum;
             lumSumSqr += lum * lum;
 
+            if (frag.Transmittance is float t)
+            {
+                transmittanceSum += t;
+                transmittanceCount++;
+            }
             if (frag.Normal is Vec3 norm)
             {
                 Debug.Assert(norm.IsUnit, "Invalid normal");
@@ -210,7 +216,7 @@ class Renderer
         uint sampleCount = sampleIndex + 1;
         float varianceStdErr = RelativeStdErr(lumSum, lumSumSqr, sampleCount);
         Color radiance = radianceSum / sampleCount;
-        float transmittance = transmittanceSum / sampleCount;
+        float transmittance = transmittanceCount > 0 ? transmittanceSum / transmittanceCount : 0f;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
         float? depth = depthCount > 0 ? depthSum / depthCount : null;
         Fragment combinedFrag = new Fragment(radiance, transmittance, normal, uv, depth);
