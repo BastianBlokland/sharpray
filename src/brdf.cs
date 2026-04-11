@@ -6,6 +6,15 @@ using System.Diagnostics;
  */
 static class Brdf
 {
+    // Base reflectivity (F0) for the Fresnel equations.
+    // For dielectrics derived from IOR via Schlick, for metals tinted by albedo.
+    // https://en.wikipedia.org/wiki/Fresnel_equations
+    public static Color BaseReflectivity(float ior, Color albedo, float metallic)
+    {
+        float f0 = MathF.Pow((ior - 1f) / (ior + 1f), 2f); // Fresnel at normal incidence.
+        return Color.Lerp(new Color(f0), albedo, metallic);
+    }
+
     // Schlick approximation of the Fresnel equations.
     // https://en.wikipedia.org/wiki/Schlick%27s_approximation
     public static Color Fresnel(float nDotV, Color baseReflectivity)
