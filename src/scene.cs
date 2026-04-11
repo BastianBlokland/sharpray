@@ -3,9 +3,17 @@ using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 
+readonly record struct SampleLight(Vec3 Dir, float Pdf);
+
+readonly record struct SampleScatter(
+    Vec3 Dir,
+    Color EnergyWeight,
+    float? Pdf = null // Probability Density Function, likelihood of the scatter being chosen.
+);
+
 readonly record struct Surface(
     Color Radiance,
-    Color Color,
+    Color Albedo,
     float Roughness,
     float Metallic,
     float Transparency,
@@ -15,44 +23,27 @@ readonly record struct Surface(
     Vec4 Tangent,
     Vec2 Uv)
 {
-    public Color BaseReflectivity
+    private float SpecularProbability(Vec3 viewDir)
     {
-        get
-        {
-            float f0 = MathF.Pow((Ior - 1f) / (Ior + 1f), 2f); // Fresnel at normal incidence.
-            return Color.Lerp(new Color(f0), Color, Metallic);
-        }
-    }
-
-    public Vec3 TransformDir(Vec3 d)
-    {
-        Debug.Assert(d.IsUnit, "Dir must be normalized");
-        Vec3 tan = Tangent.Xyz;
-        Vec3 bitan = Tangent.W * Vec3.Cross(Normal, tan);
-        return d.X * tan + d.Y * bitan + d.Z * Normal;
-    }
-
-    public float SpecularProbability(Vec3 viewDir)
-    {
-        Debug.Assert(viewDir.IsUnit, "Dir must be normalized");
+        Debug.Assert(viewDir.IsUnit);
         float nDotV = MathF.Max(1e-4f, Vec3.Dot(Normal, viewDir));
-        float fresnel = Brdf.Fresnel(nDotV, BaseReflectivity).Luminance;
+        float fresnel = Brdf.Fresnel(nDotV, Brdf.BaseReflectivity(Ior, Albedo, Metallic)).Luminance;
         return float.Clamp(MathF.Max(fresnel, Metallic), 0.001f, 0.999f);
     }
 
-    public Vec3 SpecularDir(Vec3 incomingDir, ref Rng rng)
+    private Vec3 SpecularDir(Vec3 incomingDir, ref Rng rng)
     {
-        Debug.Assert(incomingDir.IsUnit, "Dir must be normalized");
+        Debug.Assert(incomingDir.IsUnit);
         float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-4f);
         Vec3 halfVecLocal = Brdf.GgxSampleLocal(roughnessSqr, Vec2.Rand(ref rng));
-        Vec3 halfVecWorld = TransformDir(halfVecLocal);
+        Vec3 halfVecWorld = Vec3.FromTangentSpace(halfVecLocal, Tangent, Normal);
         return Vec3.Reflect(incomingDir, halfVecWorld);
     }
 
     // Fraction of light energy that gets reflected from lightDir toward viewDir.
-    public Color Eval(Vec3 viewDir, Vec3 lightDir)
+    public Color OpaqueEval(Vec3 viewDir, Vec3 lightDir)
     {
-        Debug.Assert(viewDir.IsUnit && lightDir.IsUnit, "Directions must be normalized");
+        Debug.Assert(viewDir.IsUnit && lightDir.IsUnit);
 
         float nDotL = Vec3.Dot(Normal, lightDir);
         if (nDotL <= 0f)
@@ -60,48 +51,26 @@ readonly record struct Surface(
 
         float nDotV = MathF.Max(1e-4f, Vec3.Dot(Normal, viewDir));
         float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-4f);
+        Color baseReflectivity = Brdf.BaseReflectivity(Ior, Albedo, Metallic);
 
         Vec3 halfVec = (viewDir + lightDir).NormalizeOr(Normal);
         float nDotH = Vec3.Dot(Normal, halfVec);
         float hDotV = Vec3.Dot(halfVec, viewDir);
 
         // Specular: D*F*G / (4*nDotV*nDotL) * nDotL = D*F*G / (4*nDotV).
-        Color f = Brdf.Fresnel(hDotV, BaseReflectivity);
+        Color f = Brdf.Fresnel(hDotV, baseReflectivity);
         float g = Brdf.SmithG1(nDotV, roughnessSqr) * Brdf.SmithG1(nDotL, roughnessSqr);
         Color specular = Brdf.GgxD(nDotH, roughnessSqr) * f * g / (4f * nDotV);
 
         // Diffuse: Lambert weighted by (1 - F) to avoid double-counting specular energy.
         // Metals have no diffuse, so scaled by (1 - Metallic).
-        Color diffuse = (Color.White - Brdf.Fresnel(nDotV, BaseReflectivity)) * Color * (1f - Metallic) * (nDotL / MathF.PI);
+        Color diffuse = (Color.White - Brdf.Fresnel(nDotV, baseReflectivity)) * Albedo * (1f - Metallic) * (nDotL / MathF.PI);
 
-        return specular + diffuse;
-    }
-
-    public SampleDir Scatter(Vec3 incomingDir, Vec3 viewDir, ref Rng rng)
-    {
-        Vec3 scatterDir;
-        if (rng.NextFloat() < SpecularProbability(viewDir))
-        {
-            // Specular scatter.
-            scatterDir = SpecularDir(incomingDir, ref rng);
-        }
-        else
-        {
-            // Diffuse scatter.
-            scatterDir = (Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(Normal);
-        }
-
-        // Clamp scatter ray to stay above the geometric surface.
-        if (Vec3.Dot(scatterDir, NormalGeo) <= 0f)
-        {
-            scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, NormalGeo) * NormalGeo).NormalizeOr(NormalGeo);
-        }
-
-        return new SampleDir(scatterDir, Pdf(viewDir, scatterDir));
+        return (specular + diffuse) * (1f - Transparency);
     }
 
     // Probability Density Function, likelihood of the light direction being chosen.
-    public float Pdf(Vec3 viewDir, Vec3 lightDir)
+    public float OpaquePdf(Vec3 viewDir, Vec3 lightDir)
     {
         float nDotL = Vec3.Dot(Normal, lightDir);
         if (nDotL <= 0f)
@@ -117,7 +86,44 @@ readonly record struct Surface(
         float pdfSpec = Brdf.GgxD(nDotH, roughnessSqr) * nDotH / (4f * hDotV);
         float pdfDiff = nDotL / MathF.PI;
 
-        return specProbability * pdfSpec + (1f - specProbability) * pdfDiff;
+        return (specProbability * pdfSpec + (1f - specProbability) * pdfDiff) * (1f - Transparency);
+    }
+
+    private SampleScatter OpaqueScatter(Vec3 incomingDir, Vec3 viewDir, ref Rng rng)
+    {
+        Vec3 scatterDir;
+        if (rng.NextFloat() < SpecularProbability(viewDir))
+            scatterDir = SpecularDir(incomingDir, ref rng); // Specular scatter.
+        else
+            scatterDir = (Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(Normal); // Diffuse scatter.
+
+        // Clamp scatter ray to stay above the geometric surface.
+        if (Vec3.Dot(scatterDir, NormalGeo) <= 0f)
+            scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, NormalGeo) * NormalGeo).NormalizeOr(NormalGeo);
+
+        float pdf = OpaquePdf(viewDir, scatterDir);
+        return new SampleScatter(scatterDir, OpaqueEval(viewDir, scatterDir) / MathF.Max(pdf, 1e-6f), pdf);
+    }
+
+    private SampleScatter TransparentScatter(Vec3 incomingDir, Vec3 viewDir, ref Rng rng)
+    {
+        bool entering = Vec3.Dot(incomingDir, NormalGeo) < 0f;
+        Vec3 refractNormal = entering ? NormalGeo : -NormalGeo;
+        float iorRatio = entering ? 1f / Ior : Ior;
+
+        float nDotV = MathF.Max(1e-4f, Vec3.Dot(refractNormal, viewDir));
+        float fresnel = Brdf.Fresnel(nDotV, Brdf.BaseReflectivity(Ior, Albedo, Metallic)).Luminance;
+
+        if (rng.NextFloat() >= fresnel && Brdf.Refract(incomingDir, refractNormal, iorRatio) is Vec3 refractDir)
+            return new SampleScatter(refractDir, Albedo); // Refract.
+        return new SampleScatter(Vec3.Reflect(incomingDir, refractNormal), Color.White); // Reflect.
+    }
+
+    public SampleScatter Scatter(Vec3 incomingDir, Vec3 viewDir, ref Rng rng)
+    {
+        if (rng.NextFloat() < Transparency)
+            return TransparentScatter(incomingDir, viewDir, ref rng);
+        return OpaqueScatter(incomingDir, viewDir, ref rng);
     }
 }
 
@@ -128,13 +134,8 @@ readonly record struct Fragment(
     Vec2? Uv,
     float? Depth);
 
-readonly record struct SampleDir(
-    Vec3 Dir,
-    float Pdf // Probability Density Function, likelihood of the direction being chosen.
-);
-
 readonly record struct Material(
-    Color Color,
+    Color Albedo,
     float Roughness,
     float Metallic = 0f,
     float Transparency = 0f, // 1.0 is fully transparant.
@@ -145,8 +146,8 @@ readonly record struct Material(
     Texture? MetallicTexture = null,
     Texture? NormalTexture = null) : IDescribable
 {
-    public Color SampleColor(Vec2 uv) =>
-        (ColorTexture?.Sample(uv) ?? Color.White) * Color;
+    public Color SampleAlbedo(Vec2 uv) =>
+        (ColorTexture?.Sample(uv) ?? Color.White) * Albedo;
 
     public float SampleRoughness(Vec2 uv) =>
         (RoughnessTexture?.Sample(uv).R ?? 1.0f) * Roughness;
@@ -158,15 +159,12 @@ readonly record struct Material(
     {
         if (NormalTexture == null)
             return geoNorm;
-        Vec3 tan = geoTan.Xyz;
-        Vec3 bitan = geoTan.W * Vec3.Cross(geoNorm, tan);
-        Vec3 norm = NormalTexture.SampleNormal(uv);
-        return (norm.X * tan + norm.Y * bitan + norm.Z * geoNorm).NormalizeOr(geoNorm);
+        return Vec3.FromTangentSpace(NormalTexture.SampleNormal(uv), geoTan, geoNorm).NormalizeOr(geoNorm);
     }
 
     public void Describe(FormatWriter fmt)
     {
-        fmt.WriteLine($"color={Color}");
+        fmt.WriteLine($"albedo={Albedo}");
         ColorTexture?.DescribeIndented(fmt);
         fmt.WriteLine($"roughness={Roughness:G3}");
         RoughnessTexture?.DescribeIndented(fmt);
@@ -252,8 +250,8 @@ interface ISky : IDescribable
     Color Radiance(Vec3 dir);
 
     // Compute a sample-direction toward the light.
-    SampleDir? LightDir(Vec3 dir);
-    SampleDir? LightDirRand(ref Rng rng);
+    SampleLight? LightDir(Vec3 dir);
+    SampleLight? LightDirRand(ref Rng rng);
 }
 
 readonly struct SunProcedural : IDescribable
@@ -263,7 +261,7 @@ readonly struct SunProcedural : IDescribable
     private readonly Color _radiance;
     private readonly float _angleCos;
     private readonly Quat _rot;
-    private readonly float _pdfDenom; // π * (1 - cosθ_max), normalization for importance-sampled PDF.
+    private readonly float _pdfDenom; // pi * (1 - cos(theta_max)), normalization for importance-sampled PDF.
 
     public SunProcedural(Vec3 dir, float angle, Color radiance)
     {
@@ -281,16 +279,16 @@ readonly struct SunProcedural : IDescribable
         return _radiance * blend;
     }
 
-    public SampleDir? LightDir(Vec3 dir)
+    public SampleLight? LightDir(Vec3 dir)
     {
         float cosTheta = Vec3.Dot(dir, _dir);
         if (cosTheta < _angleCos)
             return null;
         float blend = (cosTheta - _angleCos) / (1f - _angleCos);
-        return new SampleDir(dir, blend / _pdfDenom);
+        return new SampleLight(dir, blend / _pdfDenom);
     }
 
-    public SampleDir LightDirRand(ref Rng rng)
+    public SampleLight LightDirRand(ref Rng rng)
     {
         // Importance sample proportional to blend.
         float phi = MathF.PI * 2f * rng.NextFloat();
@@ -298,7 +296,7 @@ readonly struct SunProcedural : IDescribable
         float z = _angleCos + (1f - _angleCos) * blend;
         float sinT = MathF.Sqrt(MathF.Max(0f, 1f - z * z));
         Vec3 dir = _rot * new Vec3(MathF.Cos(phi) * sinT, MathF.Sin(phi) * sinT, z);
-        return new SampleDir(dir, blend / _pdfDenom);
+        return new SampleLight(dir, blend / _pdfDenom);
     }
 
     public void Describe(FormatWriter fmt)
@@ -341,8 +339,8 @@ class SkyProcedural : ISky
         return ambient + Sun.Radiance(dir);
     }
 
-    public SampleDir? LightDirRand(ref Rng rng) => Sun.LightDirRand(ref rng);
-    public SampleDir? LightDir(Vec3 dir) => Sun.LightDir(dir);
+    public SampleLight? LightDirRand(ref Rng rng) => Sun.LightDirRand(ref rng);
+    public SampleLight? LightDir(Vec3 dir) => Sun.LightDir(dir);
 
     public void Describe(FormatWriter fmt)
     {
@@ -383,24 +381,24 @@ class SkyTexture : ISky
 
     public Color Radiance(Vec3 dir) => _texture.Sample((_rotInv * dir).EquirectUv()) * _multiplier;
 
-    public SampleDir? LightDirRand(ref Rng rng)
+    public SampleLight? LightDirRand(ref Rng rng)
     {
         if (_cdf.TotalWeight <= 0f)
             return null;
         Vec2i texel = _cdf.SampleRand(ref rng);
         Vec3 dir = _rot * Vec3.FromEquirectUv((texel + 0.5f) / _texture.Size.ToFloat());
         float pdf = _texture.Get(texel).Luminance * _pdfScale;
-        return pdf > 0f ? new SampleDir(dir, pdf) : null;
+        return pdf > 0f ? new SampleLight(dir, pdf) : null;
     }
 
-    public SampleDir? LightDir(Vec3 dir)
+    public SampleLight? LightDir(Vec3 dir)
     {
         if (_cdf.TotalWeight <= 0f)
             return null;
         Vec2 uv = (_rotInv * dir).EquirectUv();
         Vec2i coord = (uv * _texture.Size.ToFloat()).ToInt() % _texture.Size;
         float pdf = _texture.Get(coord).Luminance * _pdfScale;
-        return pdf > 0f ? new SampleDir(dir, pdf) : null;
+        return pdf > 0f ? new SampleLight(dir, pdf) : null;
     }
 
     public void Describe(FormatWriter fmt)
@@ -567,7 +565,7 @@ class Scene : IDescribable
         if (_bvh!.Intersect(ray, counters) is (ShapeHit hit, int idx))
         {
             Material mat = _objects[idx].Material;
-            Color color = mat.SampleColor(hit.Uv);
+            Color albedo = mat.SampleAlbedo(hit.Uv);
             float roughness = mat.SampleRoughness(hit.Uv);
             float metallic = mat.SampleMetallic(hit.Uv);
             Vec3 normal = mat.SampleNormal(hit.Uv, hit.Norm, hit.Tan);
@@ -576,7 +574,7 @@ class Scene : IDescribable
             Vec3 tangentDir = (hit.Tan.Xyz - Vec3.Dot(hit.Tan.Xyz, normal) * normal).NormalizeOr(hit.Tan.Xyz);
             Vec4 tangent = new Vec4(tangentDir, hit.Tan.W);
 
-            Surface surf = new Surface(mat.Radiance, color, roughness, metallic, mat.Transparency, mat.Ior, normal, hit.NormGeo, tangent, hit.Uv);
+            Surface surf = new Surface(mat.Radiance, albedo, roughness, metallic, mat.Transparency, mat.Ior, normal, hit.NormGeo, tangent, hit.Uv);
             return (surf, hit.Dist);
         }
 
@@ -594,7 +592,7 @@ class Scene : IDescribable
         Vec3? normal = null;
         Vec2? uv = null;
         float? depth = null;
-        SampleDir? lastScatter = null;
+        float? scatterPdf = null; // Probability Density Function of the last scatter.
 
         for (uint i = 0; i != (bounces + 1); ++i)
         {
@@ -621,9 +619,8 @@ class Scene : IDescribable
                     break;
 
                 Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, _fog!.Value.Anisotropy, ref rng);
-                float scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), _fog!.Value.Anisotropy);
 
-                lastScatter = new SampleDir(scatterDir, scatterPdf);
+                scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), _fog!.Value.Anisotropy);
                 ray = new Ray(ray[scatterDist], scatterDir);
             }
             else if (hit is (Surface surf, float dist))
@@ -635,8 +632,9 @@ class Scene : IDescribable
                     counters.Bump(Counters.Type.SampleFogEscape);
 
                 Vec3 viewDir = -ray.Dir;
-                float distBias = MathF.Max(1e-4f, dist * 1e-4f); // Move the hit-point slightly back from the surface.
-                Vec3 hitPos = ray[dist - distBias];
+                float distBias = MathF.Max(1e-4f, dist * 1e-4f);
+                Vec3 posOutside = ray[dist - distBias]; // Slightly outside the surface.
+                Vec3 posInside = ray[dist + distBias];  // Slightly inside the surface.
 
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
@@ -650,19 +648,21 @@ class Scene : IDescribable
                 }
 
                 // Direct sky illumination.
-                radiance += SampleSkyDirect(surf, hitPos, viewDir, ref rng, counters) * energy;
+                radiance += SampleSkyDirect(surf, posOutside, viewDir, ref rng, counters) * energy;
 
                 if (RussianRoulette(ref energy, i, ref rng, counters))
                     break;
 
                 // Compute a scatter ray and accumulate its weight.
-                SampleDir scatter = surf.Scatter(ray.Dir, viewDir, ref rng);
-                energy *= surf.Eval(viewDir, scatter.Dir) / MathF.Max(scatter.Pdf, 1e-6f);
+                SampleScatter scatter = surf.Scatter(ray.Dir, viewDir, ref rng);
+                energy *= scatter.EnergyWeight;
                 energy = energy.ClampLuminance(indirectClamp); // Combat fireflies.
                 Debug.Assert(energy.IsFinite);
 
-                lastScatter = scatter;
-                ray = new Ray(hitPos, scatter.Dir);
+                bool enterSurface = Vec3.Dot(scatter.Dir, surf.NormalGeo) < 0f;
+
+                scatterPdf = scatter.Pdf;
+                ray = new Ray(enterSurface ? posInside : posOutside, scatter.Dir);
             }
             else
             {
@@ -674,11 +674,9 @@ class Scene : IDescribable
 
                 // Sample the sky radiance, use MIS (Multiple Importance Sampling) avoid double counting
                 // the sky radiance we already added during the scatter.
-                float misWeight;
-                if (lastScatter is SampleDir scatter)
-                    misWeight = Brdf.PowerHeuristic(scatter.Pdf, _sky?.LightDir(ray.Dir)?.Pdf ?? 0f);
-                else
-                    misWeight = 1f;
+                float misWeight = scatterPdf is float pdf
+                    ? Brdf.PowerHeuristic(pdf, _sky?.LightDir(ray.Dir)?.Pdf ?? 0f)
+                    : 1f;
 
                 radiance += (_sky?.Radiance(ray.Dir) ?? Color.Black) * misWeight * energy;
                 break;
@@ -704,9 +702,9 @@ class Scene : IDescribable
         return false;
     }
 
-    private (SampleDir Light, float Transmittance)? SampleSkyLight(Vec3 pos, ref Rng rng, Counters counters)
+    private (SampleLight Light, float Transmittance)? SampleSkyLight(Vec3 pos, ref Rng rng, Counters counters)
     {
-        if (_sky?.LightDirRand(ref rng) is not SampleDir light || light.Pdf <= 0f)
+        if (_sky?.LightDirRand(ref rng) is not SampleLight light || light.Pdf <= 0f)
             return null;
         if (Occluded(new Ray(pos, light.Dir), counters))
             return null;
@@ -729,8 +727,8 @@ class Scene : IDescribable
         if (Vec3.Dot(surf.Normal, light.Dir) <= 0f)
             return Color.Black; // Light is behind the surface (including normal-mapping).
 
-        Color surfReflectance = surf.Eval(viewDir, light.Dir);
-        float surfPdf = surf.Pdf(viewDir, light.Dir);
+        Color surfReflectance = surf.OpaqueEval(viewDir, light.Dir);
+        float surfPdf = surf.OpaquePdf(viewDir, light.Dir);
 
         // Compute the weight by combining the light dir probability and the surface probability
         // using MIS (Multiple Importance Sampling).
@@ -742,7 +740,7 @@ class Scene : IDescribable
     private Color SampleSkyDirectFog(Vec3 pos, Vec3 rayDir, ref Rng rng, Counters counters)
     {
         Debug.Assert(_fog != null);
-        if (SampleSkyLight(pos, ref rng, counters) is not (SampleDir light, float transmittance))
+        if (SampleSkyLight(pos, ref rng, counters) is not (SampleLight light, float transmittance))
             return Color.Black;
 
         float rDotL = Vec3.Dot(rayDir, light.Dir);
