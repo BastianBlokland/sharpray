@@ -658,7 +658,7 @@ class Scene : IDescribable
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
 
-                if (primaryPath && surf.Transparency < 1f)
+                if (i == 0)
                 {
                     // Save surface definition for the primary surface.
                     normal = surf.Normal;
@@ -682,7 +682,6 @@ class Scene : IDescribable
 
                 scatterPdf = scatter.Pdf;
                 ray = new Ray(enterSurface ? posInside : posOutside, scatter.Dir);
-                primaryPath &= enterSurface; // Only stay on primary path if we enter a surface.
             }
             else
             {
