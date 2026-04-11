@@ -607,6 +607,7 @@ class Scene : IDescribable
         Vec2? uv = null;
         float? depth = null;
         float? scatterPdf = null; // Probability Density Function of the last scatter.
+        bool primaryPath = true;
 
         for (uint i = 0; i != (bounces + 1); ++i)
         {
@@ -653,7 +654,7 @@ class Scene : IDescribable
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
 
-                if (primaryRay)
+                if (primaryPath && surf.Transparency < 1f)
                 {
                     // Save surface definition for the primary surface.
                     normal = surf.Normal;
@@ -677,6 +678,7 @@ class Scene : IDescribable
 
                 scatterPdf = scatter.Pdf;
                 ray = new Ray(enterSurface ? posInside : posOutside, scatter.Dir);
+                primaryPath &= enterSurface; // Only stay on primary path if we enter a surface.
             }
             else
             {
