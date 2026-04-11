@@ -24,6 +24,15 @@ readonly record struct Surface(
     Vec4 Tangent,
     Vec2 Uv)
 {
+    // Clamp dir to the same side of NormalGeo as sideHint.
+    private Vec3 ClampToGeoSide(Vec3 dir, Vec3 sideHint)
+    {
+        float dot = Vec3.Dot(dir, NormalGeo);
+        if (dot * Vec3.Dot(sideHint, NormalGeo) <= 0f)
+            dir = (dir - 2f * dot * NormalGeo).NormalizeOr(sideHint);
+        return dir;
+    }
+
     private float SpecularProbability(Vec3 viewDir)
     {
         Debug.Assert(viewDir.IsUnit);
@@ -101,9 +110,7 @@ readonly record struct Surface(
         else
             scatterDir = (Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(Normal); // Diffuse scatter.
 
-        // Clamp scatter ray to stay above the geometric surface.
-        if (Vec3.Dot(scatterDir, NormalGeo) <= 0f)
-            scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, NormalGeo) * NormalGeo).NormalizeOr(NormalGeo);
+        scatterDir = ClampToGeoSide(scatterDir, NormalGeo);
 
         float pdf = OpaquePdf(viewDir, scatterDir, specProbability);
         return new SampleScatter(scatterDir, OpaqueEval(viewDir, scatterDir) / MathF.Max(pdf, 1e-6f), pdf);
@@ -115,12 +122,24 @@ readonly record struct Surface(
         Vec3 refractNormal = entering ? NormalGeo : -NormalGeo;
         float iorRatio = entering ? 1f / Ior : Ior;
 
-        float nDotV = MathF.Max(1e-4f, Vec3.Dot(refractNormal, viewDir));
-        float fresnel = Brdf.Fresnel(nDotV, Brdf.BaseReflectivity(Ior, Albedo, Metallic)).Luminance;
+        // Sample a GGX half-vector facing the incoming ray's side.
+        float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-6f);
+        Vec3 halfVec = Vec3.FromTangentSpace(Brdf.GgxSampleLocal(roughnessSqr, Vec2.Rand(ref rng)), Tangent, Normal);
+        if (!entering)
+            halfVec = -halfVec;
 
-        if (rng.NextFloat() >= fresnel && Brdf.Refract(incomingDir, refractNormal, iorRatio) is Vec3 refractDir)
-            return new SampleScatter(refractDir, Color.White, Refracted: true); // Refract.
-        return new SampleScatter(Vec3.Reflect(incomingDir, refractNormal), Color.White); // Reflect.
+        // Fall back to geo normal if the half-vec faces away from the incoming ray.
+        if (Vec3.Dot(incomingDir, halfVec) > 0f)
+            halfVec = refractNormal;
+
+        // Fresnel using the GGX half-vector.
+        float hDotV = MathF.Max(1e-4f, Vec3.Dot(halfVec, viewDir));
+        float fresnel = Brdf.Fresnel(hDotV, Brdf.BaseReflectivity(Ior, Albedo, Metallic)).Luminance;
+
+        if (rng.NextFloat() >= fresnel && Brdf.Refract(incomingDir, halfVec, iorRatio) is Vec3 refractDir)
+            return new SampleScatter(ClampToGeoSide(refractDir, -refractNormal), Color.White, Refracted: true);
+
+        return new SampleScatter(ClampToGeoSide(Vec3.Reflect(incomingDir, halfVec), refractNormal), Color.White);
     }
 
     public SampleScatter Scatter(Vec3 incomingDir, Vec3 viewDir, ref Rng rng)
