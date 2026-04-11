@@ -1371,7 +1371,7 @@ readonly struct TriangleLean : IShapeLean
         Vec3 v0 = PosA - box.Center;
         Vec3 v1 = v0 + PosAToB;
         Vec3 v2 = v0 + PosAToC;
-        Vec3 e2 = PosAToC - PosAToB; // Edge C→B in local space (PosC - PosB).
+        Vec3 e2 = PosAToC - PosAToB; // Edge C->B in local space (PosC - PosB).
 
         // Tests one of the 9 edge cross-product axes.
         bool Separated(Vec3 axis)
@@ -1406,7 +1406,7 @@ readonly struct TriangleLean : IShapeLean
 
     public ShapeHitLean? Intersect(Ray ray)
     {
-        // Möller–Trumbore intersection.
+        // Moller-Trumbore intersection.
         // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
         Vec3 h = Vec3.Cross(ray.Dir, PosAToC);
         float det = Vec3.Dot(PosAToB, h);
