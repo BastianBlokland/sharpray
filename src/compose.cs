@@ -15,6 +15,8 @@ class Compositor
     private float _denoiseLuminanceLimitInv;
     private float _denoiseNormalLimitInv;
     private float _denoiseDepthLimitInv;
+    private float _denoiseFogRadius;
+    private float _denoiseFogStrength;
     private Counters _counters;
 
     public Compositor(
@@ -27,6 +29,8 @@ class Compositor
         float denoiseLuminanceLimit, // Suppresses neighbors much brighter than center (firefly suppression).
         float denoiseNormalLimit,   // Rejects neighbors with differing normals.
         float denoiseDepthLimit,    // Rejects neighbors with differing depth.
+        float denoiseFogRadius,   // Blur radius for fog radiance, as a fraction of screen size.
+        float denoiseFogStrength, // Scales neighbor weights, controls blur amount.
         Counters counters)
     {
         _tonemapper = tonemapper;
@@ -38,6 +42,8 @@ class Compositor
         _denoiseLuminanceLimitInv = 1f / (denoiseLuminanceLimit * denoiseLuminanceLimit * 2f);
         _denoiseNormalLimitInv = 1f / (denoiseNormalLimit * denoiseNormalLimit * 2f);
         _denoiseDepthLimitInv = 1f / (denoiseDepthLimit * denoiseDepthLimit * 2f);
+        _denoiseFogRadius = denoiseFogRadius;
+        _denoiseFogStrength = denoiseFogStrength;
         _counters = counters;
     }
 
@@ -72,14 +78,19 @@ class Compositor
         {
             for (int x = 0; x != rend.Width; ++x)
             {
-                Color filtered = Filter(
+                Vec2i coord = new Vec2i(x, y);
+                Color main = Filter(
                     rend.Radiance,
                     rend.Normals,
                     rend.Depth,
                     rend.Variance,
                     rend.Size,
-                    new Vec2i(x, y));
-                result.Pixels[y * rend.Width + x] = Tonemap(filtered + rend.RadianceFog[y * rend.Width + x]);
+                    coord);
+                Color fog = FilterFog(
+                    rend.RadianceFog,
+                    rend.Size,
+                    coord);
+                result.Pixels[y * rend.Width + x] = Tonemap(main + fog);
             }
             _counters.Flush();
         });
@@ -95,11 +106,10 @@ class Compositor
         Vec2i size,
         Vec2i coord)
     {
-        // Joint bilateral filter for surface radiance, guided by variance, normals, depth, and firefly rejection.
-        // https://en.wikipedia.org/wiki/Bilateral_filter
-
         long[] counterData = _counters.GetLocalData();
 
+        // Joint bilateral filter for surface radiance, guided by variance, normals, depth, and firefly rejection.
+        // https://en.wikipedia.org/wiki/Bilateral_filter
         float radiusPixels = _denoiseRadius * MathF.Sqrt((float)(size.X * size.Y));
         float radiusPixelsInv = 1f / (radiusPixels * radiusPixels * 2f);
         int kernelRadius = (int)MathF.Ceiling(radiusPixels * 3f);
@@ -189,7 +199,47 @@ class Compositor
                 ++counterData[(int)Counters.Type.FilterSample];
             }
         }
+        Debug.Assert(weightSum > 0f);
+        return radianceSum / weightSum;
+    }
 
+    private Color FilterFog(Color[] radianceFog, Vec2i size, Vec2i coord)
+    {
+        long[] counterData = _counters.GetLocalData();
+
+        // Simple Gaussian blur for fog radiance.
+        float radiusPixels = _denoiseFogRadius * MathF.Sqrt((float)(size.X * size.Y));
+        float radiusPixelsInv = 1f / (radiusPixels * radiusPixels * 2f);
+        int kernelRadius = (int)MathF.Ceiling(radiusPixels * 3f);
+
+        float weightSum = 1f;
+        Color radianceSum = radianceFog[coord.Y * size.X + coord.X];
+
+        for (int kernelY = -kernelRadius; kernelY <= kernelRadius; ++kernelY)
+        {
+            int kernelYSqr = kernelY * kernelY;
+            for (int kernelX = -kernelRadius; kernelX <= kernelRadius; ++kernelX)
+            {
+                if (kernelX == 0 && kernelY == 0)
+                    continue;
+
+                float kernelDistSqr = kernelX * kernelX + kernelYSqr;
+                if (kernelDistSqr > kernelRadius * kernelRadius)
+                    continue; // Outside circular kernel.
+
+                int neighborX = coord.X + kernelX;
+                int neighborY = coord.Y + kernelY;
+                if (neighborX < 0 || neighborX >= size.X || neighborY < 0 || neighborY >= size.Y)
+                    continue; // Outside bounds.
+
+                float weight = _denoiseFogStrength * MathF.Exp(-kernelDistSqr * radiusPixelsInv);
+
+                weightSum += weight;
+                radianceSum += radianceFog[neighborY * size.X + neighborX] * weight;
+
+                ++counterData[(int)Counters.Type.FilterSample];
+            }
+        }
         Debug.Assert(weightSum > 0f);
         return radianceSum / weightSum;
     }

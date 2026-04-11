@@ -27,7 +27,7 @@ const uint maxSamples = 2048;
 const float varianceThreshold = 0.075f;
 const uint bounces = 8;
 const float indirectClamp = 10f;
-const Tonemapper tonemapper = Tonemapper.Reinhard;
+const Tonemapper tonemapper = Tonemapper.LinearSmooth;
 const float exposure = 1.0f;
 const float denoiseRadius = 0.0075f;
 const float denoiseStrength = 0.25f;
@@ -36,6 +36,8 @@ const float denoiseLuminanceBoost = 0.25f;
 const float denoiseLuminanceLimit = 2f;
 const float denoiseNormalLimit = 0.125f;
 const float denoiseDepthLimit = 0.2f;
+const float denoiseFogRadius = 0.002f;
+const float denoiseFogStrength = 0.1f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
@@ -164,7 +166,8 @@ Compositor compositor = new Compositor(
     tonemapper, exposure,
     denoiseRadius, denoiseStrength, denoiseStrengthMax,
     denoiseLuminanceBoost, denoiseLuminanceLimit,
-    denoiseNormalLimit, denoiseDepthLimit, counters);
+    denoiseNormalLimit, denoiseDepthLimit,
+    denoiseFogRadius, denoiseFogStrength, counters);
 
 Image imageOut = new Image(width, height);
 
