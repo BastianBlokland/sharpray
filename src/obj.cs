@@ -266,6 +266,8 @@ static class ObjLoader
         Color radiance = default;
         float roughness = 1f;
         float metallic = 0f;
+        float tranparancy = 0f;
+        float ior = 1.5f;
         bool hasPr = false; // Physical roughness.
         float ns = 0f; // Shininess.
         Texture? colorTex = null;
@@ -280,12 +282,14 @@ static class ObjLoader
             output[name] = new Material(
                 color,
                 Math.Clamp(hasPr ? roughness : MathF.Sqrt(2f / (ns + 2f)), 0, 1),
-                metallic,
-                radiance,
-                colorTex,
-                roughnessTex,
-                metallicTex,
-                normalTex);
+                Metallic: metallic,
+                Transparency: tranparancy,
+                Ior: ior,
+                Radiance: radiance,
+                ColorTexture: colorTex,
+                RoughnessTexture: roughnessTex,
+                MetallicTexture: metallicTex,
+                NormalTexture: normalTex);
         }
 
         using var stream = File.OpenRead(path);
@@ -312,6 +316,8 @@ static class ObjLoader
                 radiance = default;
                 roughness = 1f;
                 metallic = 0f;
+                tranparancy = 0f;
+                ior = 1.5f;
                 hasPr = false;
                 ns = 0f;
                 colorTex = null;
@@ -345,6 +351,21 @@ static class ObjLoader
             else if (word.SequenceEqual("Ns"))
             {
                 ns = ReadFloat(lexer);
+                lexer.SkipLine();
+            }
+            else if (word.SequenceEqual("Ni"))
+            {
+                ior = ReadFloat(lexer);
+                lexer.SkipLine();
+            }
+            else if (word.SequenceEqual("d"))
+            {
+                tranparancy = 1f - ReadFloat(lexer); // d=1 is opaque, d=0 is fully transparent.
+                lexer.SkipLine();
+            }
+            else if (word.SequenceEqual("Tr"))
+            {
+                tranparancy = ReadFloat(lexer); // Tr=0 is opaque, Tr=1 is fully transparent.
                 lexer.SkipLine();
             }
             else if (word.SequenceEqual("map_Kd"))
