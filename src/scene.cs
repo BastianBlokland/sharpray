@@ -8,7 +8,8 @@ readonly record struct SampleLight(Vec3 Dir, float Pdf);
 readonly record struct SampleScatter(
     Vec3 Dir,
     Color EnergyWeight,
-    float? Pdf = null // Probability Density Function, likelihood of the scatter being chosen.
+    float? Pdf = null, // Probability Density Function, likelihood of the scatter being chosen.
+    bool Refracted = false
 );
 
 readonly record struct Surface(
@@ -118,7 +119,7 @@ readonly record struct Surface(
         float fresnel = Brdf.Fresnel(nDotV, Brdf.BaseReflectivity(Ior, Albedo, Metallic)).Luminance;
 
         if (rng.NextFloat() >= fresnel && Brdf.Refract(incomingDir, refractNormal, iorRatio) is Vec3 refractDir)
-            return new SampleScatter(refractDir, Albedo); // Refract.
+            return new SampleScatter(refractDir, Color.White, Refracted: true); // Refract.
         return new SampleScatter(Vec3.Reflect(incomingDir, refractNormal), Color.White); // Reflect.
     }
 
@@ -610,7 +611,7 @@ class Scene : IDescribable
         Vec2? uv = null;
         float? depth = null;
         float? scatterPdf = null; // Probability Density Function of the last scatter.
-        bool primaryPath = true;
+        Color? mediumAlbedo = null; // Non-null while the ray is inside a transparent object.
 
         for (uint i = 0; i != (bounces + 1); ++i)
         {
@@ -654,6 +655,10 @@ class Scene : IDescribable
                 float distBias = MathF.Max(1e-4f, dist * 1e-4f);
                 Vec3 hitPos = ray[dist - distBias];
 
+                // Beer-Lambert absorption: attenuate by the distance traveled through the medium.
+                if (mediumAlbedo is Color albedo)
+                    energy *= Brdf.BeerLawTransmittance(albedo, dist);
+
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
 
@@ -678,6 +683,9 @@ class Scene : IDescribable
                 Debug.Assert(energy.IsFinite);
 
                 bool enterSurface = Vec3.Dot(scatter.Dir, surf.NormalGeo) < 0f;
+
+                if (scatter.Refracted)
+                    mediumAlbedo = enterSurface ? surf.Albedo : null;
 
                 scatterPdf = scatter.Pdf;
                 ray = new Ray(ray[dist] + scatter.Dir * distBias, scatter.Dir);
