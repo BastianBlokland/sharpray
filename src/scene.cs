@@ -8,6 +8,8 @@ readonly record struct Surface(
     Color Color,
     float Roughness,
     float Metallic,
+    float Transparency,
+    float Ior, // Index of refraction, 1.0 = no bending, 1.5 glass, 2.42 diamond.
     Vec3 Normal,
     Vec3 NormalGeo,
     Vec4 Tangent,
@@ -128,6 +130,8 @@ readonly record struct Material(
     Color Color,
     float Roughness,
     float Metallic = 0f,
+    float Transparency = 0f, // 1.0 is fully transparant.
+    float Ior = 1.5f, // Index of refraction, 1.0 = no bending, 1.5 glass, 2.42 diamond.
     Color Radiance = default,
     Texture? ColorTexture = null,
     Texture? RoughnessTexture = null,
@@ -161,6 +165,8 @@ readonly record struct Material(
         RoughnessTexture?.DescribeIndented(fmt);
         fmt.WriteLine($"metallic={Metallic:G3}");
         MetallicTexture?.DescribeIndented(fmt);
+        fmt.WriteLine($"transparency={Transparency:G3}");
+        fmt.WriteLine($"ior={Ior:G3}");
         fmt.WriteLine($"radiance={Radiance}");
         NormalTexture?.DescribeIndented("normal", fmt);
     }
@@ -563,7 +569,7 @@ class Scene : IDescribable
             Vec3 tangentDir = (hit.Tan.Xyz - Vec3.Dot(hit.Tan.Xyz, normal) * normal).NormalizeOr(hit.Tan.Xyz);
             Vec4 tangent = new Vec4(tangentDir, hit.Tan.W);
 
-            Surface surf = new Surface(mat.Radiance, color, roughness, metallic, normal, hit.NormGeo, tangent, hit.Uv);
+            Surface surf = new Surface(mat.Radiance, color, roughness, metallic, mat.Transparency, mat.Ior, normal, hit.NormGeo, tangent, hit.Uv);
             return (surf, hit.Dist);
         }
 
