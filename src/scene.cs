@@ -141,7 +141,7 @@ readonly record struct Material(
     Color Albedo,
     float Roughness,
     float Metallic = 0f,
-    float Transparency = 0f, // 1.0 is fully transparant.
+    float Transparency = 0f, // 1.0 is fully transparent.
     float Ior = 1.5f, // Index of refraction, 1.0 = no bending, 1.5 glass, 2.42 diamond.
     Color Radiance = default,
     Texture? ColorTexture = null,
@@ -623,9 +623,10 @@ class Scene : IDescribable
             if (fogSeg is RaySegment seg && _fog!.Value.ScatterDistance(seg, ref rng) is float scatterDist)
             {
                 // Scatter on the fog.
+                Fog fog = _fog!.Value;
                 counters.Bump(Counters.Type.SampleFogScatter);
 
-                energy *= _fog!.Value.Color;
+                energy *= fog.Color;
 
                 Color scatterRadiance = SampleSkyDirectFog(ray[scatterDist], ray.Dir, ref rng, counters) * energy;
                 if (primaryRay)
@@ -636,9 +637,9 @@ class Scene : IDescribable
                 if (RussianRoulette(ref energy, i, ref rng, counters))
                     break;
 
-                Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, _fog!.Value.Anisotropy, ref rng);
+                Vec3 scatterDir = Brdf.HgScatterDir(ray.Dir, fog.Anisotropy, ref rng);
 
-                scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), _fog!.Value.Anisotropy);
+                scatterPdf = Brdf.HgPdf(Vec3.Dot(ray.Dir, scatterDir), fog.Anisotropy);
                 ray = new Ray(ray[scatterDist], scatterDir);
             }
             else if (hit is (Surface surf, float dist))
