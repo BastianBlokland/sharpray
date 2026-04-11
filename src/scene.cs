@@ -548,12 +548,26 @@ class Scene : IDescribable
 
     public AABox Bounds() => _bvh?.Bounds ?? AABox.Inverted();
 
-    public bool Occluded(Ray ray, Counters counters)
+    // Returns the color transmittance along a shadow ray, tracing through transparent surfaces.
+    private Color ShadowTransmittance(Ray ray, Counters counters)
     {
-        if (!_built)
-            throw new InvalidOperationException("Scene not built");
-        counters.Bump(Counters.Type.SceneOcclude);
-        return _bvh!.IntersectAny(ray, counters);
+        Color transmittance = Color.White;
+        do
+        {
+            counters.Bump(Counters.Type.SceneOcclude);
+            if (_bvh!.Intersect(ray, counters) is not (ShapeHit hit, int idx))
+                return transmittance; // Sky reached.
+
+            Material mat = _objects[idx].Material;
+            if (mat.Transparency <= 0f)
+                return Color.Black; // Opaque surface reached.
+
+            transmittance *= mat.SampleAlbedo(hit.Uv) * mat.Transparency;
+            ray = new Ray(ray[hit.Dist + MathF.Max(1e-4f, hit.Dist * 1e-4f)], ray.Dir);
+
+        } while (transmittance.MaxComponent > 1e-4f);
+
+        return transmittance;
     }
 
     public (Surface, float Dist)? Trace(Ray ray, Counters counters)
@@ -702,18 +716,18 @@ class Scene : IDescribable
         return false;
     }
 
-    private (SampleLight Light, float Transmittance)? SampleSkyLight(Vec3 pos, ref Rng rng, Counters counters)
+    private (SampleLight Light, Color Transmittance)? SampleSkyLight(Vec3 pos, ref Rng rng, Counters counters)
     {
         if (_sky?.LightDirRand(ref rng) is not SampleLight light || light.Pdf <= 0f)
             return null;
-        if (Occluded(new Ray(pos, light.Dir), counters))
+
+        Ray shadowRay = new Ray(pos, light.Dir);
+        Color transmittance = ShadowTransmittance(shadowRay, counters);
+        if (transmittance.MaxComponent <= 0f)
             return null;
 
-        float transmittance = 1f;
         if (_fog is Fog fog)
-        {
-            transmittance = fog.Transmittance(new RaySegment(new Ray(pos, light.Dir)));
-        }
+            transmittance *= fog.Transmittance(new RaySegment(shadowRay));
 
         return (light, transmittance);
     }
@@ -740,7 +754,7 @@ class Scene : IDescribable
     private Color SampleSkyDirectFog(Vec3 pos, Vec3 rayDir, ref Rng rng, Counters counters)
     {
         Debug.Assert(_fog != null);
-        if (SampleSkyLight(pos, ref rng, counters) is not (SampleLight light, float transmittance))
+        if (SampleSkyLight(pos, ref rng, counters) is not (SampleLight light, Color transmittance))
             return Color.Black;
 
         float rDotL = Vec3.Dot(rayDir, light.Dir);
