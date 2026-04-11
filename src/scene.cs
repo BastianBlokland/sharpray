@@ -710,6 +710,8 @@ class Scene : IDescribable
 
                 if (scatter.Refracted)
                     mediumAlbedo = enterSurface ? surf.Albedo : null;
+                else if (!enterSurface)
+                    mediumAlbedo = null;
 
                 scatterPdf = scatter.Pdf;
                 ray = new Ray(ray[dist] + scatter.Dir * distBias, scatter.Dir);
