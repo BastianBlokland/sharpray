@@ -736,10 +736,13 @@ class Scene : IDescribable
     {
         if (SampleSkyLight(hitPos, ref rng, counters) is not (var light, var transmittance))
             return Color.Black;
-        if (Vec3.Dot(surf.NormalGeo, light.Dir) <= 0f)
-            return Color.Black; // Light is behind the geometric surface (excluding normal-mapping).
-        if (Vec3.Dot(surf.Normal, light.Dir) <= 0f)
-            return Color.Black; // Light is behind the surface (including normal-mapping).
+
+        Vec3 normal = Vec3.Dot(surf.Normal, viewDir) >= 0f ? surf.Normal : -surf.Normal;
+        if (Vec3.Dot(normal, light.Dir) <= 0f)
+            return Color.Black; // Light is behind the shading normal.
+        Vec3 normalGeo = Vec3.Dot(surf.NormalGeo, viewDir) >= 0f ? surf.NormalGeo : -surf.NormalGeo;
+        if (Vec3.Dot(normalGeo, light.Dir) <= 0f)
+            return Color.Black; // Light is behind the geometric surface.
 
         Color surfReflectance = surf.OpaqueEval(viewDir, light.Dir);
         float surfPdf = surf.OpaquePdf(viewDir, light.Dir);
