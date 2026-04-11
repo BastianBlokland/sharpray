@@ -498,6 +498,15 @@ readonly struct Vec3 : ISpanFormattable
         float y = MathF.Cos(MathF.PI * uv.Y);
         return new Vec3(sinTheta * MathF.Cos(phi), y, sinTheta * MathF.Sin(phi));
     }
+
+    // Transform a direction from tangent space to world space using a TBN frame.
+    public static Vec3 FromTangentSpace(Vec3 dir, Vec4 tangent, Vec3 normal)
+    {
+        Debug.Assert(dir.IsUnit && tangent.Xyz.IsUnit && normal.IsUnit, "Dirs must be normalized");
+        Vec3 tan = tangent.Xyz;
+        Vec3 bitan = tangent.W * Cross(normal, tan);
+        return dir.X * tan + dir.Y * bitan + dir.Z * normal;
+    }
 }
 
 readonly struct Vec4 : ISpanFormattable
