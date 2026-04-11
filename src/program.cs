@@ -37,7 +37,7 @@ const float denoiseLuminanceLimit = 2f;
 const float denoiseNormalLimit = 0.125f;
 const float denoiseDepthLimit = 0.2f;
 const float denoiseFogRadius = 0.002f;
-const float denoiseFogStrength = 0.1f;
+const float denoiseFogStrength = 0.05f;
 const bool dumpScene = true;
 const bool outputImage = true, outputPreview = true, outputNormal = true;
 const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
