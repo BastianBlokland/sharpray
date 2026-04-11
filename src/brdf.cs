@@ -86,8 +86,10 @@ static class Brdf
 
     // Beer-Lambert law: transmittance of light through an absorbing medium.
     // https://en.wikipedia.org/wiki/Beer%E2%80%93Lambert_law
-    public static float BeerLawTransmittance(float density, float distance) =>
-        MathF.Exp(-density * distance);
+    public static Color BeerLawTransmittance(Color albedo, float distance) => new Color(
+        MathF.Pow(MathF.Max(albedo.R, 0f), distance),
+        MathF.Pow(MathF.Max(albedo.G, 0f), distance),
+        MathF.Pow(MathF.Max(albedo.B, 0f), distance));
 
     // Henyey-Greenstein phase function for scattering media.
     // https://en.wikipedia.org/wiki/Henyey%E2%80%93Greenstein_phase_function
