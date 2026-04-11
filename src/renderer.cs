@@ -157,7 +157,8 @@ class Renderer
 
         Color radianceSum = new Color(0f);
         Color radianceFogSum = new Color(0f);
-        float lumSum = 0f, lumSumSqr = 0f;
+        float lumSum = 0f, lumSumSqr = 0f;         // Combined surface + fog luminance.
+        float lumSumSurf = 0f, lumSumSurfSqr = 0f; // Surface only luminance.
 
         Vec3 normalSum = Vec3.Zero;
         Vec3 normalFallback = Vec3.Zero;
@@ -182,6 +183,10 @@ class Renderer
             float lum = frag.Radiance.Luminance + frag.RadianceFog.Luminance;
             lumSum += lum;
             lumSumSqr += lum * lum;
+
+            float lumSurf = frag.Radiance.Luminance;
+            lumSumSurf += lumSurf;
+            lumSumSurfSqr += lumSurf * lumSurf;
 
             if (frag.Normal is Vec3 norm)
             {
@@ -208,7 +213,7 @@ class Renderer
 
         // Combine the fragments of the individual samples into a final combined fragment.
         uint sampleCount = sampleIndex + 1;
-        float varianceStdErr = RelativeStdErr(lumSum, lumSumSqr, sampleCount);
+        float varianceStdErr = RelativeStdErr(lumSumSurf, lumSumSurfSqr, sampleCount);
         Color radiance = radianceSum / sampleCount;
         Color radianceFog = radianceFogSum / sampleCount;
         Vec3? normal = normalCount > 0 ? normalSum.NormalizeOr(normalFallback) : null;
