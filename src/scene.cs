@@ -70,13 +70,14 @@ readonly record struct Surface(
     }
 
     // Probability Density Function, likelihood of the light direction being chosen.
-    public float OpaquePdf(Vec3 viewDir, Vec3 lightDir)
+    public float OpaquePdf(Vec3 viewDir, Vec3 lightDir) =>
+        OpaquePdf(viewDir, lightDir, SpecularProbability(viewDir));
+
+    private float OpaquePdf(Vec3 viewDir, Vec3 lightDir, float specProbability)
     {
         float nDotL = Vec3.Dot(Normal, lightDir);
         if (nDotL <= 0f)
             return 0f; // Behind the surface.
-
-        float specProbability = SpecularProbability(viewDir);
 
         Vec3 halfVec = (viewDir + lightDir).NormalizeOr(Normal);
         float nDotH = MathF.Max(0f, Vec3.Dot(Normal, halfVec));
@@ -91,8 +92,10 @@ readonly record struct Surface(
 
     private SampleScatter OpaqueScatter(Vec3 incomingDir, Vec3 viewDir, ref Rng rng)
     {
+        float specProbability = SpecularProbability(viewDir);
+
         Vec3 scatterDir;
-        if (rng.NextFloat() < SpecularProbability(viewDir))
+        if (rng.NextFloat() < specProbability)
             scatterDir = SpecularDir(incomingDir, ref rng); // Specular scatter.
         else
             scatterDir = (Normal + Vec3.RandOnSphere(ref rng)).NormalizeOr(Normal); // Diffuse scatter.
@@ -101,7 +104,7 @@ readonly record struct Surface(
         if (Vec3.Dot(scatterDir, NormalGeo) <= 0f)
             scatterDir = (scatterDir - 2f * Vec3.Dot(scatterDir, NormalGeo) * NormalGeo).NormalizeOr(NormalGeo);
 
-        float pdf = OpaquePdf(viewDir, scatterDir);
+        float pdf = OpaquePdf(viewDir, scatterDir, specProbability);
         return new SampleScatter(scatterDir, OpaqueEval(viewDir, scatterDir) / MathF.Max(pdf, 1e-6f), pdf);
     }
 
