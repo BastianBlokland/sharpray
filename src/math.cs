@@ -1753,7 +1753,7 @@ readonly struct Timestamp : ISpanFormattable
     public static Timestamp operator *(Timestamp t, long n) => new Timestamp(t._ticks * n);
     public static Timestamp operator /(Timestamp t, long n) => new Timestamp(t._ticks / n);
 
-    public static Timestamp FromNanos(long nanos) => new Timestamp(nanos * Stopwatch.Frequency / 1_000_000_000);
-    public static Timestamp FromMicros(long micros) => new Timestamp(micros * Stopwatch.Frequency / 1_000_000);
+    public static Timestamp FromNanos(long nanos) => new Timestamp((long)((double)nanos * Stopwatch.Frequency / 1_000_000_000.0));
+    public static Timestamp FromMicros(long micros) => new Timestamp((long)((double)micros * Stopwatch.Frequency / 1_000_000.0));
     public static Timestamp Now() => new Timestamp(Stopwatch.GetTimestamp());
 }
