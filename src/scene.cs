@@ -585,7 +585,12 @@ class Scene : IDescribable
             if (mat.Transparency <= 0f)
                 return Color.Black; // Opaque surface reached.
 
-            transmittance *= mat.SampleAlbedo(hit.Uv) * mat.Transparency;
+            // At grazing angles more light is reflected, so less transmits.
+            Color albedo = mat.SampleAlbedo(hit.Uv);
+            float nDotV = MathF.Abs(Vec3.Dot(hit.NormGeo, ray.Dir));
+            Color fresnel = Brdf.Fresnel(nDotV, Brdf.BaseReflectivity(mat.Ior, albedo, mat.Metallic));
+
+            transmittance *= albedo * mat.Transparency * (Color.White - fresnel);
             ray = new Ray(ray[hit.Dist + MathF.Max(1e-4f, hit.Dist * 1e-4f)], ray.Dir);
 
         } while (transmittance.MaxComponent > 1e-4f);
