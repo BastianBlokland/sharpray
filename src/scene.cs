@@ -28,7 +28,7 @@ readonly record struct Surface(
     private Vec3 ClampToGeoSide(Vec3 dir, Vec3 sideHint)
     {
         float dot = Vec3.Dot(dir, NormalGeo);
-        if (dot * Vec3.Dot(sideHint, NormalGeo) <= 0f)
+        if (dot * Vec3.Dot(sideHint, NormalGeo) < 0f)
             dir = (dir - 2f * dot * NormalGeo).NormalizeOr(sideHint);
         return dir;
     }
@@ -123,7 +123,7 @@ readonly record struct Surface(
         float iorRatio = entering ? 1f / Ior : Ior;
 
         // Sample a GGX half-vector facing the incoming ray's side.
-        float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-6f);
+        float roughnessSqr = MathF.Max(Roughness * Roughness, 1e-4f);
         Vec3 halfVec = Vec3.FromTangentSpace(Brdf.GgxSampleLocal(roughnessSqr, Vec2.Rand(ref rng)), Tangent, Normal);
         if (!entering)
             halfVec = -halfVec;
