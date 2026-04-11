@@ -15,7 +15,14 @@ readonly record struct Surface(
     Vec4 Tangent,
     Vec2 Uv)
 {
-    public Color BaseReflectivity => Color.Lerp(new Color(0.04f), Color, Metallic);
+    public Color BaseReflectivity
+    {
+        get
+        {
+            float f0 = MathF.Pow((Ior - 1f) / (Ior + 1f), 2f); // Fresnel at normal incidence.
+            return Color.Lerp(new Color(f0), Color, Metallic);
+        }
+    }
 
     public Vec3 TransformDir(Vec3 d)
     {
