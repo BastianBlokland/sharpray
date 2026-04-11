@@ -652,8 +652,7 @@ class Scene : IDescribable
 
                 Vec3 viewDir = -ray.Dir;
                 float distBias = MathF.Max(1e-4f, dist * 1e-4f);
-                Vec3 posOutside = ray[dist - distBias]; // Slightly outside the surface.
-                Vec3 posInside = ray[dist + distBias];  // Slightly inside the surface.
+                Vec3 hitPos = ray[dist - distBias];
 
                 // Accumulate the surface radiance.
                 radiance += surf.Radiance * energy;
@@ -667,7 +666,7 @@ class Scene : IDescribable
                 }
 
                 // Direct sky illumination.
-                radiance += SampleSkyDirect(surf, posOutside, viewDir, ref rng, counters) * energy;
+                radiance += SampleSkyDirect(surf, hitPos, viewDir, ref rng, counters) * energy;
 
                 if (RussianRoulette(ref energy, i, ref rng, counters))
                     break;
@@ -681,7 +680,7 @@ class Scene : IDescribable
                 bool enterSurface = Vec3.Dot(scatter.Dir, surf.NormalGeo) < 0f;
 
                 scatterPdf = scatter.Pdf;
-                ray = new Ray(enterSurface ? posInside : posOutside, scatter.Dir);
+                ray = new Ray(ray[dist] + scatter.Dir * distBias, scatter.Dir);
             }
             else
             {
