@@ -61,6 +61,20 @@ static class Brdf
         return (1f - gSqr) / (4f * MathF.PI * d * MathF.Sqrt(d));
     }
 
+    // Snell's law refraction.
+    // https://en.wikipedia.org/wiki/Snell%27s_law
+    // iorRatio: ratio of current IOR to next IOR.
+    public static Vec3? Refract(Vec3 incomingDir, Vec3 normal, float iorRatio)
+    {
+        Debug.Assert(incomingDir.IsUnit && normal.IsUnit, "Dirs must be normalized");
+        float cosI = -Vec3.Dot(incomingDir, normal);
+        float sin2T = iorRatio * iorRatio * (1f - cosI * cosI); // sinSqr transmitted via Snell's law.
+        if (sin2T >= 1f)
+            return null; // Reflect back inside.
+        float cosT = MathF.Sqrt(1f - sin2T);
+        return iorRatio * incomingDir + (iorRatio * cosI - cosT) * normal;
+    }
+
     // Beer-Lambert law: transmittance of light through an absorbing medium.
     // https://en.wikipedia.org/wiki/Beer%E2%80%93Lambert_law
     public static float BeerLawTransmittance(float density, float distance) =>
