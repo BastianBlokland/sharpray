@@ -118,6 +118,7 @@ readonly record struct Surface(
 
     private SampleScatter TransparentScatter(Vec3 incomingDir, Vec3 viewDir, ref Rng rng)
     {
+        Debug.Assert(Ior >= 1f, "IOR must be >= 1.0");
         bool entering = Vec3.Dot(incomingDir, NormalGeo) < 0f;
         Vec3 refractNormal = entering ? NormalGeo : -NormalGeo;
         float iorRatio = entering ? 1f / Ior : Ior;
