@@ -19,29 +19,18 @@ fmt.WriteLine("[SharpRay]");
 fmt.WriteLine("> Performing setup");
 FlushToConsole(fmt);
 
-const uint width = 1280;
-const uint height = 720;
-const uint blockSize = 32;
-const uint minSamples = 64;
-const uint maxSamples = 2048;
-const float varianceThreshold = 0.075f;
-const uint bounces = 8;
-const float indirectClamp = 10f;
-const Tonemapper tonemapper = Tonemapper.LinearSmooth;
-const float exposure = 1.0f;
-const float denoiseRadius = 0.0075f;
-const float denoiseStrength = 0.1f;
-const float denoiseStrengthMax = 1.75f;
-const float denoiseLuminanceBoost = 0.25f;
-const float denoiseLuminanceLimit = 2f;
-const float denoiseNormalLimit = 0.125f;
-const float denoiseDepthLimit = 0.2f;
-const float denoiseFogRadius = 0.002f;
-const float denoiseFogStrength = 0.05f;
-const bool dumpScene = true;
-const bool outputImage = true, outputPreview = true, outputNormal = true;
-const bool outputUv = true, outputDepth = true, outputSamples = true, outputVariance = true;
-const uint previewInterval = 100;
+string configPath = args.Length > 0 ? args[0] : "config.json";
+if (!File.Exists(configPath))
+{
+    Console.Error.WriteLine($"[SharpRay] Error: Config file not found: '{configPath}'");
+    Console.Error.WriteLine($"           Create a config.json file or pass a config path as the first argument.");
+    Environment.Exit(1);
+    return;
+}
+
+Config config = Config.Load(configPath);
+RenderConfig render = config.Render;
+CompositeConfig composite = config.Composite;
 
 Counters counters = new Counters();
 var timerTotal = counters.TimeScope(Counters.Type.TimeTotal);
@@ -54,122 +43,57 @@ Overlay overlay = new Overlay();
 Scene scene = new Scene();
 using (counters.TimeScope(Counters.Type.TimeSetup))
 {
-    // Sky.
-    Texture skyTexture = Texture.FromHdr(ImageHdr.Load("assets/qwantani_late_afternoon.hdr"));
-    scene.SetSky(new SkyTexture(skyTexture));
+    scene.SetSky(ConfigConvert.ToSky(config.Scene.Sky));
 
-    // Procedural sky.
-    // scene.SetSky(new SkyProcedural(
-    //     new Color(0.08f, 0.17f, 0.70f),
-    //     new Color(0.50f, 0.65f, 0.90f),
-    //     new Color(0.12f, 0.09f, 0.07f),
-    //     new Vec3(0.5f, 1f, -0.5f).Normalize(),
-    //     new Color(100000f, 90000f, 65000f), // ~5500K.
-    //     float.DegreesToRadians(0.53f)));
+    if (config.Scene.Fog != null)
+        scene.SetFog(ConfigConvert.ToFog(config.Scene.Fog));
 
-    // Dramatic low sun.
-    // scene.SetSky(new SkyProcedural(
-    //     new Color(0.10f, 0.13f, 0.22f),
-    //     new Color(0.55f, 0.40f, 0.28f),
-    //     new Color(0.20f, 0.14f, 0.10f),
-    //     new Vec3(0.55f, 0.1f, 1f).Normalize(),
-    //     new Color(80000, 65000f, 40000f) * 2f,
-    //     float.DegreesToRadians(0.53f)));
-
-    // Light dust filling the scene.
-    scene.SetFog(new Fog(
-        Density: 0.01f,
-        Color: new Color(0.8f, 0.75f, 0.6f),
-        Anisotropy: 0.6f,
-        HeightFalloff: 0.2f));
-
-    // Thick white fog.
-    // scene.SetFog(new Fog(
-    //     Density: 0.1f,
-    //     Color: new Color(0.85f, 0.82f, 0.78f),
-    //     Anisotropy: 0.75f,
-    //     HeightFalloff: 0.75f));
-
-    // Floor.
-    Texture floorColor = Texture.FromSrgb(Image.Load("assets/cobblestone/cobblestone_diff.tga"));
-    Texture floorRough = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_rough.tga"));
-    Texture floorNormal = Texture.FromLinear(Image.Load("assets/cobblestone/cobblestone_nor.tga"));
-    floorColor.Tiling = floorRough.Tiling = floorNormal.Tiling = new Vec2(6f, 1.7f);
-    scene.AddObject(new Object(
-        "floor",
-        Transform.Identity(),
-        new Material(Color.White, 1.0f, ColorTexture: floorColor, RoughnessTexture: floorRough, NormalTexture: floorNormal),
-        new AABox(new Vec3(-30f, -0.2f, -2f), new Vec3(30f, 0f, 15f))));
-
-    // Dragon.
+    foreach (ObjectConfig obj in config.Scene.Objects)
     {
-        Quat rot = Quat.AngleAxis(float.DegreesToRadians(-40f), Vec3.Up);
-        ObjLoader.Load("assets/dragon.obj", scene, new ObjConfig
-        {
-            Transform = new Transform(new Vec3(1f, 1.7f, 4f), rot, new Vec3(6f, 6f, 6f)),
-            Material = new Material(new Color(0.2f, 0.7f, 0.2f), 0.25f, 0.0f),
-        }, counters);
-    }
+        Transform trans = ConfigConvert.ToTransform(obj.Transform);
+        Material mat = ConfigConvert.ToMaterial(obj.Material);
 
-    // Spheres.
-    {
-        Color ballColor = new Color(1f, 0.35f, 0.05f);
-        float radius = 0.75f;
-        Vec3 center = new Vec3(1f, radius, 4f);
-        float orbitRadius = 3.5f;
-        int sphereCount = 10;
-        for (int i = 0; i < sphereCount; ++i)
+        if (obj.Shape is ObjShapeConfig objShape)
         {
-            float angle = i * (MathF.PI * 2f / sphereCount);
-            float roughness = 1.0f - (float)i / (sphereCount - 1);
-            Vec3 pos = center + new Vec3(MathF.Cos(angle) * orbitRadius, 0f, MathF.Sin(angle) * orbitRadius);
-            Material mat = new Material(ballColor, roughness, 1.0f);
-            IShape shape = new Sphere(pos, radius);
-            scene.AddObject(new Object($"sphere_{i}", Transform.Identity(), mat, shape));
+            ObjLoader.Load(objShape.Path, scene, new ObjConfig
+            {
+                Transform = trans,
+                Material = mat,
+            }, counters);
+        }
+        else if (ConfigConvert.ToShape(obj.Shape) is IShape shape)
+        {
+            scene.AddObject(new Object(obj.Name, trans, mat, shape));
         }
     }
 
     scene.Build(counters);
 }
 
-// scene.OverlayInfo(overlay);
-// scene.OverlayWireframe(overlay);
-// scene.OverlayBounds(overlay, 4);
-
-if (dumpScene)
+if (render.DumpScene)
 {
     scene.DescribeIndented("> Scene", fmt);
     fmt.Separate();
     FlushToConsole(fmt);
 }
 
-View view = new View(
-    new Transform(
-        new Vec3(1f, 5f, -2f),
-        Quat.AngleAxis(float.DegreesToRadians(35f), Vec3.Right)),
-    float.DegreesToRadians(75f));
-
-// Dramatic low view.
-// View view = new View(
-//     new Transform(
-//         new Vec3(-3.5f, 1.2f, -4f),
-//         Quat.AngleAxis(float.DegreesToRadians(30f), Vec3.Up) * Quat.AngleAxis(float.DegreesToRadians(-5f), Vec3.Right)),
-//     float.DegreesToRadians(65f));
+View view = ConfigConvert.ToView(config.Scene.Camera);
 
 Renderer renderer = new Renderer(
     scene, view,
-    width, height,
-    blockSize, minSamples, maxSamples, varianceThreshold, bounces, indirectClamp,
+    render.Width, render.Height,
+    render.BlockSize, render.MinSamples, render.MaxSamples, render.VarianceThreshold,
+    render.Bounces, render.IndirectClamp,
     counters);
 
 Compositor compositor = new Compositor(
-    tonemapper, exposure,
-    denoiseRadius, denoiseStrength, denoiseStrengthMax,
-    denoiseLuminanceBoost, denoiseLuminanceLimit,
-    denoiseNormalLimit, denoiseDepthLimit,
-    denoiseFogRadius, denoiseFogStrength, counters);
+    composite.Tonemapper, composite.Exposure,
+    composite.DenoiseRadius, composite.DenoiseStrength, composite.DenoiseStrengthMax,
+    composite.DenoiseLuminanceBoost, composite.DenoiseLuminanceLimit,
+    composite.DenoiseNormalLimit, composite.DenoiseDepthLimit,
+    composite.DenoiseFogRadius, composite.DenoiseFogStrength, counters);
 
-Image imageOut = new Image(width, height);
+Image imageOut = new Image(render.Width, render.Height);
 
 fmt.WriteLine("> Starting render");
 FlushToConsole(fmt);
@@ -182,7 +106,7 @@ using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
         progress = renderer.Tick();
 
         // Preview intermediate results.
-        if (outputPreview && progress.Step % previewInterval == 0)
+        if (render.OutputPreview && progress.Step % render.PreviewInterval == 0)
         {
             compositor.Preview(renderer, overlay, imageOut);
             imageOut.Save(Path.Combine(outputPath, "preview.bmp"));
@@ -201,16 +125,16 @@ using (var timerRender = counters.TimeScope(Counters.Type.TimeRender))
     } while (progress.Step != progress.Total);
 }
 
-if (outputPreview)
+if (render.OutputPreview)
 {
     // Output final 'preview' (non-denoised) output.
     compositor.Preview(renderer, overlay, imageOut);
     imageOut.Save(Path.Combine(outputPath, "preview.bmp"));
 }
 
-if (outputNormal)
+if (render.OutputNormal)
 {
-    for (uint i = 0; i != (width * height); ++i)
+    for (uint i = 0; i != (render.Width * render.Height); ++i)
     {
         imageOut.Pixels[i] = new Pixel(
             (byte)((renderer.Normals[i].X * 0.5f + 0.5f) * 255f),
@@ -220,9 +144,9 @@ if (outputNormal)
     imageOut.Save(Path.Combine(outputPath, "normal.bmp"));
 }
 
-if (outputDepth)
+if (render.OutputDepth)
 {
-    for (uint i = 0; i != (width * height); ++i)
+    for (uint i = 0; i != (render.Width * render.Height); ++i)
     {
         const float depthMaxInv = 1f / 25f;
         float depth = renderer.Depth[i];
@@ -233,32 +157,31 @@ if (outputDepth)
     imageOut.Save(Path.Combine(outputPath, "depth.bmp"));
 }
 
-if (outputVariance)
+if (render.OutputVariance)
 {
-    for (uint i = 0; i != (width * height); ++i)
+    for (uint i = 0; i != (render.Width * render.Height); ++i)
     {
-        float t = renderer.Variance[i] / (varianceThreshold * 2f);
+        float t = renderer.Variance[i] / (render.VarianceThreshold * 2f);
         byte v = (byte)(Math.Clamp(t, 0f, 1f) * 255f);
         imageOut.Pixels[i] = new Pixel(v);
     }
     imageOut.Save(Path.Combine(outputPath, "variance.bmp"));
 }
 
-if (outputSamples)
+if (render.OutputSamples)
 {
-    float logRange = MathF.Log2(maxSamples / (float)minSamples);
-    for (uint i = 0; i != (width * height); ++i)
+    float logRange = MathF.Log2(render.MaxSamples / (float)render.MinSamples);
+    for (uint i = 0; i != (render.Width * render.Height); ++i)
     {
-        float frac = MathF.Log2(renderer.Samples[i] / (float)minSamples) / logRange;
+        float frac = MathF.Log2(renderer.Samples[i] / (float)render.MinSamples) / logRange;
         imageOut.Pixels[i] = new Pixel((byte)(frac * 255f));
     }
     imageOut.Save(Path.Combine(outputPath, "samples.bmp"));
 }
 
-
-if (outputUv)
+if (render.OutputUv)
 {
-    for (uint i = 0; i < width * height; ++i)
+    for (uint i = 0; i < render.Width * render.Height; ++i)
     {
         Vec2 uv = renderer.Uv[i];
         imageOut.Pixels[i] = new Pixel(
@@ -272,7 +195,7 @@ if (outputUv)
 counters.Describe(fmt);
 FlushToOverlay(fmt, overlay, new Vec2i(8, 8));
 
-if (outputImage)
+if (render.OutputImage)
 {
     fmt.WriteLine("> Compositing");
     FlushToConsole(fmt);
