@@ -6,30 +6,30 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 // Axis-angle rotation step. Multiple steps are composed left-to-right.
-class RotationConfig
+class ConfigRotation
 {
     public float[] Axis { get; init; } = [0f, 1f, 0f];
     public float AngleDeg { get; init; } = 0f;
 }
 
-class TransformConfig
+class ConfigTransform
 {
     public float[] Pos { get; init; } = [0f, 0f, 0f];
-    public List<RotationConfig>? Rotation { get; init; }
+    public List<ConfigRotation>? Rotation { get; init; }
     public float[]? Scale { get; init; }
 }
 
-class TextureConfig
+class ConfigTexture
 {
     public string Path { get; init; } = "";
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public TextureKind Kind { get; init; } = TextureKind.Srgb;
+    public ConfigTextureKind Kind { get; init; } = ConfigTextureKind.Srgb;
     public float[]? Tiling { get; init; }
 }
 
-enum TextureKind { Srgb, Linear, Hdr }
+enum ConfigTextureKind { Srgb, Linear, Hdr }
 
-class MaterialConfig
+class ConfigMaterial
 {
     public float[] Albedo { get; init; } = [1f, 1f, 1f];
     public float Roughness { get; init; } = 0.5f;
@@ -37,61 +37,61 @@ class MaterialConfig
     public float Transparency { get; init; } = 0f;
     public float Ior { get; init; } = 1.5f;
     public float[]? Radiance { get; init; }
-    public TextureConfig? ColorTexture { get; init; }
-    public TextureConfig? RoughnessTexture { get; init; }
-    public TextureConfig? MetallicTexture { get; init; }
-    public TextureConfig? NormalTexture { get; init; }
+    public ConfigTexture? ColorTexture { get; init; }
+    public ConfigTexture? RoughnessTexture { get; init; }
+    public ConfigTexture? MetallicTexture { get; init; }
+    public ConfigTexture? NormalTexture { get; init; }
 }
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(SphereShapeConfig), "sphere")]
-[JsonDerivedType(typeof(AABoxShapeConfig), "aabox")]
-[JsonDerivedType(typeof(BoxShapeConfig), "box")]
-[JsonDerivedType(typeof(PlaneShapeConfig), "plane")]
-[JsonDerivedType(typeof(ObjShapeConfig), "obj")]
-abstract class ShapeConfig { }
+[JsonDerivedType(typeof(ConfigShapeSphere), "sphere")]
+[JsonDerivedType(typeof(ConfigShapeAABox), "aabox")]
+[JsonDerivedType(typeof(ConfigShapeBox), "box")]
+[JsonDerivedType(typeof(ConfigShapePlane), "plane")]
+[JsonDerivedType(typeof(ConfigShapeObj), "obj")]
+abstract class ConfigShape { }
 
-class SphereShapeConfig : ShapeConfig
+class ConfigShapeSphere : ConfigShape
 {
     public float[] Center { get; init; } = [0f, 0f, 0f];
     public float Radius { get; init; } = 1f;
 }
 
-class AABoxShapeConfig : ShapeConfig
+class ConfigShapeAABox : ConfigShape
 {
     public float[] Min { get; init; } = [-0.5f, -0.5f, -0.5f];
     public float[] Max { get; init; } = [0.5f, 0.5f, 0.5f];
 }
 
-class BoxShapeConfig : ShapeConfig
+class ConfigShapeBox : ConfigShape
 {
     public float[] Size { get; init; } = [1f, 1f, 1f];
 }
 
-class PlaneShapeConfig : ShapeConfig
+class ConfigShapePlane : ConfigShape
 {
     public float[] Normal { get; init; } = [0f, 1f, 0f];
     public float Distance { get; init; } = 0f;
 }
 
-class ObjShapeConfig : ShapeConfig
+class ConfigShapeObj : ConfigShape
 {
     public string Path { get; init; } = "";
 }
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
-[JsonDerivedType(typeof(SkyTextureConfig), "texture")]
-[JsonDerivedType(typeof(SkyProceduralConfig), "procedural")]
-abstract class SkyConfig { }
+[JsonDerivedType(typeof(ConfigSkyTexture), "texture")]
+[JsonDerivedType(typeof(ConfigSkyProcedural), "procedural")]
+abstract class ConfigSky { }
 
-class SkyTextureConfig : SkyConfig
+class ConfigSkyTexture : ConfigSky
 {
     public string Path { get; init; } = "";
     public float Multiplier { get; init; } = 1f;
     public float RotYawDeg { get; init; } = 0f;
 }
 
-class SkyProceduralConfig : SkyConfig
+class ConfigSkyProcedural : ConfigSky
 {
     public float[] Top { get; init; } = [0.08f, 0.17f, 0.70f];
     public float[] Middle { get; init; } = [0.50f, 0.65f, 0.90f];
@@ -101,7 +101,7 @@ class SkyProceduralConfig : SkyConfig
     public float SunAngleDeg { get; init; } = 0.53f;
 }
 
-class FogConfig
+class ConfigFog
 {
     public float Density { get; init; } = 0.01f;
     public float[] Color { get; init; } = [1f, 1f, 1f];
@@ -109,30 +109,30 @@ class FogConfig
     public float HeightFalloff { get; init; } = 0f;
 }
 
-class CameraConfig
+class ConfigCamera
 {
     public float[] Pos { get; init; } = [0f, 0f, 0f];
-    public List<RotationConfig>? Rotation { get; init; }
+    public List<ConfigRotation>? Rotation { get; init; }
     public float FovDeg { get; init; } = 60f;
 }
 
-class ObjectConfig
+class ConfigObject
 {
     public string Name { get; init; } = "";
-    public TransformConfig? Transform { get; init; }
-    public MaterialConfig? Material { get; init; }
-    public ShapeConfig Shape { get; init; } = null!;
+    public ConfigTransform? Transform { get; init; }
+    public ConfigMaterial? Material { get; init; }
+    public ConfigShape Shape { get; init; } = null!;
 }
 
-class SceneConfig
+class ConfigScene
 {
-    public SkyConfig Sky { get; init; } = null!;
-    public FogConfig? Fog { get; init; }
-    public CameraConfig Camera { get; init; } = new CameraConfig();
-    public List<ObjectConfig> Objects { get; init; } = [];
+    public ConfigSky Sky { get; init; } = null!;
+    public ConfigFog? Fog { get; init; }
+    public ConfigCamera Camera { get; init; } = new ConfigCamera();
+    public List<ConfigObject> Objects { get; init; } = [];
 }
 
-class RenderConfig
+class ConfigRender
 {
     public uint Width { get; init; } = 1280;
     public uint Height { get; init; } = 720;
@@ -153,7 +153,7 @@ class RenderConfig
     public uint PreviewInterval { get; init; } = 100;
 }
 
-class CompositeConfig
+class ConfigComposite
 {
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public Tonemapper Tonemapper { get; init; } = Tonemapper.LinearSmooth;
@@ -171,9 +171,9 @@ class CompositeConfig
 
 class Config
 {
-    public RenderConfig Render { get; init; } = new RenderConfig();
-    public CompositeConfig Composite { get; init; } = new CompositeConfig();
-    public SceneConfig Scene { get; init; } = null!;
+    public ConfigRender Render { get; init; } = new ConfigRender();
+    public ConfigComposite Composite { get; init; } = new ConfigComposite();
+    public ConfigScene Scene { get; init; } = null!;
 
     private static readonly JsonSerializerOptions _options = new JsonSerializerOptions
     {
@@ -197,7 +197,7 @@ static class ConfigConvert
     public static Color ToColor(float[] v) => new Color(v[0], v[1], v[2]);
     public static Vec2 ToVec2(float[] v) => new Vec2(v[0], v[1]);
 
-    public static Quat ToQuat(List<RotationConfig>? rotations)
+    public static Quat ToQuat(List<ConfigRotation>? rotations)
     {
         if (rotations == null || rotations.Count == 0)
             return Quat.Identity();
@@ -205,7 +205,7 @@ static class ConfigConvert
             q * Quat.AngleAxis(float.DegreesToRadians(r.AngleDeg), ToVec3(r.Axis).Normalize()));
     }
 
-    public static Transform ToTransform(TransformConfig? t)
+    public static Transform ToTransform(ConfigTransform? t)
     {
         if (t == null) return Transform.Identity();
         Vec3 pos = ToVec3(t.Pos);
@@ -214,13 +214,13 @@ static class ConfigConvert
         return new Transform(pos, rot, scale);
     }
 
-    public static Texture ToTexture(TextureConfig t)
+    public static Texture ToTexture(ConfigTexture t)
     {
         Texture tex = t.Kind switch
         {
-            TextureKind.Srgb   => Texture.FromSrgb(Image.Load(t.Path)),
-            TextureKind.Linear => Texture.FromLinear(Image.Load(t.Path)),
-            TextureKind.Hdr    => Texture.FromHdr(ImageHdr.Load(t.Path)),
+            ConfigTextureKind.Srgb   => Texture.FromSrgb(Image.Load(t.Path)),
+            ConfigTextureKind.Linear => Texture.FromLinear(Image.Load(t.Path)),
+            ConfigTextureKind.Hdr    => Texture.FromHdr(ImageHdr.Load(t.Path)),
             _ => throw new Exception($"Unknown texture kind: {t.Kind}")
         };
         if (t.Tiling != null)
@@ -228,7 +228,7 @@ static class ConfigConvert
         return tex;
     }
 
-    public static Material ToMaterial(MaterialConfig? m)
+    public static Material ToMaterial(ConfigMaterial? m)
     {
         if (m == null) return new Material(Color.White, 0.5f);
         return new Material(
@@ -244,13 +244,13 @@ static class ConfigConvert
             NormalTexture: m.NormalTexture != null ? ToTexture(m.NormalTexture) : null);
     }
 
-    public static ISky ToSky(SkyConfig sky) => sky switch
+    public static ISky ToSky(ConfigSky sky) => sky switch
     {
-        SkyTextureConfig t => new SkyTexture(
+        ConfigSkyTexture t => new SkyTexture(
             Texture.FromHdr(ImageHdr.Load(t.Path)),
             t.Multiplier,
             float.DegreesToRadians(t.RotYawDeg)),
-        SkyProceduralConfig p => new SkyProcedural(
+        ConfigSkyProcedural p => new SkyProcedural(
             ToColor(p.Top),
             ToColor(p.Middle),
             ToColor(p.Bottom),
@@ -260,22 +260,22 @@ static class ConfigConvert
         _ => throw new Exception($"Unknown sky type: {sky.GetType().Name}")
     };
 
-    public static Fog ToFog(FogConfig f) =>
+    public static Fog ToFog(ConfigFog f) =>
         new Fog(f.Density, ToColor(f.Color), f.Anisotropy, f.HeightFalloff);
 
-    public static View ToView(CameraConfig c) =>
+    public static View ToView(ConfigCamera c) =>
         new View(
             new Transform(ToVec3(c.Pos), ToQuat(c.Rotation)),
             float.DegreesToRadians(c.FovDeg));
 
     // Returns null for obj shapes — those must be loaded via ObjLoader.
-    public static IShape? ToShape(ShapeConfig shape) => shape switch
+    public static IShape? ToShape(ConfigShape shape) => shape switch
     {
-        SphereShapeConfig s  => new Sphere(ToVec3(s.Center), s.Radius),
-        AABoxShapeConfig b   => new AABox(ToVec3(b.Min), ToVec3(b.Max)),
-        BoxShapeConfig b     => Box.FromCenter(Vec3.Zero, ToVec3(b.Size), Quat.Identity()),
-        PlaneShapeConfig p   => new Plane(ToVec3(p.Normal).Normalize(), p.Distance),
-        ObjShapeConfig       => null,
+        ConfigShapeSphere s  => new Sphere(ToVec3(s.Center), s.Radius),
+        ConfigShapeAABox b   => new AABox(ToVec3(b.Min), ToVec3(b.Max)),
+        ConfigShapeBox b     => Box.FromCenter(Vec3.Zero, ToVec3(b.Size), Quat.Identity()),
+        ConfigShapePlane p   => new Plane(ToVec3(p.Normal).Normalize(), p.Distance),
+        ConfigShapeObj       => null,
         _ => throw new Exception($"Unknown shape type: {shape.GetType().Name}")
     };
 }

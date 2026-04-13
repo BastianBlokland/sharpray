@@ -29,8 +29,8 @@ if (!File.Exists(configPath))
 }
 
 Config config = Config.Load(configPath);
-RenderConfig render = config.Render;
-CompositeConfig composite = config.Composite;
+ConfigRender render = config.Render;
+ConfigComposite composite = config.Composite;
 
 Counters counters = new Counters();
 var timerTotal = counters.TimeScope(Counters.Type.TimeTotal);
@@ -48,12 +48,12 @@ using (counters.TimeScope(Counters.Type.TimeSetup))
     if (config.Scene.Fog != null)
         scene.SetFog(ConfigConvert.ToFog(config.Scene.Fog));
 
-    foreach (ObjectConfig obj in config.Scene.Objects)
+    foreach (ConfigObject obj in config.Scene.Objects)
     {
         Transform trans = ConfigConvert.ToTransform(obj.Transform);
         Material mat = ConfigConvert.ToMaterial(obj.Material);
 
-        if (obj.Shape is ObjShapeConfig objShape)
+        if (obj.Shape is ConfigShapeObj objShape)
         {
             ObjLoader.Load(objShape.Path, scene, new ObjConfig
             {
