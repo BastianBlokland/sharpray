@@ -51,7 +51,6 @@
       {
         "name": "floor",
         "material": {
-          "albedo": { "x": 1, "y": 1, "z": 1 },
           "roughness": 1.0,
           "colorTexture":     { "path": "assets/cobblestone/cobblestone_diff.tga",  "kind": "Srgb",   "tiling": { "x": 6.0, "y": 1.7 } },
           "roughnessTexture": { "path": "assets/cobblestone/cobblestone_rough.tga", "kind": "Linear", "tiling": { "x": 6.0, "y": 1.7 } },

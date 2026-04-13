@@ -15,19 +15,17 @@ readonly record struct ConfigTexture(
     ConfigTextureKind Kind = ConfigTextureKind.Srgb,
     ConfigVec2? Tiling = null);
 
-class ConfigMaterial
-{
-    public ConfigVec3 Albedo { get; init; } = new ConfigVec3 { X = 1f, Y = 1f, Z = 1f };
-    public float Roughness { get; init; } = 0.5f;
-    public float Metallic { get; init; } = 0f;
-    public float Transparency { get; init; } = 0f;
-    public float Ior { get; init; } = 1.5f;
-    public ConfigVec3? Radiance { get; init; }
-    public ConfigTexture? ColorTexture { get; init; }
-    public ConfigTexture? RoughnessTexture { get; init; }
-    public ConfigTexture? MetallicTexture { get; init; }
-    public ConfigTexture? NormalTexture { get; init; }
-}
+readonly record struct ConfigMaterial(
+    ConfigVec3? Albedo = null,
+    float Roughness = 0.5f,
+    float Metallic = 0f,
+    float Transparency = 0f,
+    float Ior = 1.5f,
+    ConfigVec3? Radiance = null,
+    ConfigTexture? ColorTexture = null,
+    ConfigTexture? RoughnessTexture = null,
+    ConfigTexture? MetallicTexture = null,
+    ConfigTexture? NormalTexture = null);
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(ConfigShapeSphere), "sphere")]
@@ -210,17 +208,18 @@ static class ConfigConvert
     public static Material ToMaterial(ConfigMaterial? m)
     {
         if (m == null) return new Material(Color.White, 0.5f);
+        var (albedo, roughness, metallic, transparency, ior, radiance, colorTex, roughTex, metalTex, normalTex) = m.Value;
         return new Material(
-            Albedo: ToColor(m.Albedo),
-            Roughness: m.Roughness,
-            Metallic: m.Metallic,
-            Transparency: m.Transparency,
-            Ior: m.Ior,
-            Radiance: m.Radiance != null ? ToColor(m.Radiance.Value) : default,
-            ColorTexture: m.ColorTexture != null ? ToTexture(m.ColorTexture.Value) : null,
-            RoughnessTexture: m.RoughnessTexture != null ? ToTexture(m.RoughnessTexture.Value) : null,
-            MetallicTexture: m.MetallicTexture != null ? ToTexture(m.MetallicTexture.Value) : null,
-            NormalTexture: m.NormalTexture != null ? ToTexture(m.NormalTexture.Value) : null);
+            Albedo: albedo != null ? ToColor(albedo.Value) : Color.White,
+            Roughness: roughness,
+            Metallic: metallic,
+            Transparency: transparency,
+            Ior: ior,
+            Radiance: radiance != null ? ToColor(radiance.Value) : default,
+            ColorTexture: colorTex != null ? ToTexture(colorTex.Value) : null,
+            RoughnessTexture: roughTex != null ? ToTexture(roughTex.Value) : null,
+            MetallicTexture: metalTex != null ? ToTexture(metalTex.Value) : null,
+            NormalTexture: normalTex != null ? ToTexture(normalTex.Value) : null);
     }
 
     public static ISky ToSky(ConfigSky sky) => sky switch
