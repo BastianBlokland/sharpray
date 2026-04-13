@@ -5,18 +5,31 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+class ConfigVec3
+{
+    public float X { get; init; } = 0f;
+    public float Y { get; init; } = 0f;
+    public float Z { get; init; } = 0f;
+}
+
+class ConfigVec2
+{
+    public float X { get; init; } = 0f;
+    public float Y { get; init; } = 0f;
+}
+
 // Axis-angle rotation step. Multiple steps are composed left-to-right.
 class ConfigRotation
 {
-    public float[] Axis { get; init; } = [0f, 1f, 0f];
+    public ConfigVec3? Axis { get; init; }
     public float AngleDeg { get; init; } = 0f;
 }
 
 class ConfigTransform
 {
-    public float[] Pos { get; init; } = [0f, 0f, 0f];
+    public ConfigVec3 Pos { get; init; } = new ConfigVec3();
     public List<ConfigRotation>? Rotation { get; init; }
-    public float[]? Scale { get; init; }
+    public ConfigVec3? Scale { get; init; }
 }
 
 class ConfigTexture
@@ -24,19 +37,19 @@ class ConfigTexture
     public string Path { get; init; } = "";
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ConfigTextureKind Kind { get; init; } = ConfigTextureKind.Srgb;
-    public float[]? Tiling { get; init; }
+    public ConfigVec2? Tiling { get; init; }
 }
 
 enum ConfigTextureKind { Srgb, Linear, Hdr }
 
 class ConfigMaterial
 {
-    public float[] Albedo { get; init; } = [1f, 1f, 1f];
+    public ConfigVec3 Albedo { get; init; } = new ConfigVec3 { X = 1f, Y = 1f, Z = 1f };
     public float Roughness { get; init; } = 0.5f;
     public float Metallic { get; init; } = 0f;
     public float Transparency { get; init; } = 0f;
     public float Ior { get; init; } = 1.5f;
-    public float[]? Radiance { get; init; }
+    public ConfigVec3? Radiance { get; init; }
     public ConfigTexture? ColorTexture { get; init; }
     public ConfigTexture? RoughnessTexture { get; init; }
     public ConfigTexture? MetallicTexture { get; init; }
@@ -53,24 +66,24 @@ abstract class ConfigShape { }
 
 class ConfigShapeSphere : ConfigShape
 {
-    public float[] Center { get; init; } = [0f, 0f, 0f];
+    public ConfigVec3 Center { get; init; } = new ConfigVec3();
     public float Radius { get; init; } = 1f;
 }
 
 class ConfigShapeAABox : ConfigShape
 {
-    public float[] Min { get; init; } = [-0.5f, -0.5f, -0.5f];
-    public float[] Max { get; init; } = [0.5f, 0.5f, 0.5f];
+    public ConfigVec3 Min { get; init; } = new ConfigVec3 { X = -0.5f, Y = -0.5f, Z = -0.5f };
+    public ConfigVec3 Max { get; init; } = new ConfigVec3 { X =  0.5f, Y =  0.5f, Z =  0.5f };
 }
 
 class ConfigShapeBox : ConfigShape
 {
-    public float[] Size { get; init; } = [1f, 1f, 1f];
+    public ConfigVec3 Size { get; init; } = new ConfigVec3 { X = 1f, Y = 1f, Z = 1f };
 }
 
 class ConfigShapePlane : ConfigShape
 {
-    public float[] Normal { get; init; } = [0f, 1f, 0f];
+    public ConfigVec3? Normal { get; init; }
     public float Distance { get; init; } = 0f;
 }
 
@@ -93,25 +106,25 @@ class ConfigSkyTexture : ConfigSky
 
 class ConfigSkyProcedural : ConfigSky
 {
-    public float[] Top { get; init; } = [0.08f, 0.17f, 0.70f];
-    public float[] Middle { get; init; } = [0.50f, 0.65f, 0.90f];
-    public float[] Bottom { get; init; } = [0.12f, 0.09f, 0.07f];
-    public float[] SunDir { get; init; } = [0.5f, 1f, -0.5f];
-    public float[] SunRadiance { get; init; } = [100000f, 90000f, 65000f];
+    public ConfigVec3 Top       { get; init; } = new ConfigVec3 { X = 0.08f, Y = 0.17f, Z = 0.70f };
+    public ConfigVec3 Middle    { get; init; } = new ConfigVec3 { X = 0.50f, Y = 0.65f, Z = 0.90f };
+    public ConfigVec3 Bottom    { get; init; } = new ConfigVec3 { X = 0.12f, Y = 0.09f, Z = 0.07f };
+    public ConfigVec3? SunDir   { get; init; }
+    public ConfigVec3 SunRadiance { get; init; } = new ConfigVec3 { X = 100000f, Y = 90000f, Z = 65000f };
     public float SunAngleDeg { get; init; } = 0.53f;
 }
 
 class ConfigFog
 {
     public float Density { get; init; } = 0.01f;
-    public float[] Color { get; init; } = [1f, 1f, 1f];
+    public ConfigVec3 Color { get; init; } = new ConfigVec3 { X = 1f, Y = 1f, Z = 1f };
     public float Anisotropy { get; init; } = 0f;
     public float HeightFalloff { get; init; } = 0f;
 }
 
 class ConfigCamera
 {
-    public float[] Pos { get; init; } = [0f, 0f, 0f];
+    public ConfigVec3 Pos { get; init; } = new ConfigVec3();
     public List<ConfigRotation>? Rotation { get; init; }
     public float FovDeg { get; init; } = 60f;
 }
@@ -193,16 +206,16 @@ class Config
 
 static class ConfigConvert
 {
-    public static Vec3 ToVec3(float[] v) => new Vec3(v[0], v[1], v[2]);
-    public static Color ToColor(float[] v) => new Color(v[0], v[1], v[2]);
-    public static Vec2 ToVec2(float[] v) => new Vec2(v[0], v[1]);
+    public static Vec3 ToVec3(ConfigVec3 v) => new Vec3(v.X, v.Y, v.Z);
+    public static Color ToColor(ConfigVec3 v) => new Color(v.X, v.Y, v.Z);
+    public static Vec2 ToVec2(ConfigVec2 v) => new Vec2(v.X, v.Y);
 
     public static Quat ToQuat(List<ConfigRotation>? rotations)
     {
         if (rotations == null || rotations.Count == 0)
             return Quat.Identity();
         return rotations.Aggregate(Quat.Identity(), (q, r) =>
-            q * Quat.AngleAxis(float.DegreesToRadians(r.AngleDeg), ToVec3(r.Axis).Normalize()));
+            q * Quat.AngleAxis(float.DegreesToRadians(r.AngleDeg), ToVec3(r.Axis ?? new ConfigVec3 { Y = 1f }).Normalize()));
     }
 
     public static Transform ToTransform(ConfigTransform? t)
@@ -254,7 +267,7 @@ static class ConfigConvert
             ToColor(p.Top),
             ToColor(p.Middle),
             ToColor(p.Bottom),
-            ToVec3(p.SunDir).Normalize(),
+            ToVec3(p.SunDir ?? new ConfigVec3 { Y = 1f }).Normalize(),
             ToColor(p.SunRadiance),
             float.DegreesToRadians(p.SunAngleDeg)),
         _ => throw new Exception($"Unknown sky type: {sky.GetType().Name}")
@@ -274,7 +287,7 @@ static class ConfigConvert
         ConfigShapeSphere s  => new Sphere(ToVec3(s.Center), s.Radius),
         ConfigShapeAABox b   => new AABox(ToVec3(b.Min), ToVec3(b.Max)),
         ConfigShapeBox b     => Box.FromCenter(Vec3.Zero, ToVec3(b.Size), Quat.Identity()),
-        ConfigShapePlane p   => new Plane(ToVec3(p.Normal).Normalize(), p.Distance),
+        ConfigShapePlane p   => new Plane(ToVec3(p.Normal ?? new ConfigVec3 { Y = 1f }).Normalize(), p.Distance),
         ConfigShapeObj       => null,
         _ => throw new Exception($"Unknown shape type: {shape.GetType().Name}")
     };

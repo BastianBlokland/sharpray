@@ -34,109 +34,93 @@
   "scene": {
     "sky": {
       "type": "texture",
-      "path": "assets/qwantani_late_afternoon.hdr",
-      "multiplier": 1.0,
-      "rotYawDeg": 0.0
+      "path": "assets/qwantani_late_afternoon.hdr"
     },
     "fog": {
       "density": 0.01,
-      "color": [0.8, 0.75, 0.6],
+      "color": { "x": 0.8, "y": 0.75, "z": 0.6 },
       "anisotropy": 0.6,
       "heightFalloff": 0.2
     },
     "camera": {
-      "pos": [1.0, 5.0, -2.0],
-      "rotation": [{ "axis": [1, 0, 0], "angleDeg": 35 }],
+      "pos": { "x": 1.0, "y": 6.5, "z": -4.5 },
+      "rotation": [{ "axis": { "x": 1 }, "angleDeg": 35 }],
       "fovDeg": 75
     },
     "objects": [
       {
         "name": "floor",
-        "transform": {
-          "pos": [0, 0, 0]
-        },
         "material": {
-          "albedo": [1, 1, 1],
+          "albedo": { "x": 1, "y": 1, "z": 1 },
           "roughness": 1.0,
-          "colorTexture":     { "path": "assets/cobblestone/cobblestone_diff.tga",  "kind": "Srgb",   "tiling": [6.0, 1.7] },
-          "roughnessTexture": { "path": "assets/cobblestone/cobblestone_rough.tga", "kind": "Linear", "tiling": [6.0, 1.7] },
-          "normalTexture":    { "path": "assets/cobblestone/cobblestone_nor.tga",   "kind": "Linear", "tiling": [6.0, 1.7] }
+          "colorTexture":     { "path": "assets/cobblestone/cobblestone_diff.tga",  "kind": "Srgb",   "tiling": { "x": 6.0, "y": 1.7 } },
+          "roughnessTexture": { "path": "assets/cobblestone/cobblestone_rough.tga", "kind": "Linear", "tiling": { "x": 6.0, "y": 1.7 } },
+          "normalTexture":    { "path": "assets/cobblestone/cobblestone_nor.tga",   "kind": "Linear", "tiling": { "x": 6.0, "y": 1.7 } }
         },
-        "shape": { "type": "aabox", "min": [-30, -0.2, -2], "max": [30, 0, 15] }
+        "shape": { "type": "aabox", "min": { "x": -30, "y": -0.2, "z": -2 }, "max": { "x": 30, "z": 15 } }
       },
       {
         "name": "dragon",
         "transform": {
-          "pos": [1.0, 1.7, 4.0],
-          "rotation": [{ "axis": [0, 1, 0], "angleDeg": -40 }],
-          "scale": [6, 6, 6]
+          "pos": { "x": 1.0, "y": 1.7, "z": 4.0 },
+          "rotation": [{ "axis": { "y": 1 }, "angleDeg": -40 }],
+          "scale": { "x": 6, "y": 6, "z": 6 }
         },
         "material": {
-          "albedo": [0.2, 0.7, 0.2],
-          "roughness": 0.25,
-          "metallic": 0.0
+          "albedo": { "x": 0.2, "y": 0.7, "z": 0.2 },
+          "roughness": 0.25
         },
         "shape": { "type": "obj", "path": "assets/dragon.obj" }
       },
       {
         "name": "sphere_0",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 1.0, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [4.5000, 0.75, 4.0000], "radius": 0.75 }
+        "material": { "roughness": 1.0, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": 4.5, "y": 0.75, "z": 4.0 }, "radius": 0.75 }
       },
       {
         "name": "sphere_1",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.8889, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [3.8316, 0.75, 6.0572], "radius": 0.75 }
+        "material": { "roughness": 0.8889, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": 3.8316, "y": 0.75, "z": 6.0572 }, "radius": 0.75 }
       },
       {
         "name": "sphere_2",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.7778, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [2.0816, 0.75, 7.3287], "radius": 0.75 }
+        "material": { "roughness": 0.7778, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": 2.0816, "y": 0.75, "z": 7.3287 }, "radius": 0.75 }
       },
       {
         "name": "sphere_3",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.6667, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [-0.0816, 0.75, 7.3287], "radius": 0.75 }
+        "material": { "roughness": 0.6667, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": -0.0816, "y": 0.75, "z": 7.3287 }, "radius": 0.75 }
       },
       {
         "name": "sphere_4",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.5556, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [-1.8316, 0.75, 6.0572], "radius": 0.75 }
+        "material": { "roughness": 0.5556, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": -1.8316, "y": 0.75, "z": 6.0572 }, "radius": 0.75 }
       },
       {
         "name": "sphere_5",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.4444, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [-2.5000, 0.75, 4.0000], "radius": 0.75 }
+        "material": { "roughness": 0.4444, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": -2.5, "y": 0.75, "z": 4.0 }, "radius": 0.75 }
       },
       {
         "name": "sphere_6",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.3333, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [-1.8316, 0.75, 1.9428], "radius": 0.75 }
+        "material": { "roughness": 0.3333, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": -1.8316, "y": 0.75, "z": 1.9428 }, "radius": 0.75 }
       },
       {
         "name": "sphere_7",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.2222, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [-0.0816, 0.75, 0.6713], "radius": 0.75 }
+        "material": { "roughness": 0.2222, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": -0.0816, "y": 0.75, "z": 0.6713 }, "radius": 0.75 }
       },
       {
         "name": "sphere_8",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.1111, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [2.0816, 0.75, 0.6713], "radius": 0.75 }
+        "material": { "roughness": 0.1111, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": 2.0816, "y": 0.75, "z": 0.6713 }, "radius": 0.75 }
       },
       {
         "name": "sphere_9",
-        "transform": { "pos": [0, 0, 0] },
-        "material": { "albedo": [1.0, 0.35, 0.05], "roughness": 0.0, "metallic": 1.0 },
-        "shape": { "type": "sphere", "center": [3.8316, 0.75, 1.9428], "radius": 0.75 }
+        "material": { "roughness": 0.0, "transparency": 1.0 },
+        "shape": { "type": "sphere", "center": { "x": 3.8316, "y": 0.75, "z": 1.9428 }, "radius": 0.75 }
       }
     ]
   }
