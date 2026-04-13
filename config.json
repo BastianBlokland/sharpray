@@ -44,7 +44,7 @@
     },
     "camera": {
       "pos": { "x": 1.0, "y": 6.5, "z": -4.5 },
-      "rotation": [{ "axis": { "x": 1 }, "angleDeg": 35 }],
+      "rotation": { "x": 35 },
       "fovDeg": 75
     },
     "objects": [
@@ -63,7 +63,7 @@
         "name": "dragon",
         "transform": {
           "pos": { "x": 1.0, "y": 1.7, "z": 4.0 },
-          "rotation": [{ "axis": { "y": 1 }, "angleDeg": -40 }],
+          "rotation": { "y": -40 },
           "scale": { "x": 6, "y": 6, "z": 6 }
         },
         "material": {

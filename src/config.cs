@@ -1,34 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-class ConfigVec3
-{
-    public float X { get; init; } = 0f;
-    public float Y { get; init; } = 0f;
-    public float Z { get; init; } = 0f;
-}
-
-class ConfigVec2
-{
-    public float X { get; init; } = 0f;
-    public float Y { get; init; } = 0f;
-}
-
-// Axis-angle rotation step. Multiple steps are composed left-to-right.
-class ConfigRotation
-{
-    public ConfigVec3? Axis { get; init; }
-    public float AngleDeg { get; init; } = 0f;
-}
+readonly record struct ConfigVec3(float X = 0, float Y = 0, float Z = 0);
+readonly record struct ConfigVec2(float X = 0, float Y = 0);
 
 class ConfigTransform
 {
     public ConfigVec3 Pos { get; init; } = new ConfigVec3();
-    public List<ConfigRotation>? Rotation { get; init; }
+    public ConfigVec3? Rotation { get; init; } // Euler angles in degrees: yaw (Y), pitch (X), roll (Z).
     public ConfigVec3? Scale { get; init; }
 }
 
@@ -73,7 +55,7 @@ class ConfigShapeSphere : ConfigShape
 class ConfigShapeAABox : ConfigShape
 {
     public ConfigVec3 Min { get; init; } = new ConfigVec3 { X = -0.5f, Y = -0.5f, Z = -0.5f };
-    public ConfigVec3 Max { get; init; } = new ConfigVec3 { X =  0.5f, Y =  0.5f, Z =  0.5f };
+    public ConfigVec3 Max { get; init; } = new ConfigVec3 { X = 0.5f, Y = 0.5f, Z = 0.5f };
 }
 
 class ConfigShapeBox : ConfigShape
@@ -106,11 +88,11 @@ class ConfigSkyTexture : ConfigSky
 
 class ConfigSkyProcedural : ConfigSky
 {
-    public ConfigVec3 Top       { get; init; } = new ConfigVec3 { X = 0.08f, Y = 0.17f, Z = 0.70f };
-    public ConfigVec3 Middle    { get; init; } = new ConfigVec3 { X = 0.50f, Y = 0.65f, Z = 0.90f };
-    public ConfigVec3 Bottom    { get; init; } = new ConfigVec3 { X = 0.12f, Y = 0.09f, Z = 0.07f };
-    public ConfigVec3? SunDir   { get; init; }
-    public ConfigVec3 SunRadiance { get; init; } = new ConfigVec3 { X = 100000f, Y = 90000f, Z = 65000f };
+    public ConfigVec3  Top        { get; init; } = new ConfigVec3 { X = 0.08f, Y = 0.17f, Z = 0.70f };
+    public ConfigVec3  Middle     { get; init; } = new ConfigVec3 { X = 0.50f, Y = 0.65f, Z = 0.90f };
+    public ConfigVec3  Bottom     { get; init; } = new ConfigVec3 { X = 0.12f, Y = 0.09f, Z = 0.07f };
+    public ConfigVec3? SunDir     { get; init; }
+    public ConfigVec3  SunRadiance { get; init; } = new ConfigVec3 { X = 100000f, Y = 90000f, Z = 65000f };
     public float SunAngleDeg { get; init; } = 0.53f;
 }
 
@@ -125,7 +107,7 @@ class ConfigFog
 class ConfigCamera
 {
     public ConfigVec3 Pos { get; init; } = new ConfigVec3();
-    public List<ConfigRotation>? Rotation { get; init; }
+    public ConfigVec3? Rotation { get; init; } // Euler angles in degrees: yaw (Y), pitch (X), roll (Z).
     public float FovDeg { get; init; } = 60f;
 }
 
@@ -210,20 +192,15 @@ static class ConfigConvert
     public static Color ToColor(ConfigVec3 v) => new Color(v.X, v.Y, v.Z);
     public static Vec2 ToVec2(ConfigVec2 v) => new Vec2(v.X, v.Y);
 
-    public static Quat ToQuat(List<ConfigRotation>? rotations)
-    {
-        if (rotations == null || rotations.Count == 0)
-            return Quat.Identity();
-        return rotations.Aggregate(Quat.Identity(), (q, r) =>
-            q * Quat.AngleAxis(float.DegreesToRadians(r.AngleDeg), ToVec3(r.Axis ?? new ConfigVec3 { Y = 1f }).Normalize()));
-    }
+    public static Quat ToQuat(ConfigVec3? rotation) =>
+        rotation != null ? Quat.FromEuler(ToVec3(rotation.Value)) : Quat.Identity();
 
     public static Transform ToTransform(ConfigTransform? t)
     {
         if (t == null) return Transform.Identity();
         Vec3 pos = ToVec3(t.Pos);
         Quat rot = ToQuat(t.Rotation);
-        Vec3 scale = t.Scale != null ? ToVec3(t.Scale) : new Vec3(1f, 1f, 1f);
+        Vec3 scale = t.Scale != null ? ToVec3(t.Scale.Value) : new Vec3(1f, 1f, 1f);
         return new Transform(pos, rot, scale);
     }
 
@@ -237,7 +214,7 @@ static class ConfigConvert
             _ => throw new Exception($"Unknown texture kind: {t.Kind}")
         };
         if (t.Tiling != null)
-            tex.Tiling = ToVec2(t.Tiling);
+            tex.Tiling = ToVec2(t.Tiling.Value);
         return tex;
     }
 
@@ -250,7 +227,7 @@ static class ConfigConvert
             Metallic: m.Metallic,
             Transparency: m.Transparency,
             Ior: m.Ior,
-            Radiance: m.Radiance != null ? ToColor(m.Radiance) : default,
+            Radiance: m.Radiance != null ? ToColor(m.Radiance.Value) : default,
             ColorTexture: m.ColorTexture != null ? ToTexture(m.ColorTexture) : null,
             RoughnessTexture: m.RoughnessTexture != null ? ToTexture(m.RoughnessTexture) : null,
             MetallicTexture: m.MetallicTexture != null ? ToTexture(m.MetallicTexture) : null,
