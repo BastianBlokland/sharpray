@@ -629,6 +629,11 @@ readonly struct Quat : ISpanFormattable
 
     public static float Dot(Quat a, Quat b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 
+    public static Quat FromEuler(Vec3 degrees) =>
+        AngleAxis(float.DegreesToRadians(degrees.Y), Vec3.Up) *
+        AngleAxis(float.DegreesToRadians(degrees.X), Vec3.Right) *
+        AngleAxis(float.DegreesToRadians(degrees.Z), Vec3.Forward);
+
     public static Quat FromMat4(Mat4 m)
     {
         // https://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/

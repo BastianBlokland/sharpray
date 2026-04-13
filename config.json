@@ -74,52 +74,52 @@
       },
       {
         "name": "sphere_0",
-        "material": { "roughness": 1.0, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 1.0, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": 4.5, "y": 0.75, "z": 4.0 }, "radius": 0.75 }
       },
       {
         "name": "sphere_1",
-        "material": { "roughness": 0.8889, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.8889, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": 3.8316, "y": 0.75, "z": 6.0572 }, "radius": 0.75 }
       },
       {
         "name": "sphere_2",
-        "material": { "roughness": 0.7778, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.7778, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": 2.0816, "y": 0.75, "z": 7.3287 }, "radius": 0.75 }
       },
       {
         "name": "sphere_3",
-        "material": { "roughness": 0.6667, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.6667, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": -0.0816, "y": 0.75, "z": 7.3287 }, "radius": 0.75 }
       },
       {
         "name": "sphere_4",
-        "material": { "roughness": 0.5556, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.5556, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": -1.8316, "y": 0.75, "z": 6.0572 }, "radius": 0.75 }
       },
       {
         "name": "sphere_5",
-        "material": { "roughness": 0.4444, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.4444, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": -2.5, "y": 0.75, "z": 4.0 }, "radius": 0.75 }
       },
       {
         "name": "sphere_6",
-        "material": { "roughness": 0.3333, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.3333, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": -1.8316, "y": 0.75, "z": 1.9428 }, "radius": 0.75 }
       },
       {
         "name": "sphere_7",
-        "material": { "roughness": 0.2222, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.2222, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": -0.0816, "y": 0.75, "z": 0.6713 }, "radius": 0.75 }
       },
       {
         "name": "sphere_8",
-        "material": { "roughness": 0.1111, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.1111, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": 2.0816, "y": 0.75, "z": 0.6713 }, "radius": 0.75 }
       },
       {
         "name": "sphere_9",
-        "material": { "roughness": 0.0, "transparency": 1.0 },
+        "material": { "albedo": { "x": 1.0, "y": 0.6, "z": 0.1 }, "roughness": 0.0, "transparency": 1.0 },
         "shape": { "type": "sphere", "center": { "x": 3.8316, "y": 0.75, "z": 1.9428 }, "radius": 0.75 }
       }
     ]
