@@ -6,23 +6,14 @@ using System.Text.Json.Serialization;
 
 readonly record struct ConfigVec3(float X = 0, float Y = 0, float Z = 0);
 readonly record struct ConfigVec2(float X = 0, float Y = 0);
-
-class ConfigTransform
-{
-    public ConfigVec3 Pos { get; init; } = new ConfigVec3();
-    public ConfigVec3? Rotation { get; init; } // Euler angles in degrees: yaw (Y), pitch (X), roll (Z).
-    public ConfigVec3? Scale { get; init; }
-}
-
-class ConfigTexture
-{
-    public string Path { get; init; } = "";
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public ConfigTextureKind Kind { get; init; } = ConfigTextureKind.Srgb;
-    public ConfigVec2? Tiling { get; init; }
-}
+readonly record struct ConfigTransform(ConfigVec3 Pos = default, ConfigVec3? Rotation = null, ConfigVec3? Scale = null);
 
 enum ConfigTextureKind { Srgb, Linear, Hdr }
+
+readonly record struct ConfigTexture(
+    string Path = "",
+    ConfigTextureKind Kind = ConfigTextureKind.Srgb,
+    ConfigVec2? Tiling = null);
 
 class ConfigMaterial
 {
@@ -88,11 +79,11 @@ class ConfigSkyTexture : ConfigSky
 
 class ConfigSkyProcedural : ConfigSky
 {
-    public ConfigVec3  Top        { get; init; } = new ConfigVec3 { X = 0.08f, Y = 0.17f, Z = 0.70f };
-    public ConfigVec3  Middle     { get; init; } = new ConfigVec3 { X = 0.50f, Y = 0.65f, Z = 0.90f };
-    public ConfigVec3  Bottom     { get; init; } = new ConfigVec3 { X = 0.12f, Y = 0.09f, Z = 0.07f };
-    public ConfigVec3? SunDir     { get; init; }
-    public ConfigVec3  SunRadiance { get; init; } = new ConfigVec3 { X = 100000f, Y = 90000f, Z = 65000f };
+    public ConfigVec3 Top { get; init; } = new ConfigVec3 { X = 0.08f, Y = 0.17f, Z = 0.70f };
+    public ConfigVec3 Middle { get; init; } = new ConfigVec3 { X = 0.50f, Y = 0.65f, Z = 0.90f };
+    public ConfigVec3 Bottom { get; init; } = new ConfigVec3 { X = 0.12f, Y = 0.09f, Z = 0.07f };
+    public ConfigVec3? SunDir { get; init; }
+    public ConfigVec3 SunRadiance { get; init; } = new ConfigVec3 { X = 100000f, Y = 90000f, Z = 65000f };
     public float SunAngleDeg { get; init; } = 0.53f;
 }
 
@@ -150,7 +141,6 @@ class ConfigRender
 
 class ConfigComposite
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public Tonemapper Tonemapper { get; init; } = Tonemapper.LinearSmooth;
     public float Exposure { get; init; } = 1.0f;
     public float DenoiseRadius { get; init; } = 0.0075f;
@@ -176,6 +166,7 @@ class Config
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
+        Converters = { new JsonStringEnumConverter() },
     };
 
     public static Config Load(string path)
@@ -198,19 +189,17 @@ static class ConfigConvert
     public static Transform ToTransform(ConfigTransform? t)
     {
         if (t == null) return Transform.Identity();
-        Vec3 pos = ToVec3(t.Pos);
-        Quat rot = ToQuat(t.Rotation);
-        Vec3 scale = t.Scale != null ? ToVec3(t.Scale.Value) : new Vec3(1f, 1f, 1f);
-        return new Transform(pos, rot, scale);
+        var (pos, rot, scale) = t.Value;
+        return new Transform(ToVec3(pos), ToQuat(rot), scale != null ? ToVec3(scale.Value) : new Vec3(1f, 1f, 1f));
     }
 
     public static Texture ToTexture(ConfigTexture t)
     {
         Texture tex = t.Kind switch
         {
-            ConfigTextureKind.Srgb   => Texture.FromSrgb(Image.Load(t.Path)),
+            ConfigTextureKind.Srgb => Texture.FromSrgb(Image.Load(t.Path)),
             ConfigTextureKind.Linear => Texture.FromLinear(Image.Load(t.Path)),
-            ConfigTextureKind.Hdr    => Texture.FromHdr(ImageHdr.Load(t.Path)),
+            ConfigTextureKind.Hdr => Texture.FromHdr(ImageHdr.Load(t.Path)),
             _ => throw new Exception($"Unknown texture kind: {t.Kind}")
         };
         if (t.Tiling != null)
@@ -228,10 +217,10 @@ static class ConfigConvert
             Transparency: m.Transparency,
             Ior: m.Ior,
             Radiance: m.Radiance != null ? ToColor(m.Radiance.Value) : default,
-            ColorTexture: m.ColorTexture != null ? ToTexture(m.ColorTexture) : null,
-            RoughnessTexture: m.RoughnessTexture != null ? ToTexture(m.RoughnessTexture) : null,
-            MetallicTexture: m.MetallicTexture != null ? ToTexture(m.MetallicTexture) : null,
-            NormalTexture: m.NormalTexture != null ? ToTexture(m.NormalTexture) : null);
+            ColorTexture: m.ColorTexture != null ? ToTexture(m.ColorTexture.Value) : null,
+            RoughnessTexture: m.RoughnessTexture != null ? ToTexture(m.RoughnessTexture.Value) : null,
+            MetallicTexture: m.MetallicTexture != null ? ToTexture(m.MetallicTexture.Value) : null,
+            NormalTexture: m.NormalTexture != null ? ToTexture(m.NormalTexture.Value) : null);
     }
 
     public static ISky ToSky(ConfigSky sky) => sky switch
@@ -261,11 +250,11 @@ static class ConfigConvert
     // Returns null for obj shapes — those must be loaded via ObjLoader.
     public static IShape? ToShape(ConfigShape shape) => shape switch
     {
-        ConfigShapeSphere s  => new Sphere(ToVec3(s.Center), s.Radius),
-        ConfigShapeAABox b   => new AABox(ToVec3(b.Min), ToVec3(b.Max)),
-        ConfigShapeBox b     => Box.FromCenter(Vec3.Zero, ToVec3(b.Size), Quat.Identity()),
-        ConfigShapePlane p   => new Plane(ToVec3(p.Normal ?? new ConfigVec3 { Y = 1f }).Normalize(), p.Distance),
-        ConfigShapeObj       => null,
+        ConfigShapeSphere s => new Sphere(ToVec3(s.Center), s.Radius),
+        ConfigShapeAABox b => new AABox(ToVec3(b.Min), ToVec3(b.Max)),
+        ConfigShapeBox b => Box.FromCenter(Vec3.Zero, ToVec3(b.Size), Quat.Identity()),
+        ConfigShapePlane p => new Plane(ToVec3(p.Normal ?? new ConfigVec3 { Y = 1f }).Normalize(), p.Distance),
+        ConfigShapeObj => null,
         _ => throw new Exception($"Unknown shape type: {shape.GetType().Name}")
     };
 }
