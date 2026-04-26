@@ -17,10 +17,10 @@ readonly record struct ConfigTexture(
 
 readonly record struct ConfigMaterial(
     ConfigVec3? Albedo = null,
-    float Roughness = 0.5f,
+    float? Roughness = null,
     float Metallic = 0f,
     float Transparency = 0f,
-    float Ior = 1.5f,
+    float? Ior = null,
     ConfigVec3? Radiance = null,
     ConfigTexture? ColorTexture = null,
     ConfigTexture? RoughnessTexture = null,
@@ -211,10 +211,10 @@ static class ConfigConvert
         var (albedo, roughness, metallic, transparency, ior, radiance, colorTex, roughTex, metalTex, normalTex) = m.Value;
         return new Material(
             Albedo: albedo != null ? ToColor(albedo.Value) : Color.White,
-            Roughness: roughness,
+            Roughness: roughness ?? 0.5f,
             Metallic: metallic,
             Transparency: transparency,
-            Ior: ior,
+            Ior: ior ?? 1.5f,
             Radiance: radiance != null ? ToColor(radiance.Value) : default,
             ColorTexture: colorTex != null ? ToTexture(colorTex.Value) : null,
             RoughnessTexture: roughTex != null ? ToTexture(roughTex.Value) : null,
